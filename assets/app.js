@@ -106,7 +106,14 @@
 
   const setV = (key, value, format = int) => countTo($(`[data-v="${key}"]`), value, format);
   const setD = (key, html) => { const el = $(`[data-d="${key}"]`); if (el) el.innerHTML = html; };
-  const setNote = (key, text) => { const el = $(`[data-note="${key}"]`); if (el) el.textContent = text || ""; };
+  // 설명 줄을 숨기는 좁은 화면에서도 볼 수 있도록 막대 영역에 툴팁으로 함께 단다
+  const setNote = (key, text) => {
+    const el = $(`[data-note="${key}"]`);
+    if (!el) return;
+    el.textContent = text || "";
+    const row = el.closest(".meter-row");
+    if (row) row.title = text || "";
+  };
   const setRank = (key, text) => { const el = $(`[data-rank="${key}"]`); if (el) el.textContent = text || ""; };
   const setYear = (panel, text) => { $(`#${panel} [data-year]`).textContent = text; };
 
@@ -132,6 +139,8 @@
     const a = V.budgetAgri[k]?.at(i), t = V.budgetTotal[k]?.at(i);
     return a != null && t ? (a / t) * 100 : null;
   };
+  const budgetWon = (k) => (V.budgetAgri[k] || []).map((x) => (x == null ? null : x * 1e6));
+  const grdpWon = (k) => (V.grdpAgri[k] || []).map((x) => (x == null ? null : x * 1e6));
   const grdpYear = (k) => (level(k) === 0 ? "2023" : P.grdp.bySido[sidoOf(k)] || "2023");
 
   const latestOf = (series) => (k) => lastOf(series[k]).value;
@@ -266,10 +275,10 @@
     countTo($('[data-v="aging"]'), o, pct);
     meter("young", y, py, Math.max(5, Math.ceil(Math.max(y || 0, py || 0) / 5) * 5));
     meter("aging", o, po);
-    setNote("aging", p ? `흰 선은 ${label(p)} · ${P.aging} 농림어업총조사` : `${P.aging} 농림어업총조사 · 경영주 연령 기준`);
+    setNote("aging", p ? `전체 농가 중 비율 · 흰 선은 ${label(p)} · ${P.aging} 총조사` : `전체 농가 중 경영주 연령별 비율 · ${P.aging} 농림어업총조사`);
     $('[data-meter="young"]').parentElement.title = p ? `${label(p)} ${pct(py)}` : "";
     $('[data-meter="aging"]').parentElement.title = p ? `${label(p)} ${pct(po)}` : "";
-    lineChart("#chart-farm", P.farm, V.households[k], "가구");
+    lineChart("#chart-farm", P.farm, V.households[k], int, "농가수");
   }
 
   function renderReturn() {
@@ -281,8 +290,8 @@
     setV("returnRural", r.value);
     setD("returnFarm", deltaHTML(f.value, f.prev));
     setD("returnRural", deltaHTML(r.value, r.prev));
-    spark("#spark-farm", P.returning, V.returnFarm[k]);
-    spark("#spark-rural", P.returning, V.returnRural[k]);
+    lineChart("#spark-farm", P.returning, V.returnFarm[k], int, "귀농가구");
+    lineChart("#spark-rural", P.returning, V.returnRural[k], int, "귀촌인");
     setNote("return", f.value == null && r.value == null ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다." : "");
   }
 
@@ -332,11 +341,12 @@
     setRank("rice", rankText(k, (x) => V.rice[x]?.[1]));
     const yieldKg = rice[0] ? (rice[1] / rice[0]) * 100 : null;
     $('[data-v="riceYield"]').textContent = yieldKg ? `10a당 ${nf0.format(yieldKg)}kg` : "";
+    lineChart("#chart-rice", P.riceYears, V.riceSeries[k], int, "쌀 생산량");
 
     const crops = Object.entries(V.crops[k] || {})
       .filter(([name, v]) => v > 0 && !/기타|화초/.test(name))
       .sort((a, b) => b[1] - a[1])
-      .slice(0, !FIT.matches ? 7 : window.innerHeight <= 860 ? 4 : window.innerHeight <= 1000 ? 5 : 6);
+      .slice(0, !FIT.matches ? 7 : window.innerHeight <= 1000 ? 3 : 5);
     const max = crops[0]?.[1] || 1;
     $("#bars-crop").innerHTML = crops.length
       ? crops.map(([name, v]) => `
@@ -352,6 +362,7 @@
     const g = V.grdp[k];
     setYear("p-grdp", `${grdpYear(k)}년`);
     countTo($('[data-v="grdp"]'), g?.[0] == null ? null : g[0] * 1e6, won);
+    lineChart("#chart-grdp", P.grdp.years, grdpWon(k), won, "농림어업 GRDP");
     const s = grdpShare(k);
     const ps = p ? grdpShare(p) : null;
     countTo($('[data-v="grdpShare"]'), s, pct);
@@ -375,6 +386,13 @@
     else if (level(k) === 2) note = `시군 통계가 없어 ${T.sidos[s].name} 평균을 보여줍니다.`;
     else note += ` · ${T.sidos[s].name}`;
     setNote("econ", note);
+    $("#p-econ .tiles").title = note;
+    const types = [...V.economyByType].sort((a, b) => b.income - a.income);
+    const maxT = types[0]?.income || 1;
+    $("#bars-econ").innerHTML = types.map((t) => `
+      <div class="bar-row" title="농업소득 ${int(t.agriIncome / 10)}만 원"><span class="name">${t.type}</span>
+        <span class="track"><span class="fill" style="width:${(t.income / maxT) * 100}%"></span></span>
+        <span class="val">${int(t.income / 10)}</span></div>`).join("");
   }
 
   function renderBudget() {
@@ -385,6 +403,7 @@
     setYear("p-budget", `${years[a.i] ?? years.at(-1)}년`);
     countTo($('[data-v="budget"]'), a.value == null ? null : a.value * 1e6, won);
     setD("budget", deltaHTML(a.value, a.prev));
+    lineChart("#chart-budget", years, budgetWon(k), won, "농업·농촌 예산");
     const s = budgetShare(k);
     const ps = p ? budgetShare(p) : null;
     countTo($('[data-v="budgetShare"]'), s, pct);
@@ -410,24 +429,25 @@
   }
 
   // ---------- 작은 차트 ----------
-  function lineChart(sel, years, values, unit) {
+  function lineChart(sel, years, values, fmt = int, name = "") {
     const el = $(sel);
     const w = el.clientWidth;
     const h = el.clientHeight;
     if (!w || !h) return; // 숨겨져 있거나 아직 배치 전이면 크기가 잡힌 뒤 다시 그린다
     const pts = years.map((y, i) => ({ y, v: values?.[i] })).filter((d) => d.v != null);
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
-    svg.attr("role", "img").attr("aria-label", pts.length ? `농가수 ${pts[0].y}년 ${int(pts[0].v)}${unit}에서 ${pts.at(-1).y}년 ${int(pts.at(-1).v)}${unit}` : "자료 없음");
+    svg.attr("role", "img").attr("aria-label", pts.length ? `${name} ${pts[0].y}년 ${fmt(pts[0].v)}에서 ${pts.at(-1).y}년 ${fmt(pts.at(-1).v)}` : "자료 없음");
     if (!pts.length) { svg.selectAll("*").remove(); return; }
-    const m = { t: 22, r: 8, b: 20, l: 8 };
+    const m = { t: 16, r: 12, b: 14, l: 12 };
     const x = d3.scalePoint().domain(pts.map((d) => d.y)).range([m.l, w - m.r]);
+    // 세로 범위를 자료의 최소~최대에 맞춰 변화가 잘 보이게 한다
     const ext = d3.extent(pts, (d) => d.v);
-    const pad = (ext[1] - ext[0]) * 0.25 || ext[1] * 0.1 || 1;
-    const y = d3.scaleLinear().domain([ext[0] - pad, ext[1] + pad * 0.5]).range([h - m.b, m.t]);
+    const pad = (ext[1] - ext[0]) * 0.15 || Math.abs(ext[1]) * 0.05 || 1;
+    const y = d3.scaleLinear().domain([ext[0] - pad, ext[1] + pad]).range([h - m.b, m.t]);
 
     svg.selectAll("defs").data([0]).join("defs")
       .selectAll("linearGradient").data([0]).join("linearGradient")
-      .attr("id", "g-farm").attr("x1", 0).attr("x2", 0).attr("y1", 0).attr("y2", 1)
+      .attr("id", `g-${el.id}`).attr("x1", 0).attr("x2", 0).attr("y1", 0).attr("y2", 1)
       .selectAll("stop").data([[0, 0.35], [1, 0]]).join("stop")
       .attr("offset", (d) => d[0]).attr("stop-color", "#f5a524").attr("stop-opacity", (d) => d[1]);
 
@@ -437,43 +457,26 @@
     const first = !el.querySelector("path.line") || el.dataset.size !== `${w}x${h}`;
     el.dataset.size = `${w}x${h}`;
     const t = svg.transition().duration(reduceMotion || first ? 0 : 600);
-    svg.selectAll("path.area").data([pts]).join("path").attr("class", "area").attr("fill", "url(#g-farm)").transition(t).attr("d", area);
+    svg.selectAll("path.area").data([pts]).join("path").attr("class", "area").attr("fill", `url(#g-${el.id})`).transition(t).attr("d", area);
     svg.selectAll("path.line").data([pts]).join("path").attr("class", "line").attr("fill", "none").attr("stroke", "#f5a524").attr("stroke-width", 2).transition(t).attr("d", line);
-    const ends = [pts[0], pts.at(-1)];
-    svg.selectAll("circle.end").data(ends).join("circle").attr("class", "end").attr("r", (d, i) => (i ? 4 : 3))
-      .attr("fill", (d, i) => (i ? "#f5a524" : "#1d2026")).attr("stroke", "#f5a524").attr("stroke-width", 1.5)
+    // 연도마다 점, 처음·마지막 값은 숫자로
+    svg.selectAll("circle.pt").data(pts).join("circle").attr("class", "pt")
+      .attr("r", (d, i) => (i === pts.length - 1 ? 4 : 2.5))
+      .attr("fill", (d, i) => (i === pts.length - 1 ? "#f5a524" : "#1d2026")).attr("stroke", "#f5a524").attr("stroke-width", 1.5)
       .transition(t).attr("cx", (d) => x(d.y)).attr("cy", (d) => y(d.v));
+    const ends = pts.length > 1 ? [pts[0], pts.at(-1)] : [pts[0]];
     svg.selectAll("text.end").data(ends).join("text").attr("class", "end")
-      .attr("fill", (d, i) => (i ? "#eef0f3" : "#9aa1ad")).attr("font-size", 11.5).attr("font-weight", (d, i) => (i ? 700 : 400))
+      .attr("fill", (d, i) => (i ? "#eef0f3" : "#9aa1ad")).attr("font-size", 11.5).attr("font-weight", (d, i) => (i ? 700 : 500))
       .attr("text-anchor", (d, i) => (i ? "end" : "start"))
-      .text((d) => int(d.v))
-      .transition(t).attr("x", (d) => x(d.y)).attr("y", (d) => y(d.v) - 9);
+      .attr("x", (d, i) => x(d.y) + (i ? 4 : -4))
+      .text((d) => fmt(d.v))
+      .transition(t).attr("y", (d) => Math.max(11, y(d.v) - 8));
+    // 연도: 간격이 좁으면 하나 걸러 표시
+    const every = (w - m.l - m.r) / Math.max(1, pts.length - 1) < 26 ? 2 : 1;
+    const ticks = pts.filter((d, i) => i % every === (pts.length - 1) % every);
     svg.selectAll("g.axis").data([0]).join("g").attr("class", "axis")
-      .selectAll("text").data(ends).join("text")
-      .attr("x", (d) => x(d.y)).attr("y", h - 4).attr("text-anchor", (d, i) => (i ? "end" : "start")).text((d) => `${d.y}년`);
-  }
-
-  function spark(sel, years, values) {
-    const el = $(sel);
-    const w = el.clientWidth;
-    const h = el.clientHeight;
-    if (!w || !h) return;
-    const pts = years.map((y, i) => ({ y, v: values?.[i] ?? null }));
-    const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`)
-      .attr("role", "img").attr("aria-label", pts.filter((d) => d.v != null).map((d) => `${d.y}년 ${int(d.v)}`).join(", ") || "자료 없음");
-    const x = d3.scaleBand().domain(years).range([0, w]).padding(0.28);
-    const max = d3.max(pts, (d) => d.v) || 1;
-    const y = d3.scaleLinear().domain([0, max]).range([h - 14, 2]);
-    const first = !el.querySelector("rect") || el.dataset.size !== `${w}x${h}`;
-    el.dataset.size = `${w}x${h}`;
-    svg.selectAll("rect").data(pts).join("rect")
-      .attr("x", (d) => x(d.y)).attr("width", x.bandwidth()).attr("rx", 2)
-      .attr("fill", (d, i) => (i === pts.length - 1 ? "#f5a524" : "#3a3f48"))
-      .transition().duration(reduceMotion || first ? 0 : 500)
-      .attr("y", (d) => (d.v == null ? h - 14 : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - 14 - y(d.v)));
-    svg.selectAll("text").data([years[0], years.at(-1)]).join("text")
-      .attr("x", (d, i) => (i ? w : 0)).attr("y", h - 2).attr("text-anchor", (d, i) => (i ? "end" : "start"))
-      .attr("fill", "#666d79").attr("font-size", 10.5).text((d) => `'${String(d).slice(2)}`);
+      .selectAll("text").data(ticks, (d) => d.y).join("text")
+      .attr("x", (d) => x(d.y)).attr("y", h - 3).attr("text-anchor", "middle").text((d) => `'${String(d.y).slice(2)}`);
   }
 
   // ---------- 지도 ----------
@@ -818,6 +821,12 @@
 
   chips();
   sources();
+  // 화면이 낮을 때 접어 두는 영농형태별 농가소득 목록
+  $("#econ-toggle").addEventListener("click", (e) => {
+    const open = $("#p-econ").classList.toggle("show-types");
+    e.currentTarget.setAttribute("aria-expanded", open);
+    e.currentTarget.textContent = open ? "접기" : "보기";
+  });
   drawMap();
   select(fromHash());
   // ?m=budget 처럼 지표를 지정해 열 수 있다
@@ -847,10 +856,13 @@
       return true;
     });
     if (!changed) return;
-    lineChart("#chart-farm", P.farm, V.households[state.key], "가구");
-    spark("#spark-farm", P.returning, V.returnFarm[state.key]);
-    spark("#spark-rural", P.returning, V.returnRural[state.key]);
+    lineChart("#chart-farm", P.farm, V.households[state.key], int, "농가수");
+    lineChart("#spark-farm", P.returning, V.returnFarm[state.key], int, "귀농가구");
+    lineChart("#spark-rural", P.returning, V.returnRural[state.key], int, "귀촌인");
+    lineChart("#chart-budget", P.budget, budgetWon(state.key), won, "농업·농촌 예산");
+    lineChart("#chart-rice", P.riceYears, V.riceSeries[state.key], int, "쌀 생산량");
+    lineChart("#chart-grdp", P.grdp.years, grdpWon(state.key), won, "농림어업 GRDP");
   });
-  ["#chart-farm", "#spark-farm", "#spark-rural"].forEach((s) => chartRO.observe($(s)));
+  ["#chart-farm", "#spark-farm", "#spark-rural", "#chart-budget", "#chart-rice", "#chart-grdp"].forEach((s) => chartRO.observe($(s)));
   FIT.addEventListener("change", () => { lastSize = ""; drawMap(); render(); });
 })();

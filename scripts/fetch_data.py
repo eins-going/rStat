@@ -303,10 +303,13 @@ def main():
     out["sources"]["livestock"] = "통계청 가축동향조사 (DT_1EO251, DT_1EO100) · 2025 농림어업총조사 (DT_1AG25505, DT_1AG25508)"
 
     print("논벼")
-    b, rows = fetch("101", "DT_1ET0294", "Y", 1, ["논벼:재배면적(ha)", "논벼:생산량(톤)"])
+    b, rows = fetch("101", "DT_1ET0294", "Y", 10, ["논벼:재배면적(ha)", "논벼:생산량(톤)"])
     a, p = latest(b["논벼:재배면적(ha)"]), latest(b["논벼:생산량(톤)"])
     v["rice"] = {k: [a.get(k), p.get(k)] for k in set(a) | set(p)}
-    out["periods"]["rice"] = rows[0]["PRD_DE"]
+    yrs = periods_of(b)
+    v["riceSeries"] = series(b["논벼:생산량(톤)"], yrs)
+    out["periods"]["rice"] = yrs[-1]
+    out["periods"]["riceYears"] = yrs
     out["sources"]["rice"] = "통계청 농작물생산조사 (KOSIS DT_1ET0294)"
 
     print("채소·특용작물")
@@ -322,7 +325,8 @@ def main():
     out["sources"]["crops"] = "통계청 2025 농림어업총조사 (KOSIS DT_1AG25403)"
 
     print("지역내총생산")
-    v["grdp"], out["periods"]["grdp"], out["sources"]["grdp"] = grdp()
+    v["grdpAgri"], v["grdpTotal"] = grdp()
+    out["sources"]["grdp"] = "통계청 시도별 지역내총생산 (DT_1C91) · 각 시도 시군별 지역내총생산 · 명목"
 
     print("농가경제")
     dims = meta("101", "DT_1EA1201")
@@ -336,11 +340,19 @@ def main():
             econ[cmap[r["C1"]]][want.index(r["ITM_NM"])] = round(num(r["DT"]))
     v["economy"] = dict(econ)
     out["periods"]["economy"] = rows[0]["PRD_DE"]
+    # 영농형태(품목)별 농가소득·농업소득 — 전국 단위만 있다
+    types = [it for it in dims["C"]["items"] if it["name"].startswith("영농형태-")]
+    rows = data("101", "DT_1EA1201", "Y", 1, ["+".join(it["id"] for it in types)])
+    by_type = {it["id"]: {"type": it["name"].split("-", 1)[1]} for it in types}
+    for r in rows:
+        if r["C1"] in by_type and r["ITM_NM"] in ("농가소득(경상소득+비경상소득)", "농업소득"):
+            by_type[r["C1"]]["income" if r["ITM_NM"].startswith("농가소득") else "agriIncome"] = round(num(r["DT"]))
+    v["economyByType"] = [t for t in by_type.values() if t.get("income")]
     out["units"] = {"economy": "천원", "grdp": "백만원"}
     out["sources"]["economy"] = "통계청 농가경제조사 (KOSIS DT_1EA1201) · 도 단위"
 
     print("농업·농촌 예산")
-    years = [str(date.today().year - 1), str(date.today().year)]
+    years = [str(y) for y in range(date.today().year - 9, date.today().year + 1)]  # 최근 10개 회계연도
     agri, total = {}, {}
     for i, y in enumerate(years):
         for key, (a, t) in budget(y).items():
@@ -348,12 +360,24 @@ def main():
             total.setdefault(key, [None] * len(years))[i] = t
     v["budgetAgri"], v["budgetTotal"] = agri, total
     out["periods"]["budget"] = years
-    out["sources"]["budget"] = "지방재정365 구조별 기능별 세출예산 (AIDFA) · 101 농업ㆍ농촌 부문, 순계"
+    out["sources"]["budget"] = "지방재정365 구조별 기능별 세출예산 (AIDFA) · 101 농업ㆍ농촌 부문, 순계 · 회계연도별"
 
-    skip = {"grdp": {s for s, y in out["periods"]["grdp"]["bySido"].items() if y != GRDP_YEAR}}
     for m in ["households", "population", "land", "paddy", "field", "returnFarm", "returnRural", "aging",
-              "cattle", "dairy", "chicken", "pig", "duck", "rice", "grdp"]:
-        reconcile(v[m], skip.get(m, set()))
+              "cattle", "dairy", "chicken", "pig", "duck", "rice", "riceSeries", "grdpAgri", "grdpTotal"]:
+        # 부산 시군 GRDP 표는 전국 표와 작성 기준이 달라 시도 값은 전국 표를 그대로 쓴다
+        reconcile(v[m], {"21"} if m.startswith("grdp") else set())
+
+    # GRDP 최신값: 지역마다 농림어업·총생산이 모두 있는 가장 최근 연도 (부산 시군은 2022년)
+    v["grdp"], by_sido = {}, {}
+    for key, agri_s in v["grdpAgri"].items():
+        tot_s = v["grdpTotal"].get(key, [])
+        idx = max((i for i, a in enumerate(agri_s) if a is not None and i < len(tot_s) and tot_s[i]), default=None)
+        if idx is not None:
+            v["grdp"][key] = [agri_s[idx], tot_s[idx]]
+            if "|" in key:
+                s = key.split("|")[0]
+                by_sido[s] = max(by_sido.get(s, ""), GRDP_YEARS[idx])
+    out["periods"]["grdp"] = {"years": GRDP_YEARS, "bySido": by_sido}
 
     path = os.path.join(ROOT, "data", "data.js")
     with open(path, "w", encoding="utf-8") as f:
@@ -439,7 +463,8 @@ def budget(year):
         if name != "본청":
             u = unit_of(sido, name)
             if u and u[0] in UNIT_KEYS:
-                targets.append(u[0])
+                # 편입 전 연도(예: 2023년 이전 경북 군위군)도 현행 시도에 합친다
+                targets = [NATION_KEY, u[0].split("|")[0], u[0]]
         for k in targets:
             acc[k][1] += net
             if is_agri:
@@ -480,7 +505,7 @@ GRDP_TABLES = {
     "36": ("215", "DT_2020Y36GRDP1"), "37": ("216", "DT_GRDP202037_01"), "38": ("217", "DT_2020Y38GRDP1"),
     "39": ("218", "DT_2020GRDP39_01"),
 }
-GRDP_YEAR = "2023"
+GRDP_YEARS = ["2020", "2021", "2022", "2023"]  # 모든 시도의 시군 표가 공통으로 가진 기간 (부산은 2022년까지)
 
 
 def unit_scale(unit):
@@ -493,73 +518,67 @@ def activity_ids(dim):
     return total, agri
 
 
-def grdp():
-    """{지역키: [농림어업, 지역내총생산]} 백만원(명목), 시도·전국은 DT_1C91, 시군은 시도별 표."""
-    res = {}
-    dims = meta("101", "DT_1C91")
+def grdp_query(org, tbl, dims, item):
     rdim = region_dim(dims)
     adim = next(k for k in dims if k not in ("ITEM", rdim))
     t_id, a_id = activity_ids(dims[adim])
-    rmap = region_map(dims[rdim])
-    item = next(it["id"] for it in dims["ITEM"]["items"] if it["name"] == "명목")
     order = [k for k in dims if k != "ITEM"]
     levels = ["ALL" if k == rdim else f"{t_id}+{a_id}" for k in order]
-    params = {"method": "getList", "orgId": "101", "tblId": "DT_1C91", "itmId": item, "prdSe": "Y",
-              "startPrdDe": GRDP_YEAR, "endPrdDe": GRDP_YEAR}
+    params = {"method": "getList", "orgId": org, "tblId": tbl, "itmId": item, "prdSe": "Y",
+              "startPrdDe": GRDP_YEARS[0], "endPrdDe": GRDP_YEARS[-1]}
     params.update({f"objL{i + 1}": lv for i, lv in enumerate(levels)})
     rows = call("Param/statisticsParameterData.do", params)
-    rc, ac = f"C{order.index(rdim) + 1}", f"C{order.index(adim) + 1}"
+    return rows, f"C{order.index(rdim) + 1}", f"C{order.index(adim) + 1}", a_id
+
+
+def grdp():
+    """연도별 ({지역키: [농림어업…]}, {지역키: [지역내총생산…]}) 백만원(명목), GRDP_YEARS 순서.
+    시도·전국은 DT_1C91, 시군은 시도별 표."""
+    n = len(GRDP_YEARS)
+    agri, total = {}, {}
+
+    def put(key, year, is_agri, val):
+        if year not in GRDP_YEARS or val is None:
+            return
+        target = agri if is_agri else total
+        target.setdefault(key, [None] * n)[GRDP_YEARS.index(year)] = round(val)
+
+    dims = meta("101", "DT_1C91")
+    rmap = region_map(dims[region_dim(dims)])
+    item = next(it["id"] for it in dims["ITEM"]["items"] if it["name"] == "명목")
+    rows, rc, ac, a_id = grdp_query("101", "DT_1C91", dims, item)
     for r in rows:
         hit = rmap.get(r[rc])
         if hit and hit[1] == "area":
-            pair = res.setdefault(hit[0], [None, None])
-            pair[0 if r[ac] == a_id else 1] = round(num(r["DT"]) * unit_scale(r.get("UNIT_NM")))
-    years = {}
+            put(hit[0], r["PRD_DE"], r[ac] == a_id, num(r["DT"]) * unit_scale(r.get("UNIT_NM")))
+
     for sido, (org, tbl) in GRDP_TABLES.items():
         try:
             dims = meta(org, tbl)
-            rdim = region_dim(dims)
-            adim = next(k for k in dims if k not in ("ITEM", rdim))
-            t_id, a_id = activity_ids(dims[adim])
-            item = dims["ITEM"]["items"][0]["id"]  # 명목(당해년가격)
-            order = [k for k in dims if k != "ITEM"]
-            levels = ["ALL" if k == rdim else f"{t_id}+{a_id}" for k in order]
-            params = {"method": "getList", "orgId": org, "tblId": tbl, "itmId": item, "prdSe": "Y", "newEstPrdCnt": "3"}
-            params.update({f"objL{i + 1}": lv for i, lv in enumerate(levels)})
-            rows = call("Param/statisticsParameterData.do", params)
+            rows, rc, ac, a_id = grdp_query(org, tbl, dims, dims["ITEM"]["items"][0]["id"])  # 명목(당해년가격)
         except Exception as e:  # 표 하나가 실패해도 나머지 시도는 계속
             print("  GRDP 실패", sido, e)
             continue
-        year = GRDP_YEAR if any(r["PRD_DE"] == GRDP_YEAR for r in rows) else max(r["PRD_DE"] for r in rows)
-        years[sido] = year
-        rc, ac = f"C{order.index(rdim) + 1}", f"C{order.index(adim) + 1}"
-        acc = defaultdict(lambda: {"explicit": [None, None], "sum": [None, None], "val": [None, None]})
+        # (지역키, 연도, 농림어업?) → 그대로 값 / 시부 명시값 / 구 합계
+        acc = defaultdict(lambda: {"val": None, "explicit": None, "sum": None})
         for r in rows:
-            if r["PRD_DE"] != year:
-                continue
             name = r[f"{rc}_NM"].strip()
             if sido_code(name) == sido or name in ("서울시",):
                 continue  # 시도 합계는 DT_1C91 값을 쓴다
             u = unit_of(sido, name)
-            if not u or u[0] not in UNIT_KEYS:
+            val = num(r["DT"])
+            if not u or u[0] not in UNIT_KEYS or val is None:
                 continue
             key, how = u
-            idx = 0 if r[ac] == a_id else 1
-            val = num(r["DT"])
-            if val is None:
-                continue
+            cell = acc[(key, r["PRD_DE"], r[ac] == a_id)]
             val *= unit_scale(r.get("UNIT_NM"))
-            slot = acc[key]["val" if how == "unit" else how]
-            slot[idx] = val if how != "sum" else (slot[idx] or 0) + val
-        for key, c in acc.items():
-            pick = [c["val"][i] if c["val"][i] is not None else c["explicit"][i] if c["explicit"][i] is not None else c["sum"][i]
-                    for i in range(2)]
-            if any(x is not None for x in pick):
-                res[key] = [None if x is None else round(x) for x in pick]
-    years_note = sorted({y for y in years.values() if y != GRDP_YEAR})
-    period = GRDP_YEAR + (f" (일부 {', '.join(years_note)})" if years_note else "")
-    src = "통계청 시도별 지역내총생산 (DT_1C91) · 각 시도 시군별 지역내총생산"
-    return fill_single_units(res), {"label": period, "bySido": years}, src
+            if how == "sum":
+                cell["sum"] = (cell["sum"] or 0) + val
+            else:
+                cell["val" if how == "unit" else "explicit"] = val
+        for (key, year, is_agri), c in acc.items():
+            put(key, year, is_agri, next((c[k] for k in ("val", "explicit", "sum") if c[k] is not None), None))
+    return fill_single_units(agri), fill_single_units(total)
 
 
 if __name__ == "__main__":

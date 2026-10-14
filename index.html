@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>지역농업통계 대시보드</title>
+  <title>한눈에 보는 지역농업 통계</title>
   <meta name="description" content="전국 17개 시도와 168개 시군의 농가, 경지, 가축, 농작물, 지역소득 통계를 한 화면에서 봅니다.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/style.css">
@@ -13,7 +13,7 @@
     <header class="topbar">
       <a class="brand" href="./">
         <span class="brand-mark" aria-hidden="true"></span>
-        <span>지역농업 데이터</span>
+        <span>한눈에 보는 지역농업 통계</span>
         <span class="brand-tag">시제품</span>
       </a>
       <div class="controls">
@@ -51,17 +51,21 @@
               <span class="delta" data-d="population"></span>
             </div>
           </div>
-          <div class="meter-row">
-            <div class="meter-text">
-              <span>40세 미만 경영주 농가 비율</span>
-              <b data-v="young"></b>
+          <div class="meter-row meter-pair">
+            <div class="meter-item">
+              <div class="meter-text">
+                <span>경영주 40세 미만</span>
+                <b data-v="young"></b>
+              </div>
+              <div class="meter"><span class="meter-fill" data-meter="young"></span><span class="meter-mark" data-mark="young"></span></div>
             </div>
-            <div class="meter"><span class="meter-fill" data-meter="young"></span><span class="meter-mark" data-mark="young"></span></div>
-            <div class="meter-text">
-              <span>65세 이상 경영주 농가 비율</span>
-              <b data-v="aging"></b>
+            <div class="meter-item">
+              <div class="meter-text">
+                <span>경영주 65세 이상</span>
+                <b data-v="aging"></b>
+              </div>
+              <div class="meter"><span class="meter-fill" data-meter="aging"></span><span class="meter-mark" data-mark="aging"></span></div>
             </div>
-            <div class="meter"><span class="meter-fill" data-meter="aging"></span><span class="meter-mark" data-mark="aging"></span></div>
             <p class="note" data-note="aging"></p>
           </div>
           <div class="chart" id="chart-farm" aria-label="농가수 추이"></div>
@@ -120,8 +124,7 @@
 
       <section class="center" aria-label="지도">
         <div class="hero">
-          <p class="eyebrow">한 눈에 보는</p>
-          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 농업 데이터</h1>
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 농업 통계</h1>
           <ul class="facts" id="facts"></ul>
         </div>
         <div class="map-card">
@@ -159,6 +162,7 @@
               <span class="sub" data-v="riceYield"></span>
             </div>
           </div>
+          <div class="spark tall" id="chart-rice" aria-label="쌀 생산량 연도별 추이"></div>
           <h3 class="sub-head">채소·특용작물 재배면적 <span>2025 총조사 · ha</span></h3>
           <div class="bars" id="bars-crop"></div>
           <footer class="src" data-src="crops"></footer>
@@ -173,6 +177,7 @@
             <span class="stat-label">농림어업 GRDP</span>
             <span class="stat-value"><b data-v="grdp"></b></span>
           </div>
+          <div class="spark tall" id="chart-grdp" aria-label="농림어업 GRDP 연도별 추이"></div>
           <div class="meter-row">
             <div class="meter-text">
               <span>지역 총생산 대비 비중</span>
@@ -193,6 +198,7 @@
             <span class="stat-value"><b data-v="budget"></b></span>
             <span class="delta" data-d="budget"></span>
           </div>
+          <div class="spark tall" id="chart-budget" aria-label="농업·농촌 예산 연도별 추이"></div>
           <div class="meter-row">
             <div class="meter-text">
               <span>전체 세출 대비 비중</span>
@@ -216,6 +222,8 @@
             <div class="tile"><span>농가부채</span><b data-v="debt"></b></div>
           </div>
           <p class="note" data-note="econ"></p>
+          <h3 class="sub-head">영농형태별 농가소득 <span>전국 · 만 원</span><button type="button" class="econ-toggle" id="econ-toggle" aria-expanded="false" aria-controls="bars-econ">보기</button></h3>
+          <div class="bars bars-econ" id="bars-econ"></div>
           <footer class="src" data-src="economy"></footer>
         </article>
       </section>
