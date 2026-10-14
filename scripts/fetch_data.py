@@ -312,17 +312,16 @@ def main():
     out["periods"]["riceYears"] = yrs
     out["sources"]["rice"] = "통계청 농작물생산조사 (KOSIS DT_1ET0294)"
 
-    print("채소·특용작물")
-    dims = meta("101", "DT_1AG25403")
-    names = [it["name"] for it in dims["ITEM"]["items"] if it["name"].endswith("_면적")]
-    b, _ = fetch("101", "DT_1AG25403", "F", 1, names, region_ids=True)
-    crops = defaultdict(dict)
-    for item, regs in b.items():
-        for key, val in latest(regs).items():
-            if val:
-                crops[key][item[:-3]] = val
-    v["crops"] = crops
-    out["sources"]["crops"] = "통계청 2025 농림어업총조사 (KOSIS DT_1AG25403)"
+    print("채소·특용작물 (2015·2020·2025 총조사)")
+    census = [("2015", "DT_1AG15403"), ("2020", "DT_1AG20403"), ("2025", "DT_1AG25403")]
+    crops = defaultdict(lambda: defaultdict(lambda: [None] * len(census)))
+    for i, (year, tbl) in enumerate(census):
+        for key, areas in crop_areas(tbl).items():
+            for crop, val in areas.items():
+                crops[key][crop][i] = val
+    v["crops"] = {k: dict(c) for k, c in crops.items()}
+    out["periods"]["cropYears"] = [y for y, _ in census]
+    out["sources"]["crops"] = "통계청 농림어업총조사 2015·2020·2025 (KOSIS DT_1AG15403, DT_1AG20403, DT_1AG25403)"
 
     print("지역내총생산")
     v["grdpAgri"], v["grdpTotal"] = grdp()
@@ -387,6 +386,38 @@ def main():
     print("saved", path, os.path.getsize(path), "bytes")
     missing = sorted(k for k in UNIT_KEYS if k not in v["households"])
     print("농가수 없는 시군:", missing)
+
+
+def crop_areas(tbl):
+    """총조사 표 하나 → {지역키: {품목: 재배면적(ha)}}.
+    2020년 이전 표는 면적 항목 이름이 모두 '면적'이라, 바로 앞 'X:농가' 항목으로 품목을 정한다."""
+    dims = meta("101", tbl)
+    rdim = region_dim(dims)
+    other = next(k for k in dims if k not in ("ITEM", rdim))
+    rmap = region_map(dims[rdim])
+    crop_of, current = {}, None
+    for it in dims["ITEM"]["items"]:
+        m = re.match(r"(.+?)[:_]농가$", it["name"])
+        if m:
+            current = m.group(1)
+        elif it["name"].endswith("면적") and current:
+            crop_of[it["id"]] = current
+    total_id = next(it["id"] for it in dims[other]["items"] if it["name"] == "계")
+    order = [k for k in dims if k != "ITEM"]
+    levels = ["+".join(rmap) if k == rdim else total_id for k in order]
+    params = {"method": "getList", "orgId": "101", "tblId": tbl, "itmId": "+".join(crop_of),
+              "prdSe": "F", "newEstPrdCnt": "1"}
+    params.update({f"objL{i + 1}": lv for i, lv in enumerate(levels)})
+    rows = call("Param/statisticsParameterData.do", params)
+    for r in rows:
+        r["ITM_NM"] = crop_of.get(r["ITM_ID"], r["ITM_NM"])
+    block = collect(rows, rmap, f"C{order.index(rdim) + 1}", set(crop_of.values()))
+    out = defaultdict(dict)
+    for crop, regs in block.items():
+        for key, val in latest(regs, 1).items():
+            if val:
+                out[key][crop] = val
+    return out
 
 
 def operator_age():

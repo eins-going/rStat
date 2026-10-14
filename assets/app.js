@@ -10,7 +10,9 @@
 
   // ---------- 지역 체계: '00' 전국 · '31' 시도 · '31|수원시' 시군 ----------
   const NATION = "00";
-  const SIDO_CODES = Object.keys(T.sidos).sort();
+  // 표시 순서: 9개 도 → 서울 → 광역시 → 세종
+  const SIDO_ORDER = ["31", "32", "33", "34", "35", "36", "37", "38", "39", "11", "21", "22", "23", "24", "25", "26", "29"];
+  const SIDO_CODES = [...SIDO_ORDER.filter((c) => T.sidos[c]), ...Object.keys(T.sidos).filter((c) => !SIDO_ORDER.includes(c)).sort()];
   const GEOMS = T.objects.municipalities.geometries;
   const unitKeyOf = (g) => `${g.properties.sido}|${g.properties.unit}`;
 
@@ -152,7 +154,18 @@
   const cropArea = (k) => {
     const c = V.crops[k];
     if (!c) return null;
-    return Object.entries(c).filter(([n]) => !/기타|화초/.test(n)).reduce((s, [, v]) => s + v, 0);
+    return Object.entries(c).filter(([n]) => !/기타|화초/.test(n)).reduce((s, [, v]) => s + (v.at(-1) || 0), 0);
+  };
+  // 2020→2025 채소·특용작물 재배면적 합계 증감률 (두 해 모두 있는 품목만)
+  const cropChange = (k) => {
+    const c = V.crops[k];
+    if (!c) return null;
+    let a = 0, b = 0;
+    for (const [n, s] of Object.entries(c)) {
+      if (/기타|화초/.test(n) || s.at(-1) == null || s.at(-2) == null) continue;
+      a += s.at(-2); b += s.at(-1);
+    }
+    return change(b, a);
   };
   const fy = (y) => `${y}년`;
 
@@ -174,6 +187,7 @@
     { key: "riceArea", label: "논벼 재배면적", unit: "ha", year: fy(P.rice), get: pairAt(V.rice, 0), fmt: int },
     { key: "riceYield", label: "10a당 쌀 생산량", unit: "kg", year: fy(P.rice), get: riceYield, fmt: int },
     { key: "crops", label: "채소·특용작물 재배면적", unit: "ha", year: `${P.census} 총조사`, get: cropArea, fmt: int },
+    { key: "cropsChange", label: "채소·특용작물 재배면적 증감률", unit: "%", year: "2020→2025", get: (k) => cropChange(k), fmt: pct },
     { key: "cattle", label: "한육우", unit: "마리", year: P.livestock, get: pairAt(V.cattle, 1), fmt: int },
     { key: "dairy", label: "젖소", unit: "마리", year: P.livestock, get: pairAt(V.dairy, 1), fmt: int },
     { key: "pig", label: "돼지", unit: "마리", year: `${P.census} 총조사`, get: pairAt(V.pig, 1), fmt: int },
@@ -343,16 +357,33 @@
     $('[data-v="riceYield"]').textContent = yieldKg ? `10a당 ${nf0.format(yieldKg)}kg` : "";
     lineChart("#chart-rice", P.riceYears, V.riceSeries[k], int, "쌀 생산량");
 
+    // 품목별 재배면적: 2025년 면적 막대 + 세 시점(2015·2020·2025) 작은 선 + 5년 전 대비 증감
+    const yrs = P.cropYears;
     const crops = Object.entries(V.crops[k] || {})
-      .filter(([name, v]) => v > 0 && !/기타|화초/.test(name))
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, !FIT.matches ? 7 : window.innerHeight <= 1000 ? 3 : 5);
-    const max = crops[0]?.[1] || 1;
+      .filter(([name, s]) => s.at(-1) > 0 && !/기타|화초/.test(name))
+      .sort((a, b) => b[1].at(-1) - a[1].at(-1))
+      .slice(0, !FIT.matches ? 7 : window.innerHeight <= 860 ? 2 : window.innerHeight <= 1000 ? 3 : 5);
+    const max = crops[0]?.[1].at(-1) || 1;
+    const mini = (s) => {
+      const vals = s.filter((x) => x != null);
+      if (vals.length < 2) return "";
+      const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+      const pts = s.map((x, i) => (x == null ? null : [2 + (i * 26) / (s.length - 1), 12 - ((x - lo) / span) * 9])).filter(Boolean);
+      return `<svg viewBox="0 0 30 15" aria-hidden="true"><polyline points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="#f5a524" stroke-width="1.4"/>${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 1.8 : 1.2}" fill="#f5a524"/>`).join("")}</svg>`;
+    };
     $("#bars-crop").innerHTML = crops.length
-      ? crops.map(([name, v]) => `
-        <div class="bar-row"><span class="name">${name}</span>
-          <span class="track"><span class="fill" style="width:${(v / max) * 100}%"></span></span>
-          <span class="val">${int(v)}</span></div>`).join("")
+      ? crops.map(([name, s]) => {
+          const r = change(s.at(-1), s.at(-2));
+          const cls = r == null ? "" : r > 0 ? "up" : r < 0 ? "down" : "";
+          const d = r == null ? "–" : `${r > 0 ? "▲" : r < 0 ? "▼" : ""}${nf0.format(Math.abs(r))}%`;
+          const tip = s.map((x, i) => `${yrs[i]}년 ${x == null ? "–" : `${nf0.format(x)}ha`}`).join(" · ");
+          return `
+        <div class="bar-row crop-row" title="${name}: ${tip}"><span class="name">${name}</span>
+          <span class="track"><span class="fill" style="width:${(s.at(-1) / max) * 100}%"></span></span>
+          <span class="val">${int(s.at(-1))}</span>
+          <span class="mini">${mini(s)}</span>
+          <span class="chg ${cls}">${d}</span></div>`;
+        }).join("")
       : '<p class="note">재배면적 자료가 없습니다.</p>';
   }
 
