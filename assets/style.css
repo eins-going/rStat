@@ -782,3 +782,15 @@ body {
 .stats.two .stat { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 6px; }
 .stats.two .stat > .stat-label, .stats.two .stat > .spark { grid-column: 1 / -1; }
 .stats.two .stat > .delta { white-space: nowrap; }
+/* 품목별 재배면적: 칸(칼럼) 배치 막대 */
+#bars-crop { display: block; height: 78px; }
+#bars-crop svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.sub-head .lg { display: inline-block; width: 7px; height: 7px; border-radius: 1px; margin: 0 2px 0 5px; vertical-align: 0; }
+.lg1 { background: #4a505b; } .lg2 { background: #6b717c; } .lg3 { background: var(--accent); }
+@media (min-width: 1281px) and (min-height: 720px) {
+  #p-crop .bars { flex: 1 0 auto; }
+  #bars-crop { height: 74px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) { #bars-crop { height: 66px; } }
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) { #bars-crop { height: 58px; } }
+.sub-head .nowrap { white-space: nowrap; }

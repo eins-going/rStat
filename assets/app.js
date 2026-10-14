@@ -357,43 +357,7 @@
     $('[data-v="riceYield"]').textContent = yieldKg ? `10a당 ${nf0.format(yieldKg)}kg` : "";
     lineChart("#chart-rice", P.riceYears, V.riceSeries[k], int, "쌀 생산량");
 
-    // 품목별 재배면적: 2025년 면적 막대 + 세 시점(2015·2020·2025) 작은 선 + 5년 전 대비 증감
-    const yrs = P.cropYears;
-    const crops = Object.entries(V.crops[k] || {})
-      .filter(([name, s]) => s.at(-1) > 0 && !/기타|화초/.test(name))
-      .sort((a, b) => b[1].at(-1) - a[1].at(-1))
-      .slice(0, !FIT.matches ? 7 : window.innerHeight <= 860 ? 2 : window.innerHeight <= 1000 ? 3 : 5);
-    // 앞 막대 대신 5년 간격(2015·2020·2025) 추이 선을 넓게 그린다. 선은 품목마다 자기 최소~최대 범위
-    const box = $("#bars-crop");
-    const fixed = 44 + 46 + 44 + 18; // 이름 · 2025 면적 · 증감 · 간격
-    const lw = Math.max(60, (box.clientWidth || 280) - fixed);
-    const xAt = (i, n) => 6 + (i * (lw - 12)) / Math.max(1, n - 1);
-    const trend = (s) => {
-      const vals = s.filter((x) => x != null);
-      if (vals.length < 2) return "";
-      const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
-      const pts = s.map((x, i) => (x == null ? null : [xAt(i, s.length), 13 - ((x - lo) / span) * 10])).filter(Boolean);
-      return `<svg viewBox="0 0 ${lw} 16" width="${lw}" height="16" aria-hidden="true">
-        <line x1="6" x2="${lw - 6}" y1="15.5" y2="15.5" stroke="#2f333b"/>
-        <polyline points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="#f5a524" stroke-width="1.6"/>
-        ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 2.6 : 2}" fill="${i === pts.length - 1 ? "#f5a524" : "#1d2026"}" stroke="#f5a524" stroke-width="1.2"/>`).join("")}</svg>`;
-    };
-    const axis = `<div class="crop-row crop-axis" aria-hidden="true"><span></span>
-      <span class="yrs" style="width:${lw}px">${yrs.map((y, i) => `<i style="left:${xAt(i, yrs.length)}px">'${String(y).slice(2)}</i>`).join("")}</span>
-      <span>2025</span><span>5년 대비</span></div>`;
-    box.innerHTML = crops.length
-      ? axis + crops.map(([name, s]) => {
-          const r = change(s.at(-1), s.at(-2));
-          const cls = r == null ? "" : r > 0 ? "up" : r < 0 ? "down" : "";
-          const d = r == null ? "–" : `${r > 0 ? "▲" : r < 0 ? "▼" : ""}${nf0.format(Math.abs(r))}%`;
-          const tip = s.map((x, i) => `${yrs[i]}년 ${x == null ? "–" : `${nf0.format(x)}ha`}`).join(" · ");
-          return `
-        <div class="crop-row" title="${name}: ${tip}"><span class="name">${name}</span>
-          <span class="trend">${trend(s)}</span>
-          <span class="val">${int(s.at(-1))}</span>
-          <span class="chg ${cls}">${d}</span></div>`;
-        }).join("")
-      : '<p class="note">재배면적 자료가 없습니다.</p>';
+    drawCrops(k);
   }
 
   function renderGrdp() {
@@ -517,6 +481,52 @@
     svg.selectAll("g.axis").data([0]).join("g").attr("class", "axis")
       .selectAll("text").data(ticks, (d) => d.y).join("text")
       .attr("x", (d) => x(d.y)).attr("y", h - 3).attr("text-anchor", "middle").text((d) => `'${String(d.y).slice(2)}`);
+  }
+
+  // 품목별 재배면적: 품목마다 칸 하나에 2015·2020·2025 막대 3개 (칸마다 0부터 자기 축)
+  function drawCrops(k) {
+    const box = $("#bars-crop");
+    const w = box.clientWidth;
+    const h = box.clientHeight;
+    const yrs = P.cropYears;
+    const crops = Object.entries(V.crops[k] || {})
+      .filter(([name, s]) => s.at(-1) > 0 && !/기타|화초/.test(name))
+      .sort((a, b) => b[1].at(-1) - a[1].at(-1))
+      .slice(0, w && w < 330 ? 4 : 5);
+    if (!crops.length) { box.innerHTML = '<p class="note">재배면적 자료가 없습니다.</p>'; return; }
+    if (!w || !h) return;
+    const svg = d3.select(box).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`)
+      .attr("role", "img")
+      .attr("aria-label", crops.map(([n, s]) => `${n} ${s.map((x, i) => `${yrs[i]}년 ${x == null ? "자료 없음" : `${nf0.format(x)}ha`}`).join(", ")}`).join("; "));
+    box.querySelectorAll(":scope > p").forEach((n) => n.remove());
+    const top = 16, bottom = 15;
+    const band = d3.scaleBand().domain(crops.map(([n]) => n)).range([0, w]).paddingInner(0.18);
+    const inner = d3.scaleBand().domain(yrs).range([0, band.bandwidth()]).paddingInner(0.18).paddingOuter(0.12);
+    const fills = ["#4a505b", "#6b717c", "#f5a524"];
+    const g = svg.selectAll("g.crop").data(crops, ([n]) => n).join("g").attr("class", "crop")
+      .attr("transform", ([n]) => `translate(${band(n)},0)`);
+    g.each(function ([name, s]) {
+      const max = d3.max(s, (x) => x || 0) || 1;
+      const y = d3.scaleLinear().domain([0, max]).range([h - bottom, top]);
+      const cell = d3.select(this);
+      const r = change(s.at(-1), s.at(-2));
+      cell.selectAll("title").data([0]).join("title")
+        .text(`${name}: ${s.map((x, i) => `${yrs[i]}년 ${x == null ? "–" : `${nf0.format(x)}ha`}`).join(" · ")}`);
+      cell.selectAll("rect.bg").data([0]).join("rect").attr("class", "bg")
+        .attr("x", 0).attr("y", 0).attr("width", band.bandwidth()).attr("height", h).attr("fill", "transparent");
+      cell.selectAll("line.base").data([0]).join("line").attr("class", "base")
+        .attr("x1", 0).attr("x2", band.bandwidth()).attr("y1", h - bottom + 0.5).attr("y2", h - bottom + 0.5).attr("stroke", "#2f333b");
+      cell.selectAll("rect.bar").data(s.map((v, i) => ({ v, i }))).join("rect").attr("class", "bar")
+        .attr("x", (d) => inner(yrs[d.i])).attr("width", inner.bandwidth()).attr("rx", 1.5)
+        .attr("fill", (d) => fills[d.i] || fills.at(-1))
+        .attr("y", (d) => (d.v == null ? h - bottom : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - bottom - y(d.v)));
+      cell.selectAll("text.v").data([0]).join("text").attr("class", "v")
+        .attr("x", band.bandwidth() / 2).attr("y", 10).attr("text-anchor", "middle").attr("font-size", 10.5)
+        .html(`<tspan fill="#eef0f3" font-weight="600">${int(s.at(-1))}</tspan><tspan fill="${r == null ? "#9aa1ad" : r > 0 ? "#ff6b5e" : r < 0 ? "#4ea1ff" : "#9aa1ad"}" dx="3">${r == null ? "" : `${r > 0 ? "▲" : r < 0 ? "▼" : ""}${nf0.format(Math.abs(r))}%`}</tspan>`);
+      cell.selectAll("text.n").data([0]).join("text").attr("class", "n")
+        .attr("x", band.bandwidth() / 2).attr("y", h - 3).attr("text-anchor", "middle")
+        .attr("fill", "#9aa1ad").attr("font-size", 11).text(name);
+    });
   }
 
   // 연도별 막대: 해마다 새로 생기는 양(귀농·귀촌 수, 회계연도 예산)에 쓴다. 0에서 시작, 마지막 해 강조
@@ -956,7 +966,8 @@
     barChart("#chart-budget", P.budget, budgetWon(state.key), won, "농업·농촌 예산");
     lineChart("#chart-rice", P.riceYears, V.riceSeries[state.key], int, "쌀 생산량");
     lineChart("#chart-grdp", P.grdp.years, grdpWon(state.key), won, "농림어업 GRDP");
+    drawCrops(state.key);
   });
-  ["#chart-farm", "#spark-farm", "#spark-rural", "#chart-budget", "#chart-rice", "#chart-grdp"].forEach((s) => chartRO.observe($(s)));
+  ["#chart-farm", "#spark-farm", "#spark-rural", "#chart-budget", "#chart-rice", "#chart-grdp", "#bars-crop"].forEach((s) => chartRO.observe($(s)));
   FIT.addEventListener("change", () => { lastSize = ""; drawMap(); render(); });
 })();
