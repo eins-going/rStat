@@ -809,3 +809,22 @@ body {
   .econ-tabs button { padding: 1px 6px; }
   .bars-econ { row-gap: 1px; }
 }
+
+/* ===== 물류기기 사업동향 대시보드 ===== */
+.sub-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.sub-line b { color: var(--text); font-variant-numeric: tabular-nums; }
+.sub-line:empty { display: none; }
+.month-legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); }
+.month-legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: 3px; }
+.bar-row.share-row { grid-template-columns: 82px 1fr 46px 52px; }
+.bar-row.equip-row { grid-template-columns: 82px 40px 1fr 52px; }
+.share-row .chg, .equip-row .chg { text-align: right; font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.share-row .chg.up, .equip-row .chg.up { color: var(--up); }
+.share-row .chg.down, .equip-row .chg.down { color: var(--down); }
+.equip-row .val { text-align: right; }
+.equip-row .mini svg { display: block; }
+#p-month .chart { height: 110px; }
+@media (min-width: 1281px) and (min-height: 720px) {
+  #p-month .chart { flex: 1 1 90px; min-height: 90px; max-height: 200px; }
+  #p-scale .spark.tall { flex: 1 1 52px; min-height: 52px; max-height: 120px; height: auto; }
+}

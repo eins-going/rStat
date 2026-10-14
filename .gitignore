@@ -1,3 +1,5 @@
 .env
 *.pptx
 __pycache__/
+물류기기 공동이용/
+*.csv

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>한눈에 보는 지역물류기기 사업동향</title>
+  <meta name="description" content="농산물 물류기기 공동이용 실적을 전국·시도·시군 단위로 봅니다. 이용 규모, 월별 추이, 품목, 판로, 출하 주체를 전년 동기와 비교합니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="logistics">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>한눈에 보는 지역물류기기 사업동향</span>
+        <span class="brand-tag">시제품</span>
+      </a>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+      </div>
+    </header>
+
+    <div class="ticker" aria-label="전년 동기 대비 증감">
+      <div class="ticker-track" id="ticker"></div>
+    </div>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="이용 규모·추이·출하 주체">
+        <article class="panel" id="p-scale">
+          <header class="panel-head">
+            <h2>물류기기 이용 규모</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">컨테이너</span>
+              <span class="stat-value"><b data-v="container"></b><small>개</small></span>
+              <span class="delta" data-d="container"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">파렛트</span>
+              <span class="stat-value"><b data-v="pallet"></b><small>개</small></span>
+              <span class="delta" data-d="pallet"></span>
+            </div>
+          </div>
+          <p class="sub-line"><span>이동 <b data-v="moves"></b>건</span><span class="delta" data-d="moves"></span><span class="rank-badge" data-rank="container"></span></p>
+          <h3 class="sub-head">연도별 컨테이너 이용량 <span>해마다 1~11월</span></h3>
+          <div class="spark tall" id="chart-annual" aria-label="연도별 컨테이너 이용량"></div>
+          <footer class="src" data-src="logi"></footer>
+        </article>
+
+        <article class="panel" id="p-month">
+          <header class="panel-head">
+            <h2>월별 추이</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="month-legend" id="month-legend"></div>
+          <div class="chart" id="chart-month" aria-label="월별 컨테이너 이용량"></div>
+          <p class="note" data-note="month"></p>
+          <footer class="src" data-src="logi"></footer>
+        </article>
+
+        <article class="panel" id="p-ship">
+          <header class="panel-head">
+            <h2>출하 주체 구성</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="bars" id="bars-ship"></div>
+          <p class="note">컨테이너 기준 비중 · 오른쪽은 전년 동기 대비 증감(%p)</p>
+          <footer class="src" data-src="logi"></footer>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 물류기기 사업동향</h1>
+          <ul class="facts" id="facts"></ul>
+        </div>
+        <div class="map-card">
+          <div class="chipbar">
+            <button class="chip-nav" id="chip-prev" type="button" aria-label="지표 목록 왼쪽으로 넘기기">◀</button>
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+            <button class="chip-nav" id="chip-next" type="button" aria-label="지표 목록 오른쪽으로 넘기기">▶</button>
+            <span class="chip-count" id="chip-count" aria-live="polite"></span>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="legend" id="legend"></div>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="품목·판로·기기">
+        <article class="panel" id="p-crop">
+          <header class="panel-head">
+            <h2>주요 품목</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <p class="sub-line"><span class="rank-badge" id="spec-badge"></span></p>
+          <div class="bars" id="bars-crop"></div>
+          <p class="note">컨테이너 기준 · 막대는 지역 안 비중, 오른쪽은 전년 동기 대비</p>
+          <footer class="src" data-src="logi"></footer>
+        </article>
+
+        <article class="panel" id="p-dest">
+          <header class="panel-head">
+            <h2>판로 (도착지)</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="meter-row meter-pair">
+            <div class="meter-item">
+              <div class="meter-text"><span>수도권 출하</span><b data-v="metro"></b></div>
+              <div class="meter"><span class="meter-fill" data-meter="metro"></span><span class="meter-mark" data-mark="metro"></span></div>
+            </div>
+            <div class="meter-item">
+              <div class="meter-text"><span>도내 출하</span><b data-v="same"></b></div>
+              <div class="meter"><span class="meter-fill" data-meter="same"></span><span class="meter-mark" data-mark="same"></span></div>
+            </div>
+            <p class="note" data-note="dest"></p>
+          </div>
+          <h3 class="sub-head">도착지 유형 <span>컨테이너 비중</span></h3>
+          <div class="bars" id="bars-dest"></div>
+          <p class="sub-line" id="dest-top"></p>
+          <footer class="src" data-src="logi"></footer>
+        </article>
+
+        <article class="panel" id="p-equip">
+          <header class="panel-head">
+            <h2>기기 종류별 이용</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="bars" id="bars-equip"></div>
+          <footer class="src" data-src="logi"></footer>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>자료: 물류기기 공동이용 실적(2023~2025년, 해마다 1~11월). 지역은 출하 주체 소재지 기준이며 생산지와 다를 수 있습니다. 수량은 물류기기 개수입니다.</p>
+      <p id="updated"></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/logistics.js"></script>
+  <script src="assets/logi.js"></script>
+</body>
+</html>
