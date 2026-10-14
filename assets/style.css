@@ -778,3 +778,7 @@ body {
   .hero h1 { font-size: 24px; }
   .facts li { font-size: 12.5px; }
 }
+/* 두 칸 수치: 전년 대비 증감을 숫자 바로 옆에 */
+.stats.two .stat { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 6px; }
+.stats.two .stat > .stat-label, .stats.two .stat > .spark { grid-column: 1 / -1; }
+.stats.two .stat > .delta { white-space: nowrap; }

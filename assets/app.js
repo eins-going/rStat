@@ -83,7 +83,7 @@
     if (r == null) return "";
     const cls = r > 0 ? "up" : r < 0 ? "down" : "";
     const arrow = r > 0 ? "▲" : r < 0 ? "▼" : "–";
-    return `${labelText} <span class="${cls}">${arrow} ${nf1.format(Math.abs(r))}%</span>`;
+    return `${labelText ? `${labelText} ` : ""}<span class="${cls}" title="전년 대비">${arrow}${labelText ? " " : ""}${nf1.format(Math.abs(r))}%</span>`;
   }
 
   function countTo(el, target, format) {
@@ -280,8 +280,8 @@
     setYear("p-farm", `${P.farm[hh.i] ?? P.farm.at(-1)}년`);
     setV("households", hh.value);
     setV("population", pop.value);
-    setD("households", deltaHTML(hh.value, hh.prev));
-    setD("population", deltaHTML(pop.value, pop.prev));
+    setD("households", deltaHTML(hh.value, hh.prev, ""));
+    setD("population", deltaHTML(pop.value, pop.prev, ""));
 
     const y = youngOperator(k), py = p ? youngOperator(p) : null;
     const o = oldOperator(k), po = p ? oldOperator(p) : null;
@@ -302,8 +302,8 @@
     setYear("p-return", `${P.returning.at(-1)}년`);
     setV("returnFarm", f.value);
     setV("returnRural", r.value);
-    setD("returnFarm", deltaHTML(f.value, f.prev));
-    setD("returnRural", deltaHTML(r.value, r.prev));
+    setD("returnFarm", deltaHTML(f.value, f.prev, ""));
+    setD("returnRural", deltaHTML(r.value, r.prev, ""));
     lineChart("#spark-farm", P.returning, V.returnFarm[k], int, "귀농가구");
     lineChart("#spark-rural", P.returning, V.returnRural[k], int, "귀촌인");
     setNote("return", f.value == null && r.value == null ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다." : "");
