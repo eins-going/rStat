@@ -23,15 +23,16 @@ SIDO_PREFIX = [("서울", "11"), ("부산", "21"), ("대구", "22"), ("인천", 
                ("경상남", "38"), ("경남", "38"), ("제주", "39")]
 
 
-def load_key():
+def load_key(name):
     with open(os.path.join(ROOT, ".env"), encoding="utf-8") as f:
         for line in f:
-            if line.startswith("KOSIS_API_KEY="):
+            if line.startswith(f"{name}="):
                 return line.split("=", 1)[1].strip().strip("\"'")
-    raise SystemExit("KOSIS_API_KEY가 .env에 없습니다.")
+    raise SystemExit(f"{name}이(가) .env에 없습니다.")
 
 
-KEY = load_key()
+KEY = load_key("KOSIS_API_KEY")
+LOFIN_KEY = load_key("lofin365_open_api_key")
 
 
 def load_geo():
@@ -334,6 +335,17 @@ def main():
     out["units"] = {"economy": "천원", "grdp": "백만원"}
     out["sources"]["economy"] = "통계청 농가경제조사 (KOSIS DT_1EA1201) · 도 단위"
 
+    print("농업·농촌 예산")
+    years = [str(date.today().year - 1), str(date.today().year)]
+    agri, total = {}, {}
+    for i, y in enumerate(years):
+        for key, (a, t) in budget(y).items():
+            agri.setdefault(key, [None] * len(years))[i] = a
+            total.setdefault(key, [None] * len(years))[i] = t
+    v["budgetAgri"], v["budgetTotal"] = agri, total
+    out["periods"]["budget"] = years
+    out["sources"]["budget"] = "지방재정365 구조별 기능별 세출예산 (AIDFA) · 101 농업ㆍ농촌 부문, 순계"
+
     skip = {"grdp": {s for s, y in out["periods"]["grdp"]["bySido"].items() if y != GRDP_YEAR}}
     for m in ["households", "population", "land", "paddy", "field", "returnFarm", "returnRural", "aging",
               "cattle", "dairy", "chicken", "pig", "duck", "rice", "grdp"]:
@@ -347,6 +359,55 @@ def main():
     print("saved", path, os.path.getsize(path), "bytes")
     missing = sorted(k for k in UNIT_KEYS if k not in v["households"])
     print("농가수 없는 시군:", missing)
+
+
+def lofin(service, params):
+    """지방재정365 Open API 한 서비스의 모든 행 (1,000행씩 나눠 받는다)"""
+    rows, page = [], 1
+    while True:
+        q = urllib.parse.urlencode({"Key": LOFIN_KEY, "Type": "json", "pIndex": page, "pSize": 1000, **params})
+        req = urllib.request.Request(f"https://www.lofin365.go.kr/lf/hub/{service}?{q}", headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=120) as r:
+            body = json.loads(r.read().decode("utf-8"))
+        part = body.get(service)
+        if not part:
+            msg = body.get("RESULT", body)
+            if "INFO-200" in json.dumps(msg):
+                return rows  # 해당 연도 자료 없음
+            raise RuntimeError(f"{service}: {msg}")
+        total = part[0]["head"][0]["list_total_count"]
+        rows += part[1]["row"] if len(part) > 1 else []
+        if len(rows) >= total:
+            return rows
+        page += 1
+
+
+def budget(year):
+    """{지역키: [농업ㆍ농촌 순계, 전체 세출 순계]} (백만원).
+    시군은 해당 자치단체, 광역시 시부는 구 합계(본청 제외), 시도는 본청+시군구 단순 합계, 전국은 전체 합계."""
+    short_to_code = {v["short"]: k for k, v in SIDOS.items()}
+    acc = defaultdict(lambda: [0, 0])
+    for r in lofin("AIDFA", {"fyr": year}):
+        sido = short_to_code.get(r["wa_laf_hg_nm"])
+        if not sido:
+            continue
+        net = sum(r.get(f) or 0 for f in ("biz_bdg_prsm_amt", "fin_acv_prsm_amt", "padm_oper_prsm_exps"))
+        is_agri = r["sect_cd"] == "101"
+        name = r["laf_hg_nm"][len(r["wa_laf_hg_nm"]):]
+        targets = [NATION_KEY, sido]
+        if name != "본청":
+            u = unit_of(sido, name)
+            if u and u[0] in UNIT_KEYS:
+                targets.append(u[0])
+        for k in targets:
+            acc[k][1] += net
+            if is_agri:
+                acc[k][0] += net
+    out = {k: [round(a / 1e6), round(t / 1e6)] for k, (a, t) in acc.items() if t}
+    return fill_single_units(out)
+
+
+NATION_KEY = "00"
 
 
 def reconcile(values, skip_sidos):

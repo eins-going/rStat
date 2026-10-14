@@ -124,17 +124,53 @@
   const share = (pair) => (pair && pair[0] != null && pair[1] ? (pair[0] / pair[1]) * 100 : null);
   const agingRatio = (k) => { const a = V.aging[k]; return a && a[0] ? (a[1] / a[0]) * 100 : null; }; // [농가인구, 65세 이상]
   const grdpShare = (k) => share(V.grdp[k]);
+  // 농업ㆍ농촌 부문 예산 / 전체 세출 (최신 회계연도, 순계)
+  const budgetShare = (k, i = -1) => {
+    const a = V.budgetAgri[k]?.at(i), t = V.budgetTotal[k]?.at(i);
+    return a != null && t ? (a / t) * 100 : null;
+  };
   const grdpYear = (k) => (level(k) === 0 ? "2023" : P.grdp.bySido[sidoOf(k)] || "2023");
 
+  const latestOf = (series) => (k) => lastOf(series[k]).value;
+  const pairAt = (obj, i) => (k) => obj[k]?.[i] ?? null;
+  const wonOf = (obj, i) => (k) => { const v = obj[k]?.[i]; return v == null ? null : v * 1e6; };
+  const farmChange = (k) => { const { value, prev } = lastOf(V.households[k]); return change(value, prev); };
+  const paddyShare = (k) => { const t = lastOf(V.land[k]); const p = V.paddy[k]?.[t.i]; return t.value && p != null ? (p / t.value) * 100 : null; };
+  const riceYield = (k) => { const r = V.rice[k]; return r && r[0] ? (r[1] / r[0]) * 100 : null; };
+  const cropArea = (k) => {
+    const c = V.crops[k];
+    if (!c) return null;
+    return Object.entries(c).filter(([n]) => !/기타|화초/.test(n)).reduce((s, [, v]) => s + v, 0);
+  };
+  const fy = (y) => `${y}년`;
+
+  // 지도에서 고를 수 있는 지표 (시군 단위로 값이 있는 것만)
   const METRICS = [
-    { key: "households", label: "농가수", unit: "가구", year: `${P.farm.at(-1)}년`, get: (k) => lastOf(V.households[k]).value, fmt: int },
-    { key: "aging", label: "고령인구 비율", unit: "%", year: `${P.aging}년`, get: agingRatio, fmt: pct },
-    { key: "land", label: "경지면적", unit: "ha", year: `${P.land.at(-1)}년`, get: (k) => lastOf(V.land[k]).value, fmt: int },
-    { key: "rice", label: "쌀 생산량", unit: "톤", year: `${P.rice}년`, get: (k) => V.rice[k]?.[1] ?? null, fmt: int },
-    { key: "cattle", label: "한육우", unit: "마리", year: P.livestock, get: (k) => V.cattle[k]?.[1] ?? null, fmt: int },
-    { key: "rural", label: "귀촌인", unit: "명", year: `${P.returning.at(-1)}년`, get: (k) => lastOf(V.returnRural[k]).value, fmt: int },
+    { key: "households", label: "농가수", unit: "가구", year: fy(P.farm.at(-1)), get: latestOf(V.households), fmt: int },
+    { key: "population", label: "농가인구", unit: "명", year: fy(P.farm.at(-1)), get: latestOf(V.population), fmt: int },
+    { key: "farmChange", label: "농가수 증감률", unit: "%", year: `${P.farm.at(-1)}년 전년 대비`, get: farmChange, fmt: pct },
+    { key: "aging", label: "고령인구 비율", unit: "%", year: fy(P.aging), get: agingRatio, fmt: pct },
+    { key: "returnFarm", label: "귀농가구", unit: "가구", year: fy(P.returning.at(-1)), get: latestOf(V.returnFarm), fmt: int },
+    { key: "rural", label: "귀촌인", unit: "명", year: fy(P.returning.at(-1)), get: latestOf(V.returnRural), fmt: int },
+    { key: "land", label: "경지면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.land), fmt: int },
+    { key: "paddy", label: "논 면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.paddy), fmt: int },
+    { key: "field", label: "밭 면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.field), fmt: int },
+    { key: "paddyShare", label: "논 비중", unit: "%", year: fy(P.land.at(-1)), get: paddyShare, fmt: pct },
+    { key: "rice", label: "쌀 생산량", unit: "톤", year: fy(P.rice), get: pairAt(V.rice, 1), fmt: int },
+    { key: "riceArea", label: "논벼 재배면적", unit: "ha", year: fy(P.rice), get: pairAt(V.rice, 0), fmt: int },
+    { key: "riceYield", label: "10a당 쌀 생산량", unit: "kg", year: fy(P.rice), get: riceYield, fmt: int },
+    { key: "crops", label: "채소·특용작물 재배면적", unit: "ha", year: `${P.census} 총조사`, get: cropArea, fmt: int },
+    { key: "cattle", label: "한육우", unit: "마리", year: P.livestock, get: pairAt(V.cattle, 1), fmt: int },
+    { key: "dairy", label: "젖소", unit: "마리", year: P.livestock, get: pairAt(V.dairy, 1), fmt: int },
+    { key: "pig", label: "돼지", unit: "마리", year: `${P.census} 총조사`, get: pairAt(V.pig, 1), fmt: int },
+    { key: "chicken", label: "닭", unit: "마리", year: P.livestock, get: pairAt(V.chicken, 1), fmt: compact },
+    { key: "duck", label: "오리", unit: "마리", year: `${P.census} 총조사`, get: pairAt(V.duck, 1), fmt: compact },
+    { key: "grdpAgri", label: "농림어업 GRDP", unit: "", year: "2023년", get: wonOf(V.grdp, 0), fmt: won },
     { key: "grdp", label: "농림어업 GRDP 비중", unit: "%", year: "2023년", get: grdpShare, fmt: pct },
+    { key: "budgetAgri", label: "농업·농촌 예산", unit: "", year: fy(P.budget.at(-1)), get: (k) => { const v = V.budgetAgri[k]?.at(-1); return v == null ? null : v * 1e6; }, fmt: won },
+    { key: "budget", label: "농업예산 비중", unit: "%", year: fy(P.budget.at(-1)), get: (k) => budgetShare(k), fmt: pct },
   ];
+  const withUnit = (m, v) => `${m.fmt(v)}${m.unit && m.unit !== "%" ? ` ${m.unit}` : ""}`;
 
   const state = { key: NATION, metric: METRICS[0] };
 
@@ -334,6 +370,29 @@
     setNote("econ", note);
   }
 
+  function renderBudget() {
+    const k = state.key;
+    const p = parentOf(k);
+    const years = P.budget;
+    const a = lastOf(V.budgetAgri[k]);
+    setYear("p-budget", `${years[a.i] ?? years.at(-1)}년`);
+    countTo($('[data-v="budget"]'), a.value == null ? null : a.value * 1e6, won);
+    setD("budget", deltaHTML(a.value, a.prev));
+    const s = budgetShare(k);
+    const ps = p ? budgetShare(p) : null;
+    countTo($('[data-v="budgetShare"]'), s, pct);
+    meter("budget", s, ps, Math.max(20, Math.ceil(Math.max(s || 0, ps || 0) / 10) * 10));
+    const rk = rankText(k, (x) => budgetShare(x));
+    const total = V.budgetTotal[k]?.at(-1);
+    let note;
+    if (a.value == null) note = sidoOf(k) === "39" ? "제주시·서귀포시는 행정시라 별도 예산이 없습니다. 제주특별자치도 전체를 보세요." : "예산 자료가 없습니다.";
+    else if (level(k) === 0) note = `전국 지방자치단체 세출 ${won(total * 1e6)} 가운데 농업ㆍ농촌 부문`;
+    else if (level(k) === 1) note = `본청과 시군구 예산의 단순 합계(이전재원 중복 포함) · 흰 선은 전국 ${pct(ps)}${rk ? ` · ${rk}` : ""}`;
+    else if (label(k).endsWith("시부")) note = `구 예산 합계 (광역시 본청 예산 제외) · 흰 선은 ${label(p)} ${pct(ps)}`;
+    else note = `흰 선은 ${label(p)} ${pct(ps)}${rk ? ` · 비중 ${rk}` : ""}`;
+    setNote("budget", note);
+  }
+
   function meter(key, value, mark, max = 100) {
     const fill = $(`[data-meter="${key}"]`);
     const m = $(`[data-mark="${key}"]`);
@@ -458,14 +517,38 @@
     return path.centroid(best);
   }
 
+  function setMetric(m, scroll = true) {
+    state.metric = m;
+    const i = METRICS.indexOf(m);
+    $$("#chips button").forEach((x, j) => x.setAttribute("aria-pressed", j === i));
+    $("#chip-prev").disabled = i === 0;
+    $("#chip-next").disabled = i === METRICS.length - 1;
+    $("#chip-count").textContent = `${i + 1} / ${METRICS.length}`;
+    if (scroll) {
+      // 고른 지표 버튼이 지표 줄 가운데 오도록 가로로 스크롤한다
+      const bar = $("#chips");
+      const b = $$("#chips button")[i];
+      bar.scrollTo({ left: b.offsetLeft - bar.clientWidth / 2 + b.offsetWidth / 2, behavior: reduceMotion ? "auto" : "smooth" });
+    }
+    paintMap();
+    renderRank();
+  }
+
   function chips() {
     $("#chips").innerHTML = METRICS.map((m) => `<button type="button" data-k="${m.key}" aria-pressed="${m === state.metric}">${m.label}</button>`).join("");
-    $$("#chips button").forEach((b) => b.addEventListener("click", () => {
-      state.metric = METRICS.find((m) => m.key === b.dataset.k);
-      $$("#chips button").forEach((x) => x.setAttribute("aria-pressed", x === b));
-      paintMap();
-      renderRank();
-    }));
+    $$("#chips button").forEach((b) => b.addEventListener("click", () => setMetric(METRICS.find((m) => m.key === b.dataset.k))));
+    const step = (d) => setMetric(METRICS[Math.min(METRICS.length - 1, Math.max(0, METRICS.indexOf(state.metric) + d))]);
+    $("#chip-prev").addEventListener("click", () => step(-1));
+    $("#chip-next").addEventListener("click", () => step(1));
+    $("#chips").addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        step(e.key === "ArrowLeft" ? -1 : 1);
+        $$("#chips button")[METRICS.indexOf(state.metric)].focus();
+      }
+    });
+    $("#chip-prev").disabled = true;
+    $("#chip-count").textContent = `1 / ${METRICS.length}`;
   }
 
   function drawMap() {
@@ -555,12 +638,12 @@
       .classed("context", (d) => !!s && d.properties.key !== s)
       .classed("hidden", (d) => d.properties.key === s)
       .attr("fill", (d) => (s ? null : fillOf(d.properties.key)))
-      .attr("aria-label", (d) => `${label(d.properties.key)} ${m.label} ${m.fmt(m.get(d.properties.key))}`);
+      .attr("aria-label", (d) => `${label(d.properties.key)} ${m.label} ${withUnit(m, m.get(d.properties.key))}`);
     mapSvg.selectAll("path.unit")
       .classed("hidden", (d) => d.properties.sido !== s)
       .classed("sel", (d) => d.properties.key === state.key)
       .attr("fill", (d) => (d.properties.sido === s ? fillOf(d.properties.key) : null))
-      .attr("aria-label", (d) => `${label(d.properties.key)} ${m.label} ${m.fmt(m.get(d.properties.key))}`);
+      .attr("aria-label", (d) => `${label(d.properties.key)} ${m.label} ${withUnit(m, m.get(d.properties.key))}`);
     mapSvg.select("path.mesh-unit").attr("opacity", s ? 1 : 0);
     mapSvg.classed("dimmed", level(state.key) === 2);
     mapSvg.selectAll("path.unit.sel").raise();
@@ -604,7 +687,7 @@
     const v = m.get(k);
     const list = peersOf(k).map((r) => [r, m.get(r)]).filter(([, x]) => x != null).sort((a, b) => b[1] - a[1]);
     const i = list.findIndex(([r]) => r === k);
-    tip.innerHTML = `<b>${label(k)}</b><span>${m.label}</span> ${m.fmt(v)}${m.unit === "%" ? "" : ` ${m.unit}`}<span>${i < 0 ? "" : ` · ${i + 1}위`}</span>`;
+    tip.innerHTML = `<b>${label(k)}</b><span>${m.label}</span> ${withUnit(m, v)}<span>${i < 0 ? "" : ` · ${i + 1}위`}</span>`;
     const box = $("#map-wrap").getBoundingClientRect();
     tip.style.left = `${e.clientX - box.left}px`;
     tip.style.top = `${e.clientY - box.top}px`;
@@ -688,6 +771,7 @@
     renderCrop();
     renderGrdp();
     renderEcon();
+    renderBudget();
     const s = sidoOf(state.key);
     if (s !== lastSido) { applyView(lastSido !== undefined); lastSido = s; }
     else { paintMap(); drawLabels(false); }
@@ -698,6 +782,9 @@
   sources();
   drawMap();
   select(fromHash());
+  // ?m=budget 처럼 지표를 지정해 열 수 있다
+  const initial = METRICS.find((m) => m.key === new URLSearchParams(location.search).get("m"));
+  if (initial) setMetric(initial);
   window.addEventListener("hashchange", () => { const k = fromHash(); if (k !== state.key) select(k); });
 
   let resizeT;
