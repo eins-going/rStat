@@ -279,6 +279,7 @@ body {
 }
 
 .meter-mark.on { display: block; }
+.meter + .meter-text { margin-top: 10px; }
 
 /* 차트 */
 .chart { margin-top: 14px; height: 120px; }
@@ -521,4 +522,119 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+/* 출처 버튼 (넓은 화면에서 카드 아래 출처 줄 대신) */
+.src-btn {
+  display: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--faint);
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.src-btn:hover, .src-btn[aria-expanded="true"] { color: var(--accent); }
+.panel-head .head-right { display: flex; align-items: center; gap: 8px; }
+
+/* 한 화면 맞춤: 넓고 충분히 높은 화면에서는 페이지를 창 높이에 맞춘다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  :root { --gap: 10px; }
+  html, body { height: 100%; overflow: hidden; }
+  .app { height: 100vh; display: flex; flex-direction: column; max-width: 1760px; padding: 0 18px 8px; }
+  .topbar { padding: 8px 0; }
+  .select { padding: 3px 4px 3px 10px; }
+  .select select { padding: 3px 28px 3px 8px; font-size: 13px; }
+  .ticker { margin: 0 0 10px; }
+  .ticker-track { padding: 5px 0; }
+  .tk { padding: 2px 8px; font-size: 12px; }
+
+  .grid { flex: 1; min-height: 0; align-items: stretch; grid-template-columns: minmax(290px, 340px) minmax(0, 1fr) minmax(290px, 340px); }
+  .col { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .center { min-height: 0; gap: 8px; }
+
+  .panel { padding: 11px 14px 10px; border-radius: 12px; }
+  .panel-head { margin-bottom: 8px; }
+  .panel-head h2 { font-size: 14.5px; }
+  .chip { font-size: 11px; padding: 1px 8px; }
+  .src-btn { display: inline; }
+  .src { display: none; margin-top: 8px; padding-top: 6px; }
+  .panel.show-src .src { display: block; }
+
+  .stats { gap: 8px; }
+  .stat-label { font-size: 12px; }
+  .stat-value b { font-size: 21px; }
+  .stat-value small { font-size: 12px; }
+  .delta, .sub { font-size: 11.5px; }
+  .meter-row { margin-top: 9px; }
+  .meter-text { font-size: 12px; }
+  .meter-text b { font-size: 15px; }
+  .meter { height: 6px; margin-top: 5px; }
+  .note { margin-top: 4px; font-size: 11.5px; line-height: 1.4; }
+  .chart { height: 64px; margin-top: 6px; }
+  .spark { height: 30px; margin-top: 4px; }
+  .split { margin-top: 8px; }
+  .split-bar { height: 10px; }
+  .split-legend { margin-top: 5px; font-size: 12px; }
+  .live-table th { padding-bottom: 3px; font-size: 11px; }
+  .live-table td { padding: 3px 0; font-size: 12.5px; }
+  .sub-head { margin: 9px 0 5px; font-size: 12.5px; }
+  .bars { gap: 3px; }
+  .bar-row { font-size: 12px; grid-template-columns: 48px 1fr 50px; }
+  .bar-row .track { height: 6px; }
+  .tiles { gap: 6px; }
+  .tile { padding: 6px 10px; }
+  .tile span { font-size: 11.5px; }
+  .tile b { font-size: 15px; }
+
+  .hero { padding: 0 4px; display: grid; grid-template-columns: auto 1fr; align-items: end; gap: 4px 24px; }
+  .eyebrow { font-size: 15px; grid-column: 1; }
+  .hero h1 { grid-column: 1; margin: 0; font-size: clamp(24px, 2.2vw, 32px); }
+  .crumb { display: inline; font-size: 13px; margin-right: 6px; }
+  .facts { grid-column: 2; grid-row: 1 / span 2; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; align-self: end; }
+  .facts li { font-size: 13.5px; gap: 7px; }
+  .facts li > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .facts svg { width: 17px; height: 17px; }
+
+  .map-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 12px; }
+  .map-wrap { flex: 1; min-height: 240px; margin-top: 6px; }
+  #map { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .legend { margin-top: 4px; }
+  .rank { margin-top: 6px; gap: 0 18px; }
+  .rank-title { margin-bottom: 2px; font-size: 12px; }
+  .rank-row { padding: 1px 4px; font-size: 12px; }
+
+  .foot { margin-top: 6px; font-size: 11px; }
+  .foot p:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+}
+
+/* 한 화면 맞춤: 화면 높이가 낮을수록 더 줄인다 */
+@media (min-width: 1281px) and (min-height: 720px) and (max-width: 1520px) {
+  .hero { grid-template-columns: 1fr; }
+  .facts { grid-column: 1; grid-row: auto; margin-top: 2px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) {
+  .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .tile { padding: 5px 7px; }
+  .tile span { font-size: 10.5px; }
+  .tile b { font-size: 12.5px; white-space: nowrap; }
+  .panel { padding: 9px 13px 8px; }
+  .panel-head { margin-bottom: 6px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
+  .chart, .spark, [data-note="aging"], [data-note="grdp"] { display: none; }
+  .stat-value b { font-size: 19px; }
+  .meter-row { margin-top: 7px; }
+  .rank-row { padding: 0 4px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) {
+  .meter + .meter-text { margin-top: 6px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) {
+  .chart { height: 50px; margin-top: 4px; }
+  .spark { height: 24px; }
+  .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }

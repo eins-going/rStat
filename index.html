@@ -53,7 +53,12 @@
           </div>
           <div class="meter-row">
             <div class="meter-text">
-              <span>65세 이상 고령인구 비율</span>
+              <span>40세 미만 경영주 농가 비율</span>
+              <b data-v="young"></b>
+            </div>
+            <div class="meter"><span class="meter-fill" data-meter="young"></span><span class="meter-mark" data-mark="young"></span></div>
+            <div class="meter-text">
+              <span>65세 이상 경영주 농가 비율</span>
               <b data-v="aging"></b>
             </div>
             <div class="meter"><span class="meter-fill" data-meter="aging"></span><span class="meter-mark" data-mark="aging"></span></div>
@@ -179,21 +184,6 @@
           <footer class="src" data-src="grdp"></footer>
         </article>
 
-        <article class="panel" id="p-econ">
-          <header class="panel-head">
-            <h2>농가경제</h2>
-            <span class="chip" data-year></span>
-          </header>
-          <div class="tiles">
-            <div class="tile"><span>농가소득</span><b data-v="income"></b></div>
-            <div class="tile"><span>농업소득</span><b data-v="agriIncome"></b></div>
-            <div class="tile"><span>농가자산</span><b data-v="assets"></b></div>
-            <div class="tile"><span>농가부채</span><b data-v="debt"></b></div>
-          </div>
-          <p class="note" data-note="econ"></p>
-          <footer class="src" data-src="economy"></footer>
-        </article>
-
         <article class="panel" id="p-budget">
           <header class="panel-head">
             <h2>농업·농촌 예산</h2>
@@ -212,6 +202,21 @@
             <p class="note" data-note="budget"></p>
           </div>
           <footer class="src" data-src="budget"></footer>
+        </article>
+
+        <article class="panel" id="p-econ">
+          <header class="panel-head">
+            <h2>농가경제</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="tiles">
+            <div class="tile"><span>농가소득</span><b data-v="income"></b></div>
+            <div class="tile"><span>농업소득</span><b data-v="agriIncome"></b></div>
+            <div class="tile"><span>농가자산</span><b data-v="assets"></b></div>
+            <div class="tile"><span>농가부채</span><b data-v="debt"></b></div>
+          </div>
+          <p class="note" data-note="econ"></p>
+          <footer class="src" data-src="economy"></footer>
         </article>
       </section>
     </main>

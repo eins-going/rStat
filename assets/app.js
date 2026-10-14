@@ -122,6 +122,9 @@
 
   // ---------- 지표 ----------
   const share = (pair) => (pair && pair[0] != null && pair[1] ? (pair[0] / pair[1]) * 100 : null);
+  // 경영주 연령: [농가, 40세 미만 경영주 농가, 65세 이상 경영주 농가]
+  const youngOperator = (k) => { const a = V.operatorAge[k]; return a && a[0] ? (a[1] / a[0]) * 100 : null; };
+  const oldOperator = (k) => { const a = V.operatorAge[k]; return a && a[0] ? (a[2] / a[0]) * 100 : null; };
   const agingRatio = (k) => { const a = V.aging[k]; return a && a[0] ? (a[1] / a[0]) * 100 : null; }; // [농가인구, 65세 이상]
   const grdpShare = (k) => share(V.grdp[k]);
   // 농업ㆍ농촌 부문 예산 / 전체 세출 (최신 회계연도, 순계)
@@ -149,7 +152,9 @@
     { key: "households", label: "농가수", unit: "가구", year: fy(P.farm.at(-1)), get: latestOf(V.households), fmt: int },
     { key: "population", label: "농가인구", unit: "명", year: fy(P.farm.at(-1)), get: latestOf(V.population), fmt: int },
     { key: "farmChange", label: "농가수 증감률", unit: "%", year: `${P.farm.at(-1)}년 전년 대비`, get: farmChange, fmt: pct },
-    { key: "aging", label: "고령인구 비율", unit: "%", year: fy(P.aging), get: agingRatio, fmt: pct },
+    { key: "young", label: "40세 미만 경영주 농가 비율", unit: "%", year: fy(P.aging), get: youngOperator, fmt: pct },
+    { key: "oldOperator", label: "65세 이상 경영주 농가 비율", unit: "%", year: fy(P.aging), get: oldOperator, fmt: pct },
+    { key: "aging", label: "65세 이상 농가인구 비율", unit: "%", year: fy(P.aging), get: agingRatio, fmt: pct },
     { key: "returnFarm", label: "귀농가구", unit: "가구", year: fy(P.returning.at(-1)), get: latestOf(V.returnFarm), fmt: int },
     { key: "rural", label: "귀촌인", unit: "명", year: fy(P.returning.at(-1)), get: latestOf(V.returnRural), fmt: int },
     { key: "land", label: "경지면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.land), fmt: int },
@@ -255,11 +260,15 @@
     setD("households", deltaHTML(hh.value, hh.prev));
     setD("population", deltaHTML(pop.value, pop.prev));
 
-    const a = agingRatio(k);
-    const pa = p ? agingRatio(p) : null;
-    countTo($('[data-v="aging"]'), a, pct);
-    meter("aging", a, pa);
-    setNote("aging", p ? `${P.aging} 농림어업총조사 · 흰 선은 ${label(p)} ${pct(pa)}` : `${P.aging} 농림어업총조사 기준`);
+    const y = youngOperator(k), py = p ? youngOperator(p) : null;
+    const o = oldOperator(k), po = p ? oldOperator(p) : null;
+    countTo($('[data-v="young"]'), y, pct);
+    countTo($('[data-v="aging"]'), o, pct);
+    meter("young", y, py, Math.max(5, Math.ceil(Math.max(y || 0, py || 0) / 5) * 5));
+    meter("aging", o, po);
+    setNote("aging", p ? `흰 선은 ${label(p)} · ${P.aging} 농림어업총조사` : `${P.aging} 농림어업총조사 · 경영주 연령 기준`);
+    $('[data-meter="young"]').parentElement.title = p ? `${label(p)} ${pct(py)}` : "";
+    $('[data-meter="aging"]').parentElement.title = p ? `${label(p)} ${pct(po)}` : "";
     lineChart("#chart-farm", P.farm, V.households[k], "가구");
   }
 
@@ -274,9 +283,7 @@
     setD("returnRural", deltaHTML(r.value, r.prev));
     spark("#spark-farm", P.returning, V.returnFarm[k]);
     spark("#spark-rural", P.returning, V.returnRural[k]);
-    setNote("return", f.value == null && r.value == null
-      ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다."
-      : `${P.returning[0]}–${P.returning.at(-1)}년 추이`);
+    setNote("return", f.value == null && r.value == null ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다." : "");
   }
 
   function renderLand() {
@@ -329,7 +336,7 @@
     const crops = Object.entries(V.crops[k] || {})
       .filter(([name, v]) => v > 0 && !/기타|화초/.test(name))
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 7);
+      .slice(0, !FIT.matches ? 7 : window.innerHeight <= 860 ? 4 : window.innerHeight <= 1000 ? 5 : 6);
     const max = crops[0]?.[1] || 1;
     $("#bars-crop").innerHTML = crops.length
       ? crops.map(([name, v]) => `
@@ -405,8 +412,9 @@
   // ---------- 작은 차트 ----------
   function lineChart(sel, years, values, unit) {
     const el = $(sel);
-    const w = el.clientWidth || 300;
-    const h = el.clientHeight || 120;
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    if (!w || !h) return; // 숨겨져 있거나 아직 배치 전이면 크기가 잡힌 뒤 다시 그린다
     const pts = years.map((y, i) => ({ y, v: values?.[i] })).filter((d) => d.v != null);
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.attr("role", "img").attr("aria-label", pts.length ? `농가수 ${pts[0].y}년 ${int(pts[0].v)}${unit}에서 ${pts.at(-1).y}년 ${int(pts.at(-1).v)}${unit}` : "자료 없음");
@@ -425,7 +433,10 @@
 
     const area = d3.area().x((d) => x(d.y)).y0(h - m.b).y1((d) => y(d.v)).curve(d3.curveMonotoneX);
     const line = d3.line().x((d) => x(d.y)).y((d) => y(d.v)).curve(d3.curveMonotoneX);
-    const t = svg.transition().duration(reduceMotion ? 0 : 600);
+    // 처음 그릴 때는 바로, 지역을 바꿀 때만 움직임을 준다
+    const first = !el.querySelector("path.line") || el.dataset.size !== `${w}x${h}`;
+    el.dataset.size = `${w}x${h}`;
+    const t = svg.transition().duration(reduceMotion || first ? 0 : 600);
     svg.selectAll("path.area").data([pts]).join("path").attr("class", "area").attr("fill", "url(#g-farm)").transition(t).attr("d", area);
     svg.selectAll("path.line").data([pts]).join("path").attr("class", "line").attr("fill", "none").attr("stroke", "#f5a524").attr("stroke-width", 2).transition(t).attr("d", line);
     const ends = [pts[0], pts.at(-1)];
@@ -444,18 +455,21 @@
 
   function spark(sel, years, values) {
     const el = $(sel);
-    const w = el.clientWidth || 140;
-    const h = el.clientHeight || 44;
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    if (!w || !h) return;
     const pts = years.map((y, i) => ({ y, v: values?.[i] ?? null }));
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`)
       .attr("role", "img").attr("aria-label", pts.filter((d) => d.v != null).map((d) => `${d.y}년 ${int(d.v)}`).join(", ") || "자료 없음");
     const x = d3.scaleBand().domain(years).range([0, w]).padding(0.28);
     const max = d3.max(pts, (d) => d.v) || 1;
     const y = d3.scaleLinear().domain([0, max]).range([h - 14, 2]);
+    const first = !el.querySelector("rect") || el.dataset.size !== `${w}x${h}`;
+    el.dataset.size = `${w}x${h}`;
     svg.selectAll("rect").data(pts).join("rect")
       .attr("x", (d) => x(d.y)).attr("width", x.bandwidth()).attr("rx", 2)
       .attr("fill", (d, i) => (i === pts.length - 1 ? "#f5a524" : "#3a3f48"))
-      .transition().duration(reduceMotion ? 0 : 500)
+      .transition().duration(reduceMotion || first ? 0 : 500)
       .attr("y", (d) => (d.v == null ? h - 14 : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - 14 - y(d.v)));
     svg.selectAll("text").data([years[0], years.at(-1)]).join("text")
       .attr("x", (d, i) => (i ? w : 0)).attr("y", h - 2).attr("text-anchor", (d, i) => (i ? "end" : "start"))
@@ -551,9 +565,13 @@
     $("#chip-count").textContent = `1 / ${METRICS.length}`;
   }
 
+  const FIT = window.matchMedia("(min-width: 1281px) and (min-height: 720px)");
+
   function drawMap() {
-    const w = $("#map-wrap").clientWidth;
-    const h = Math.round(Math.max(380, Math.min(700, w * 0.92)));
+    const wrap = $("#map-wrap");
+    const w = wrap.clientWidth;
+    // 한 화면 모드에서는 남는 높이를 모두 쓰고, 아니면 너비에 맞춰 높이를 정한다
+    const h = FIT.matches ? Math.max(240, wrap.clientHeight) : Math.round(Math.max(380, Math.min(700, w * 0.92)));
     size = { w, h };
     const pad = 12;
     const bw = BOUNDS.x1 - BOUNDS.x0;
@@ -563,7 +581,7 @@
     const oy = (h - bh * s) / 2;
     const project = (lon, lat) => [ox + (lon * K - BOUNDS.x0) * s, oy + (BOUNDS.y1 - lat) * s];
     path = d3.geoPath(d3.geoTransform({ point(lon, lat) { this.stream.point(...project(lon, lat)); } }));
-    mapSvg.attr("viewBox", `0 0 ${w} ${h}`).attr("height", h);
+    mapSvg.attr("viewBox", `0 0 ${w} ${h}`).attr("height", FIT.matches ? null : h);
     anchor.clear();
     [...sidoFeatures, ...unitFeatures].forEach((f) => anchor.set(f.properties.key, labelPoint(f)));
     // 서울을 둘러싼 경기도는 중심점이 서울 안에 찍히므로 이름 위치를 직접 정한다 (경도, 위도)
@@ -755,6 +773,26 @@
     $$("[data-src]").forEach((el) => {
       const s = D.sources[el.dataset.src];
       el.textContent = s ? `출처: ${s}` : "";
+      // 넓은 화면에서는 카드 머리의 '출처' 버튼으로 보여준다 (마우스를 올리면 툴팁, 누르면 펼침)
+      const panel = el.closest(".panel");
+      const head = panel?.querySelector(".panel-head");
+      if (!s || !head || head.querySelector(".src-btn")) return;
+      const right = document.createElement("div");
+      right.className = "head-right";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "src-btn";
+      btn.textContent = "출처";
+      btn.title = s;
+      btn.setAttribute("aria-expanded", "false");
+      btn.addEventListener("click", () => {
+        const open = panel.classList.toggle("show-src");
+        btn.setAttribute("aria-expanded", open);
+      });
+      const chip = head.querySelector(".chip");
+      right.append(btn);
+      if (chip) right.append(chip);
+      head.append(right);
     });
     $("#updated").textContent = `데이터 수집일 ${D.updated}`;
   }
@@ -787,13 +825,32 @@
   if (initial) setMetric(initial);
   window.addEventListener("hashchange", () => { const k = fromHash(); if (k !== state.key) select(k); });
 
+  // 지도 영역 크기가 바뀌면 (창 크기 변경, 한 화면 모드 전환 등) 지도와 카드를 다시 그린다
   let resizeT;
-  let lastW = $("#map-wrap").clientWidth;
+  let lastSize = "";
   new ResizeObserver(() => {
-    const w = $("#map-wrap").clientWidth;
-    if (w === lastW) return;
-    lastW = w;
+    const wrap = $("#map-wrap");
+    const sizeKey = `${wrap.clientWidth}x${FIT.matches ? wrap.clientHeight : 0}`;
+    if (sizeKey === lastSize) return;
+    lastSize = sizeKey;
     clearTimeout(resizeT);
-    resizeT = setTimeout(() => { drawMap(); renderFarm(); renderReturn(); }, 120);
+    resizeT = setTimeout(() => { drawMap(); render(); }, 120);
   }).observe($("#map-wrap"));
+
+  // 작은 차트는 자기 크기가 잡히거나 바뀔 때 다시 그린다
+  const chartSizes = new Map();
+  const chartRO = new ResizeObserver((entries) => {
+    const changed = entries.some((e) => {
+      const key = `${Math.round(e.contentRect.width)}x${Math.round(e.contentRect.height)}`;
+      if (chartSizes.get(e.target) === key) return false;
+      chartSizes.set(e.target, key);
+      return true;
+    });
+    if (!changed) return;
+    lineChart("#chart-farm", P.farm, V.households[state.key], "가구");
+    spark("#spark-farm", P.returning, V.returnFarm[state.key]);
+    spark("#spark-rural", P.returning, V.returnRural[state.key]);
+  });
+  ["#chart-farm", "#spark-farm", "#spark-rural"].forEach((s) => chartRO.observe($(s)));
+  FIT.addEventListener("change", () => { lastSize = ""; drawMap(); render(); });
 })();

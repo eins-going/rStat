@@ -264,6 +264,10 @@ def main():
     out["periods"]["aging"] = rows[0]["PRD_DE"]
     out["sources"]["aging"] = "통계청 2025 농림어업총조사 (KOSIS DT_1AG25202)"
 
+    print("경영주 연령")
+    v["operatorAge"] = operator_age()
+    out["sources"]["operatorAge"] = "통계청 2025 농림어업총조사 경영주 연령구간별 농가 (KOSIS DT_1AG25101)"
+
     print("귀농·귀촌")
     b1, _ = fetch("101", "DT_1A02008", "Y", 5, ["가구수"])
     b2, _ = fetch("101", "DT_1A02015", "Y", 5, ["귀촌인수"])
@@ -359,6 +363,43 @@ def main():
     print("saved", path, os.path.getsize(path), "bytes")
     missing = sorted(k for k in UNIT_KEYS if k not in v["households"])
     print("농가수 없는 시군:", missing)
+
+
+def operator_age():
+    """{지역키: [농가, 경영주 40세 미만 농가, 경영주 65세 이상 농가]} (2025 농림어업총조사)"""
+    dims = meta("101", "DT_1AG25101")
+    rdim = region_dim(dims)
+    other = next(k for k in dims if k not in ("ITEM", rdim))
+    rmap = region_map(dims[rdim])
+    ages = {it["id"]: it["name"] for it in dims[other]["items"] if it["up"] == "T00"}
+    young = {i for i, n in ages.items() if int(re.match(r"\d+", n).group()) < 40}
+    old = {i for i, n in ages.items() if int(re.match(r"\d+", n).group()) >= 65}
+    total_id = next(it["id"] for it in dims[other]["items"] if it["name"] == "계")
+    farm_item = next(it["id"] for it in dims["ITEM"]["items"] if it["name"] == "농가")
+    order = [k for k in dims if k != "ITEM"]
+    levels = ["+".join(rmap) if k == rdim else "+".join([total_id, *young, *old]) for k in order]
+    params = {"method": "getList", "orgId": "101", "tblId": "DT_1AG25101", "itmId": farm_item,
+              "prdSe": "F", "newEstPrdCnt": "1"}
+    params.update({f"objL{i + 1}": lv for i, lv in enumerate(levels)})
+    rows = call("Param/statisticsParameterData.do", params)
+    rc, gc = f"C{order.index(rdim) + 1}", f"C{order.index(other) + 1}"
+    groups = {"total": {total_id}, "young": young, "old": old}
+    per = {}
+    for name, ids in groups.items():
+        sub = [r for r in rows if r[gc] in ids]
+        merged = defaultdict(float)
+        for item_id in ids:
+            block = collect([r for r in sub if r[gc] == item_id], rmap, rc, {sub[0]["ITM_NM"].strip()} if sub else set())
+            for regs in block.values():
+                for key, s in regs.items():
+                    val = s.get(max(s))
+                    if val is not None:
+                        merged[key] += val
+        per[name] = merged
+    out = {k: [round(per["total"][k]), round(per["young"].get(k, 0)), round(per["old"].get(k, 0))]
+           for k in per["total"] if per["total"][k]}
+    reconcile(out, set())
+    return fill_single_units(out)
 
 
 def lofin(service, params):
