@@ -304,8 +304,8 @@
     setV("returnRural", r.value);
     setD("returnFarm", deltaHTML(f.value, f.prev, ""));
     setD("returnRural", deltaHTML(r.value, r.prev, ""));
-    lineChart("#spark-farm", P.returning, V.returnFarm[k], int, "귀농가구");
-    lineChart("#spark-rural", P.returning, V.returnRural[k], int, "귀촌인");
+    barChart("#spark-farm", P.returning, V.returnFarm[k], int, "귀농가구");
+    barChart("#spark-rural", P.returning, V.returnRural[k], int, "귀촌인");
     setNote("return", f.value == null && r.value == null ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다." : "");
   }
 
@@ -443,7 +443,7 @@
     setYear("p-budget", `${years[a.i] ?? years.at(-1)}년`);
     countTo($('[data-v="budget"]'), a.value == null ? null : a.value * 1e6, won);
     setD("budget", deltaHTML(a.value, a.prev));
-    lineChart("#chart-budget", years, budgetWon(k), won, "농업·농촌 예산");
+    barChart("#chart-budget", years, budgetWon(k), won, "농업·농촌 예산");
     const s = budgetShare(k);
     const ps = p ? budgetShare(p) : null;
     countTo($('[data-v="budgetShare"]'), s, pct);
@@ -517,6 +517,47 @@
     svg.selectAll("g.axis").data([0]).join("g").attr("class", "axis")
       .selectAll("text").data(ticks, (d) => d.y).join("text")
       .attr("x", (d) => x(d.y)).attr("y", h - 3).attr("text-anchor", "middle").text((d) => `'${String(d.y).slice(2)}`);
+  }
+
+  // 연도별 막대: 해마다 새로 생기는 양(귀농·귀촌 수, 회계연도 예산)에 쓴다. 0에서 시작, 마지막 해 강조
+  function barChart(sel, years, values, fmt = int, name = "") {
+    const el = $(sel);
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    if (!w || !h) return;
+    const pts = years.map((y, i) => ({ y, v: values?.[i] ?? null }));
+    const known = pts.filter((d) => d.v != null);
+    const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`)
+      .attr("role", "img")
+      .attr("aria-label", known.length ? `${name} ${known.map((d) => `${d.y}년 ${fmt(d.v)}`).join(", ")}` : "자료 없음");
+    if (!known.length) { svg.selectAll("*").remove(); return; }
+    const top = 14, bottom = 13;
+    const x = d3.scaleBand().domain(years).range([0, w]).paddingInner(0.3).paddingOuter(0.1);
+    const max = d3.max(known, (d) => d.v) || 1;
+    const y = d3.scaleLinear().domain([0, max]).range([h - bottom, top]);
+    const first = !el.querySelector("rect") || el.dataset.size !== `${w}x${h}`;
+    el.dataset.size = `${w}x${h}`;
+    const lastIdx = pts.map((d) => d.v != null).lastIndexOf(true);
+    svg.selectAll("line.base").data([0]).join("line").attr("class", "base")
+      .attr("x1", 0).attr("x2", w).attr("y1", h - bottom + 0.5).attr("y2", h - bottom + 0.5).attr("stroke", "#2f333b");
+    svg.selectAll("rect").data(pts).join("rect")
+      .attr("x", (d) => x(d.y)).attr("width", x.bandwidth()).attr("rx", 1.5)
+      .attr("fill", (d, i) => (i === lastIdx ? "#f5a524" : "#5a606b"))
+      .transition().duration(reduceMotion || first ? 0 : 500)
+      .attr("y", (d) => (d.v == null ? h - bottom : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - bottom - y(d.v)));
+    // 처음·마지막 해 값
+    const ends = known.length > 1 ? [known[0], known.at(-1)] : [known[0]];
+    svg.selectAll("text.val").data(ends).join("text").attr("class", "val")
+      .attr("x", (d, i) => (i ? Math.min(w, x(d.y) + x.bandwidth()) : Math.max(0, x(d.y))))
+      .attr("y", (d) => Math.max(10, y(d.v) - 3))
+      .attr("text-anchor", (d, i) => (i ? "end" : "start"))
+      .attr("fill", (d, i) => (i ? "#eef0f3" : "#9aa1ad")).attr("font-size", 11).attr("font-weight", (d, i) => (i ? 700 : 500))
+      .text((d) => fmt(d.v));
+    const every = x.step() < 22 ? 2 : 1;
+    const ticks = years.filter((d, i) => i % every === (years.length - 1) % every);
+    svg.selectAll("text.yr").data(ticks, (d) => d).join("text").attr("class", "yr")
+      .attr("x", (d) => x(d) + x.bandwidth() / 2).attr("y", h - 2).attr("text-anchor", "middle")
+      .attr("fill", "#7d8490").attr("font-size", 10.5).text((d) => `'${String(d).slice(2)}`);
   }
 
   // ---------- 지도 ----------
@@ -910,9 +951,9 @@
     });
     if (!changed) return;
     lineChart("#chart-farm", P.farm, V.households[state.key], int, "농가수");
-    lineChart("#spark-farm", P.returning, V.returnFarm[state.key], int, "귀농가구");
-    lineChart("#spark-rural", P.returning, V.returnRural[state.key], int, "귀촌인");
-    lineChart("#chart-budget", P.budget, budgetWon(state.key), won, "농업·농촌 예산");
+    barChart("#spark-farm", P.returning, V.returnFarm[state.key], int, "귀농가구");
+    barChart("#spark-rural", P.returning, V.returnRural[state.key], int, "귀촌인");
+    barChart("#chart-budget", P.budget, budgetWon(state.key), won, "농업·농촌 예산");
     lineChart("#chart-rice", P.riceYears, V.riceSeries[state.key], int, "쌀 생산량");
     lineChart("#chart-grdp", P.grdp.years, grdpWon(state.key), won, "농림어업 GRDP");
   });
