@@ -200,7 +200,7 @@
   ];
   const withUnit = (m, v) => `${m.fmt(v)}${m.unit && m.unit !== "%" ? ` ${m.unit}` : ""}`;
 
-  const state = { key: NATION, metric: METRICS[0] };
+  const state = { key: NATION, metric: METRICS[0], rankScope: "local" };
 
   // ---------- 선택 상자 ----------
   const sidoSel = $("#sido");
@@ -363,25 +363,34 @@
       .filter(([name, s]) => s.at(-1) > 0 && !/기타|화초/.test(name))
       .sort((a, b) => b[1].at(-1) - a[1].at(-1))
       .slice(0, !FIT.matches ? 7 : window.innerHeight <= 860 ? 2 : window.innerHeight <= 1000 ? 3 : 5);
-    const max = crops[0]?.[1].at(-1) || 1;
-    const mini = (s) => {
+    // 앞 막대 대신 5년 간격(2015·2020·2025) 추이 선을 넓게 그린다. 선은 품목마다 자기 최소~최대 범위
+    const box = $("#bars-crop");
+    const fixed = 44 + 46 + 44 + 18; // 이름 · 2025 면적 · 증감 · 간격
+    const lw = Math.max(60, (box.clientWidth || 280) - fixed);
+    const xAt = (i, n) => 6 + (i * (lw - 12)) / Math.max(1, n - 1);
+    const trend = (s) => {
       const vals = s.filter((x) => x != null);
       if (vals.length < 2) return "";
       const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
-      const pts = s.map((x, i) => (x == null ? null : [2 + (i * 26) / (s.length - 1), 12 - ((x - lo) / span) * 9])).filter(Boolean);
-      return `<svg viewBox="0 0 30 15" aria-hidden="true"><polyline points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="#f5a524" stroke-width="1.4"/>${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 1.8 : 1.2}" fill="#f5a524"/>`).join("")}</svg>`;
+      const pts = s.map((x, i) => (x == null ? null : [xAt(i, s.length), 13 - ((x - lo) / span) * 10])).filter(Boolean);
+      return `<svg viewBox="0 0 ${lw} 16" width="${lw}" height="16" aria-hidden="true">
+        <line x1="6" x2="${lw - 6}" y1="15.5" y2="15.5" stroke="#2f333b"/>
+        <polyline points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="#f5a524" stroke-width="1.6"/>
+        ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 2.6 : 2}" fill="${i === pts.length - 1 ? "#f5a524" : "#1d2026"}" stroke="#f5a524" stroke-width="1.2"/>`).join("")}</svg>`;
     };
-    $("#bars-crop").innerHTML = crops.length
-      ? crops.map(([name, s]) => {
+    const axis = `<div class="crop-row crop-axis" aria-hidden="true"><span></span>
+      <span class="yrs" style="width:${lw}px">${yrs.map((y, i) => `<i style="left:${xAt(i, yrs.length)}px">'${String(y).slice(2)}</i>`).join("")}</span>
+      <span>2025</span><span>5년 대비</span></div>`;
+    box.innerHTML = crops.length
+      ? axis + crops.map(([name, s]) => {
           const r = change(s.at(-1), s.at(-2));
           const cls = r == null ? "" : r > 0 ? "up" : r < 0 ? "down" : "";
           const d = r == null ? "–" : `${r > 0 ? "▲" : r < 0 ? "▼" : ""}${nf0.format(Math.abs(r))}%`;
           const tip = s.map((x, i) => `${yrs[i]}년 ${x == null ? "–" : `${nf0.format(x)}ha`}`).join(" · ");
           return `
-        <div class="bar-row crop-row" title="${name}: ${tip}"><span class="name">${name}</span>
-          <span class="track"><span class="fill" style="width:${(s.at(-1) / max) * 100}%"></span></span>
+        <div class="crop-row" title="${name}: ${tip}"><span class="name">${name}</span>
+          <span class="trend">${trend(s)}</span>
           <span class="val">${int(s.at(-1))}</span>
-          <span class="mini">${mini(s)}</span>
           <span class="chg ${cls}">${d}</span></div>`;
         }).join("")
       : '<p class="note">재배면적 자료가 없습니다.</p>';
@@ -748,27 +757,38 @@
 
   const hideTip = () => { tip.hidden = true; };
 
+  // 순위 범위: local = 시도 안(전국 화면에서는 시도별), nation = 전국 168개 시군
   function renderRank() {
     const m = state.metric;
     const s = sidoOf(state.key);
-    const peers = s ? UNITS_BY_SIDO[s] : SIDO_CODES;
-    const list = peers.map((r) => [r, m.get(r)]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
-    const max = list[0]?.[1] || 1;
+    const sorted = (keys) => keys.map((r) => [r, m.get(r)]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
+    const nationList = sorted(Object.values(UNITS_BY_SIDO).flat());
+    const nationRank = new Map(nationList.map(([r], i) => [r, i + 1]));
+    const nation = state.rankScope === "nation";
+    const list = nation ? nationList : sorted(s ? UNITS_BY_SIDO[s] : SIDO_CODES);
+    const max = Math.max(...list.map(([, v]) => v), 0) || 1;
     const top = list.slice(0, 10);
     const selIdx = list.findIndex(([r]) => r === state.key);
+    const name = (r) => (nation ? `${T.sidos[sidoOf(r)].short} ${label(r)}` : shortLabel(r));
+    // 도내 순위에서는 시군마다 전국 순위를 작게 함께 보여준다
+    const tag = (r) => (!nation && level(r) === 2 && nationRank.has(r) ? `<span class="nat">전국 ${nationRank.get(r)}위</span>` : "<span></span>");
     const row = ([r, v], i) => `
-      <button type="button" class="rank-row${i < 3 ? " top" : ""}${r === state.key ? " sel" : ""}" data-r="${r}">
-        <span class="no">${i + 1}</span><span>${shortLabel(r)}</span>
+      <button type="button" class="rank-row${nation ? " wide" : ""}${i < 3 ? " top" : ""}${nation && s && sidoOf(r) === s ? " mine" : ""}${r === state.key ? " sel" : ""}" data-r="${r}">
+        <span class="no">${i + 1}</span><span class="nm">${name(r)}</span>
         <span class="track"><span class="fill" style="width:${Math.max(0, (v / max) * 100)}%"></span></span>
-        <span class="val">${m.fmt(v)}</span>
+        <span class="val">${m.fmt(v)}</span>${tag(r)}
       </button>`;
     const extra = selIdx >= 10 ? `<div class="rank-title" style="margin:6px 0 0"><span>선택한 지역</span></div>${row(list[selIdx], selIdx)}` : "";
-    const scope = s ? `${T.sidos[s].short} 시군` : "시도";
+    const scope = nation ? "시군 (전국)" : s ? `${T.sidos[s].short} 시군` : "시도";
+    const labels = s ? ["도내", "전국"] : ["시도", "시군"];
+    const seg = `<span class="seg" role="group" aria-label="순위 기준">${["local", "nation"].map((v, i) =>
+      `<button type="button" data-scope="${v}" aria-pressed="${(state.rankScope || "local") === v}">${labels[i]}</button>`).join("")}</span>`;
     $("#rank").innerHTML = list.length ? `
-      <div class="rank-title"><span><b>${m.label}</b> 상위 ${scope}</span><span>${m.year} · ${list.length}곳</span></div>
+      <div class="rank-title"><span><b>${m.label}</b> 상위 ${scope}</span><span class="rank-meta">${m.year} · ${list.length}곳 ${seg}</span></div>
       <div>${top.slice(0, 5).map((d, i) => row(d, i)).join("")}</div>
       <div>${top.slice(5).map((d, i) => row(d, i + 5)).join("")}</div>${extra}` : "";
     $$("#rank .rank-row").forEach((b) => b.addEventListener("click", () => onRegionClick(b.dataset.r)));
+    $$("#rank .seg button").forEach((b) => b.addEventListener("click", () => { state.rankScope = b.dataset.scope; renderRank(); }));
   }
 
   // ---------- 흐르는 증감 띠 ----------
@@ -861,6 +881,8 @@
   drawMap();
   select(fromHash());
   // ?m=budget 처럼 지표를 지정해 열 수 있다
+  // ?rank=nation 이면 전국 기준 순위로 연다
+  if (new URLSearchParams(location.search).get("rank") === "nation") { state.rankScope = "nation"; renderRank(); }
   const initial = METRICS.find((m) => m.key === new URLSearchParams(location.search).get("m"));
   if (initial) setMetric(initial);
   window.addEventListener("hashchange", () => { const k = fromHash(); if (k !== state.key) select(k); });

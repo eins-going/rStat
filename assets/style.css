@@ -734,3 +734,47 @@ body {
 .crop-row .chg { text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); }
 .crop-row .chg.up { color: var(--up); }
 .crop-row .chg.down { color: var(--down); }
+/* 순위: 도내/전국 전환, 전국 순위 표시 */
+.rank-meta { display: inline-flex; align-items: center; gap: 8px; }
+.seg { display: inline-flex; background: var(--panel-2); border-radius: 7px; padding: 2px; }
+.seg button { font: inherit; font-size: 11.5px; color: var(--muted); background: none; border: 0; border-radius: 5px; padding: 1px 9px; cursor: pointer; }
+.seg button[aria-pressed="true"] { color: #14161b; background: var(--accent); font-weight: 700; }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rank-row { grid-template-columns: 20px 52px 1fr auto 62px; }
+.rank-row.wide { grid-template-columns: 20px 84px 1fr auto 0; }
+.rank-row .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-row .nat { font-size: 10.5px; color: var(--faint); text-align: right; font-variant-numeric: tabular-nums; }
+.rank-row.mine:not(.sel) { background: rgba(255, 255, 255, 0.05); }
+.rank-row.mine .nm { color: var(--accent); }
+/* 품목별 재배면적: 이름 · 5년 간격 추이 선 · 2025 면적 · 5년 전 대비 */
+#bars-crop { gap: 3px; }
+.crop-row { display: grid; grid-template-columns: 44px auto 46px 44px; gap: 6px; align-items: center; font-size: 12px; }
+.crop-row .name { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crop-row .trend svg { display: block; }
+.crop-row .val { text-align: right; font-variant-numeric: tabular-nums; }
+.crop-row .chg { text-align: right; font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.crop-row .chg.up { color: var(--up); }
+.crop-row .chg.down { color: var(--down); }
+.crop-axis { font-size: 10px; color: var(--faint); }
+.crop-axis > span:nth-child(3), .crop-axis > span:nth-child(4) { text-align: right; }
+.crop-axis .yrs { position: relative; height: 12px; }
+.crop-axis .yrs i { position: absolute; top: 0; transform: translateX(-50%); font-style: normal; }
+/* 한 화면 모드: 좌우 카드 열을 넓히고 가운데 지도 폭을 줄인다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .grid { grid-template-columns: clamp(330px, 27%, 480px) minmax(0, 1fr) clamp(330px, 27%, 480px); }
+}
+.crop-axis > span:nth-child(4) { white-space: nowrap; }
+/* 가운데가 좁아졌으므로 제목 아래에 핵심 수치를 2×2로 둔다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .hero { grid-template-columns: 1fr; }
+  .facts { grid-column: 1; grid-row: auto; margin-top: 4px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
+  :root { --gap: 8px; }
+  .spark, .spark.tall { height: 38px; }
+  .crop-axis { font-size: 9.5px; }
+  .crop-axis .yrs { height: 11px; }
+  .sub-head { margin: 3px 0 2px; }
+  .hero h1 { font-size: 24px; }
+  .facts li { font-size: 12.5px; }
+}
