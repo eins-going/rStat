@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>지역농업통계 대시보드</title>
-  <meta name="description" content="전라남도와 22개 시군의 농가, 경지, 가축, 농작물, 지역소득 통계를 한 화면에서 봅니다.">
+  <meta name="description" content="전국 17개 시도와 168개 시군의 농가, 경지, 가축, 농작물, 지역소득 통계를 한 화면에서 봅니다.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -19,7 +19,7 @@
       <div class="controls">
         <label class="select">
           <span>시도</span>
-          <select id="sido" disabled><option>전라남도</option></select>
+          <select id="sido"></select>
         </label>
         <label class="select">
           <span>시군구</span>
@@ -71,14 +71,14 @@
           <div class="stats two">
             <div class="stat">
               <span class="stat-label">귀농가구</span>
-              <span class="stat-value"><b data-v="farmHouseholds"></b><small>가구</small></span>
-              <span class="delta" data-d="farmHouseholds"></span>
+              <span class="stat-value"><b data-v="returnFarm"></b><small>가구</small></span>
+              <span class="delta" data-d="returnFarm"></span>
               <div class="spark" id="spark-farm"></div>
             </div>
             <div class="stat">
               <span class="stat-label">귀촌인</span>
-              <span class="stat-value"><b data-v="ruralPersons"></b><small>명</small></span>
-              <span class="delta" data-d="ruralPersons"></span>
+              <span class="stat-value"><b data-v="returnRural"></b><small>명</small></span>
+              <span class="delta" data-d="returnRural"></span>
               <div class="spark" id="spark-rural"></div>
             </div>
           </div>
@@ -116,17 +116,17 @@
       <section class="center" aria-label="지도">
         <div class="hero">
           <p class="eyebrow">한 눈에 보는</p>
-          <h1><span class="crumb" id="crumb"></span><span id="title-region">전라남도</span> 농업 데이터</h1>
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 농업 데이터</h1>
           <ul class="facts" id="facts"></ul>
         </div>
         <div class="map-card">
           <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
           <div class="map-wrap" id="map-wrap">
-            <svg id="map" role="img" aria-label="전라남도 시군 지도"></svg>
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
             <div class="tip" id="tip" hidden></div>
-            <div class="legend" id="legend"></div>
-            <button class="reset" id="reset" type="button" hidden>전라남도 전체 보기</button>
+            <button class="reset" id="reset" type="button" hidden></button>
           </div>
+          <div class="legend" id="legend"></div>
           <div class="rank" id="rank"></div>
         </div>
       </section>
@@ -200,12 +200,13 @@
     </main>
 
     <footer class="foot">
-      <p>자료: 통계청·전라남도(KOSIS 국가통계포털). 지표마다 기준 시점이 다르며, 각 카드에 표시했습니다. 지도: 통계청 행정경계(2013).</p>
+      <p>자료: 통계청·각 시도(KOSIS 국가통계포털). 지표마다 기준 시점이 다르며 각 카드에 표시했습니다. 광역시의 구 지역은 '시부'로 묶었습니다. 지도: 통계청 행정경계(2013)를 현행 시군으로 묶음.</p>
       <p id="updated"></p>
     </footer>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <script src="data/data.js"></script>
   <script src="data/geo.js"></script>
   <script src="assets/app.js"></script>

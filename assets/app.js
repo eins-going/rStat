@@ -1,20 +1,47 @@
 (() => {
   const D = window.AGRI_DATA;
-  const G = window.AGRI_GEO;
-  const SIDO = D.sido;
-  const SGG = D.regions.slice(1);
+  const T = window.AGRI_TOPO;
+  const V = D.v;
+  const P = D.periods;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+  // ---------- 지역 체계: '00' 전국 · '31' 시도 · '31|수원시' 시군 ----------
+  const NATION = "00";
+  const SIDO_CODES = Object.keys(T.sidos).sort();
+  const GEOMS = T.objects.municipalities.geometries;
+  const unitKeyOf = (g) => `${g.properties.sido}|${g.properties.unit}`;
+
+  const unitRank = (name) => (name.endsWith("시부") ? 0 : name.endsWith("시") ? 1 : name.endsWith("구") ? 2 : 3);
+  const UNITS_BY_SIDO = {};
+  for (const g of GEOMS) {
+    const list = (UNITS_BY_SIDO[g.properties.sido] ||= []);
+    const k = unitKeyOf(g);
+    if (!list.includes(k)) list.push(k);
+  }
+  for (const s of SIDO_CODES) {
+    UNITS_BY_SIDO[s].sort((a, b) => {
+      const [na, nb] = [a.split("|")[1], b.split("|")[1]];
+      return unitRank(na) - unitRank(nb) || na.localeCompare(nb, "ko");
+    });
+  }
+
+  const level = (k) => (k === NATION ? 0 : k.includes("|") ? 2 : 1);
+  const sidoOf = (k) => (level(k) === 2 ? k.split("|")[0] : level(k) === 1 ? k : null);
+  const parentOf = (k) => (level(k) === 2 ? sidoOf(k) : level(k) === 1 ? NATION : null);
+  const childrenOf = (k) => (level(k) === 0 ? SIDO_CODES : level(k) === 1 ? UNITS_BY_SIDO[k] : []);
+  const label = (k) => (k === NATION ? "전국" : level(k) === 1 ? T.sidos[k].name : k.split("|")[1]);
+  const shortLabel = (k) => (level(k) === 1 ? T.sidos[k].short : label(k));
+  const peersOf = (k) => (k === NATION ? [] : childrenOf(parentOf(k)));
+
   // ---------- 숫자 ----------
   const nf0 = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
   const nf1 = new Intl.NumberFormat("ko-KR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const int = (n) => (n == null ? "–" : nf0.format(n));
-  const pct = (n) => (n == null ? "–" : `${nf1.format(n)}%`);
+  const int = (n) => (n == null || Number.isNaN(n) ? "–" : nf0.format(n));
+  const pct = (n) => (n == null || Number.isNaN(n) ? "–" : `${nf1.format(n)}%`);
 
-  // 큰 수를 만·억 단위로 줄인다 (예: 27,088,850 → 2,709만)
   function compact(n) {
     if (n == null) return "–";
     const a = Math.abs(n);
@@ -24,9 +51,8 @@
     return nf0.format(n);
   }
 
-  // 원 단위 금액 → 조·억·만 원
   function won(w) {
-    if (w == null) return "–";
+    if (w == null || Number.isNaN(w)) return "–";
     if (w >= 1e12) return `${(w / 1e12).toFixed(2)}조 원`;
     if (w >= 1e10) return `${nf0.format(w / 1e8)}억 원`;
     if (w >= 1e8) return `${(w / 1e8).toFixed(2)}억 원`;
@@ -45,25 +71,32 @@
     return { value: null, prev: null, i: -1 };
   };
 
-  function deltaHTML(cur, prev, label = "전년 대비") {
-    if (cur == null || prev == null || prev === 0) return "";
-    const r = ((cur - prev) / prev) * 100;
-    const cls = r > 0 ? "up" : r < 0 ? "down" : "";
-    const arrow = r > 0 ? "▲" : r < 0 ? "▼" : "–";
-    return `${label} <span class="${cls}">${arrow} ${nf1.format(Math.abs(r))}%</span>`;
+  function change(cur, prev) {
+    if (cur == null || prev == null || prev === 0) return null;
+    return ((cur - prev) / prev) * 100;
   }
 
-  // 숫자가 이전 값에서 새 값으로 올라가거나 내려가는 효과
+  function deltaHTML(cur, prev, labelText = "전년 대비") {
+    const r = change(cur, prev);
+    if (r == null) return "";
+    const cls = r > 0 ? "up" : r < 0 ? "down" : "";
+    const arrow = r > 0 ? "▲" : r < 0 ? "▼" : "–";
+    return `${labelText} <span class="${cls}">${arrow} ${nf1.format(Math.abs(r))}%</span>`;
+  }
+
   function countTo(el, target, format) {
     if (!el) return;
-    if (target == null || reduceMotion) { el.textContent = target == null ? "–" : format(target); el._v = target; return; }
+    if (target == null || Number.isNaN(target) || reduceMotion) {
+      el.textContent = target == null || Number.isNaN(target) ? "–" : format(target);
+      el._v = target;
+      return;
+    }
     const from = el._v ?? 0;
     el._v = target;
     const t0 = performance.now();
-    const dur = 650;
     cancelAnimationFrame(el._raf);
     const step = (t) => {
-      const k = Math.min(1, (t - t0) / dur);
+      const k = Math.min(1, (t - t0) / 650);
       const e = 1 - Math.pow(1 - k, 3);
       el.textContent = format(from + (target - from) * e);
       if (k < 1) el._raf = requestAnimationFrame(step);
@@ -77,43 +110,72 @@
   const setRank = (key, text) => { const el = $(`[data-rank="${key}"]`); if (el) el.textContent = text || ""; };
   const setYear = (panel, text) => { $(`#${panel} [data-year]`).textContent = text; };
 
-  // 시군 사이 순위 (값이 큰 순서)
-  function rankOf(region, getter) {
-    if (region === SIDO) return null;
-    const vals = SGG.map((r) => [r, getter(r)]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
-    const i = vals.findIndex(([r]) => r === region);
-    return i < 0 ? null : `도내 ${i + 1}위 / ${vals.length}`;
+  // 같은 상위 지역 안에서의 순위 (값이 큰 순서)
+  function rankText(k, getter) {
+    if (k === NATION) return null;
+    const list = peersOf(k).map((r) => [r, getter(r)]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
+    const i = list.findIndex(([r]) => r === k);
+    if (i < 0 || list.length < 2) return null;
+    const scope = level(k) === 1 ? "전국" : T.sidos[sidoOf(k)].short;
+    return `${scope} ${i + 1}위 / ${list.length}`;
   }
 
-  // ---------- 지표 정의 (지도) ----------
-  const grdpShare = (r) => {
-    const g = D.grdp.byRegion[r];
-    return g && g.total ? (g.agri / g.total) * 100 : null;
-  };
+  // ---------- 지표 ----------
+  const share = (pair) => (pair && pair[0] != null && pair[1] ? (pair[0] / pair[1]) * 100 : null);
+  const agingRatio = (k) => { const a = V.aging[k]; return a && a[0] ? (a[1] / a[0]) * 100 : null; }; // [농가인구, 65세 이상]
+  const grdpShare = (k) => share(V.grdp[k]);
+  const grdpYear = (k) => (level(k) === 0 ? "2023" : P.grdp.bySido[sidoOf(k)] || "2023");
 
   const METRICS = [
-    { key: "households", label: "농가수", unit: "가구", year: `${D.farm.years.at(-1)}년`, get: (r) => lastOf(D.farm.households[r]).value, fmt: int },
-    { key: "aging", label: "고령인구 비율", unit: "%", year: `${D.aging.year}년`, get: (r) => D.aging.byRegion[r]?.ratio ?? null, fmt: pct },
-    { key: "land", label: "경지면적", unit: "ha", year: `${D.land.years.at(-1)}년`, get: (r) => lastOf(D.land.total[r]).value, fmt: int },
-    { key: "rice", label: "쌀 생산량", unit: "톤", year: `${D.rice.year}년`, get: (r) => D.rice.byRegion[r]?.production ?? null, fmt: int },
-    { key: "cattle", label: "한육우", unit: "마리", year: D.livestock.quarter, get: (r) => D.livestock.byRegion[r]?.cattle?.[1] ?? null, fmt: int },
-    { key: "rural", label: "귀촌인", unit: "명", year: `${D.returning.years.at(-1)}년`, get: (r) => lastOf(D.returning.ruralPersons[r]).value, fmt: int },
-    { key: "grdp", label: "농림어업 GRDP 비중", unit: "%", year: `${D.grdp.year}년`, get: grdpShare, fmt: pct },
+    { key: "households", label: "농가수", unit: "가구", year: `${P.farm.at(-1)}년`, get: (k) => lastOf(V.households[k]).value, fmt: int },
+    { key: "aging", label: "고령인구 비율", unit: "%", year: `${P.aging}년`, get: agingRatio, fmt: pct },
+    { key: "land", label: "경지면적", unit: "ha", year: `${P.land.at(-1)}년`, get: (k) => lastOf(V.land[k]).value, fmt: int },
+    { key: "rice", label: "쌀 생산량", unit: "톤", year: `${P.rice}년`, get: (k) => V.rice[k]?.[1] ?? null, fmt: int },
+    { key: "cattle", label: "한육우", unit: "마리", year: P.livestock, get: (k) => V.cattle[k]?.[1] ?? null, fmt: int },
+    { key: "rural", label: "귀촌인", unit: "명", year: `${P.returning.at(-1)}년`, get: (k) => lastOf(V.returnRural[k]).value, fmt: int },
+    { key: "grdp", label: "농림어업 GRDP 비중", unit: "%", year: "2023년", get: grdpShare, fmt: pct },
   ];
 
-  const state = { region: SIDO, metric: METRICS[0] };
+  const state = { key: NATION, metric: METRICS[0] };
 
-  // ---------- 상단 선택 ----------
-  const sgg = $("#sgg");
-  sgg.innerHTML = [`<option value="${SIDO}">전체 (도)</option>`, ...SGG.map((r) => `<option value="${r}">${r}</option>`)].join("");
-  sgg.addEventListener("change", () => select(sgg.value));
-  $("#reset").addEventListener("click", () => select(SIDO));
+  // ---------- 선택 상자 ----------
+  const sidoSel = $("#sido");
+  const sggSel = $("#sgg");
+  sidoSel.innerHTML = [`<option value="${NATION}">전국</option>`, ...SIDO_CODES.map((s) => `<option value="${s}">${T.sidos[s].name}</option>`)].join("");
+  sidoSel.addEventListener("change", () => select(sidoSel.value));
+  sggSel.addEventListener("change", () => select(sggSel.value));
+  $("#reset").addEventListener("click", () => select(parentOf(state.key) ?? NATION));
 
-  function select(region) {
-    state.region = SGG.includes(region) ? region : SIDO;
-    sgg.value = state.region;
-    const hash = state.region === SIDO ? "" : `#${encodeURIComponent(state.region)}`;
-    if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname);
+  function syncControls() {
+    const s = sidoOf(state.key);
+    sidoSel.value = s || NATION;
+    const units = s ? UNITS_BY_SIDO[s] : [];
+    sggSel.innerHTML = [`<option value="${s || NATION}">전체</option>`, ...units.map((u) => `<option value="${u}">${label(u)}</option>`)].join("");
+    sggSel.disabled = !s || units.length < 2;
+    sggSel.value = level(state.key) === 2 ? state.key : s || NATION;
+    const reset = $("#reset");
+    reset.hidden = state.key === NATION;
+    reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체 보기` : "전국 보기";
+  }
+
+  function toHash(k) {
+    if (k === NATION) return "";
+    return `#${encodeURIComponent(level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}`)}`;
+  }
+
+  function fromHash() {
+    const [a, b] = decodeURIComponent(location.hash.slice(1)).split("/");
+    const s = SIDO_CODES.find((c) => T.sidos[c].name === a || T.sidos[c].short === a);
+    if (!s) return NATION;
+    const u = b && UNITS_BY_SIDO[s].find((k) => label(k) === b);
+    return u || s;
+  }
+
+  function select(k) {
+    state.key = k;
+    const hash = toHash(k);
+    if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname + location.search);
+    syncControls();
     render();
   }
 
@@ -126,72 +188,72 @@
   };
 
   function renderHero() {
-    const r = state.region;
-    $("#title-region").textContent = r;
-    $("#crumb").textContent = r === SIDO ? "" : `${SIDO} ›`;
-    const hh = lastOf(D.farm.households[r]).value;
-    const pop = lastOf(D.farm.population[r]).value;
-    const li = D.land.years.length - 1;
-    const land = D.land.total[r]?.[li];
-    const paddy = D.land.paddy[r]?.[li];
-    const rice = D.rice.byRegion[r]?.production;
-    const aging = D.aging.byRegion[r]?.ratio;
+    const k = state.key;
+    $("#title-region").textContent = label(k);
+    const trail = [];
+    for (let p = parentOf(k); p; p = parentOf(p)) trail.unshift(label(p));
+    $("#crumb").textContent = trail.length ? `${trail.join(" › ")} ›` : "";
+    const hh = lastOf(V.households[k]).value;
+    const pop = lastOf(V.population[k]).value;
+    const land = lastOf(V.land[k]);
+    const paddy = V.paddy[k]?.[land.i];
+    const rice = V.rice[k]?.[1];
+    const aging = agingRatio(k);
     $("#facts").innerHTML = [
       `<li>${ICONS.home}<span>농가 <b>${int(hh)}</b>가구 · 농가인구 <b>${int(pop)}</b>명</span></li>`,
-      `<li>${ICONS.field}<span>경지 <b>${int(land)}</b> ha · 논 비중 <b>${land ? pct((paddy / land) * 100) : "–"}</b></span></li>`,
-      `<li>${ICONS.rice}<span>쌀 생산 <b>${int(rice)}</b>톤 (${D.rice.year}년)</span></li>`,
-      `<li class="accent">${ICONS.people}<span>농가인구 열에 <b>${aging == null ? "–" : nf0.format(aging / 10)}</b>명은 65세 이상 (${D.aging.year}년)</span></li>`,
+      `<li>${ICONS.field}<span>경지 <b>${int(land.value)}</b> ha · 논 비중 <b>${land.value ? pct((paddy / land.value) * 100) : "–"}</b></span></li>`,
+      `<li>${ICONS.rice}<span>쌀 생산 <b>${int(rice)}</b>톤 (${P.rice}년)</span></li>`,
+      `<li class="accent">${ICONS.people}<span>농가인구 열에 <b>${aging == null ? "–" : nf0.format(aging / 10)}</b>명은 65세 이상 (${P.aging}년)</span></li>`,
     ].join("");
   }
 
   // ---------- 왼쪽 패널 ----------
   function renderFarm() {
-    const r = state.region;
-    const hh = lastOf(D.farm.households[r]);
-    const pop = lastOf(D.farm.population[r]);
-    setYear("p-farm", `${D.farm.years[hh.i] ?? D.farm.years.at(-1)}년`);
+    const k = state.key;
+    const p = parentOf(k);
+    const hh = lastOf(V.households[k]);
+    const pop = lastOf(V.population[k]);
+    setYear("p-farm", `${P.farm[hh.i] ?? P.farm.at(-1)}년`);
     setV("households", hh.value);
     setV("population", pop.value);
     setD("households", deltaHTML(hh.value, hh.prev));
     setD("population", deltaHTML(pop.value, pop.prev));
 
-    const a = D.aging.byRegion[r]?.ratio ?? null;
-    const doA = D.aging.byRegion[SIDO]?.ratio;
+    const a = agingRatio(k);
+    const pa = p ? agingRatio(p) : null;
     countTo($('[data-v="aging"]'), a, pct);
-    meter("aging", a, r === SIDO ? null : doA);
-    setNote("aging", r === SIDO ? `${D.aging.year} 농림어업총조사 기준` : `${D.aging.year} 농림어업총조사 · 흰 선은 전라남도 평균 ${pct(doA)}`);
-
-    lineChart("#chart-farm", D.farm.years, D.farm.households[r], "가구");
+    meter("aging", a, pa);
+    setNote("aging", p ? `${P.aging} 농림어업총조사 · 흰 선은 ${label(p)} ${pct(pa)}` : `${P.aging} 농림어업총조사 기준`);
+    lineChart("#chart-farm", P.farm, V.households[k], "가구");
   }
 
   function renderReturn() {
-    const r = state.region;
-    const f = lastOf(D.returning.farmHouseholds[r]);
-    const p = lastOf(D.returning.ruralPersons[r]);
-    setYear("p-return", `${D.returning.years.at(-1)}년`);
-    setV("farmHouseholds", f.value);
-    setV("ruralPersons", p.value);
-    setD("farmHouseholds", deltaHTML(f.value, f.prev));
-    setD("ruralPersons", deltaHTML(p.value, p.prev));
-    spark("#spark-farm", D.returning.years, D.returning.farmHouseholds[r]);
-    spark("#spark-rural", D.returning.years, D.returning.ruralPersons[r]);
-    setNote("return", f.value == null && p.value == null
-      ? "읍·면이 없는 시는 귀농·귀촌 집계 대상이 아닙니다."
-      : `${D.returning.years[0]}–${D.returning.years.at(-1)}년 추이`);
+    const k = state.key;
+    const f = lastOf(V.returnFarm[k]);
+    const r = lastOf(V.returnRural[k]);
+    setYear("p-return", `${P.returning.at(-1)}년`);
+    setV("returnFarm", f.value);
+    setV("returnRural", r.value);
+    setD("returnFarm", deltaHTML(f.value, f.prev));
+    setD("returnRural", deltaHTML(r.value, r.prev));
+    spark("#spark-farm", P.returning, V.returnFarm[k]);
+    spark("#spark-rural", P.returning, V.returnRural[k]);
+    setNote("return", f.value == null && r.value == null
+      ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다."
+      : `${P.returning[0]}–${P.returning.at(-1)}년 추이`);
   }
 
   function renderLand() {
-    const r = state.region;
-    const t = lastOf(D.land.total[r]);
-    const i = t.i;
-    const paddy = D.land.paddy[r]?.[i];
-    const field = D.land.field[r]?.[i];
-    setYear("p-land", `${D.land.years[i] ?? D.land.years.at(-1)}년`);
+    const k = state.key;
+    const t = lastOf(V.land[k]);
+    const paddy = V.paddy[k]?.[t.i];
+    const field = V.field[k]?.[t.i];
+    setYear("p-land", `${P.land[t.i] ?? P.land.at(-1)}년`);
     setV("land", t.value);
     setD("land", deltaHTML(t.value, t.prev));
-    setRank("land", rankOf(r, (x) => lastOf(D.land.total[x]).value));
+    setRank("land", rankText(k, (x) => lastOf(V.land[x]).value));
     const pp = t.value ? (paddy / t.value) * 100 : 0;
-    $("#split-land").innerHTML = `
+    $("#split-land").innerHTML = t.value ? `
       <div class="split-bar" role="img" aria-label="논 ${nf1.format(pp)}%, 밭 ${nf1.format(100 - pp)}%">
         <span style="flex-basis:${pp}%;background:var(--accent)"></span>
         <span style="flex-basis:${100 - pp}%;background:var(--field)"></span>
@@ -199,75 +261,77 @@
       <div class="split-legend">
         <span><i class="dot" style="background:var(--accent)"></i>논 <b>${int(paddy)}</b> ha · ${nf1.format(pp)}%</span>
         <span><i class="dot" style="background:var(--field)"></i>밭 <b>${int(field)}</b> ha · ${nf1.format(100 - pp)}%</span>
-      </div>`;
+      </div>` : '<p class="note">경지면적 자료가 없습니다.</p>';
   }
 
   function renderLivestock() {
-    const r = state.region;
-    const L = D.livestock.byRegion[r] || {};
-    setYear("p-live", D.livestock.quarter);
+    const k = state.key;
+    setYear("p-live", P.livestock);
+    const q = P.livestock.replace(/^\d{4}년 /, "");
     const rows = [
-      ["한육우", L.cattle, D.livestock.quarter],
-      ["젖소", L.dairy, D.livestock.quarter],
-      ["닭", L.chicken, D.livestock.quarter],
-      ["돼지", L.pig, `${D.livestock.censusYear} 총조사`],
-      ["오리", L.duck, `${D.livestock.censusYear} 총조사`],
+      ["한육우", V.cattle[k], q],
+      ["젖소", V.dairy[k], q],
+      ["닭", V.chicken[k], q],
+      ["돼지", V.pig[k], `${P.census} 총조사`],
+      ["오리", V.duck[k], `${P.census} 총조사`],
     ];
     $("#live-body").innerHTML = rows.map(([name, v, basis]) => `
-      <tr><td>${name}</td><td>${int(v?.[0])}</td><td>${compact(v?.[1])}</td><td>${basis.replace(/^\d{4}년 /, "")}</td></tr>`).join("");
+      <tr><td>${name}</td><td>${int(v?.[0])}</td><td>${compact(v?.[1])}</td><td>${basis}</td></tr>`).join("");
   }
 
   // ---------- 오른쪽 패널 ----------
   function renderCrop() {
-    const r = state.region;
-    const rice = D.rice.byRegion[r] || {};
-    setYear("p-crop", `${D.rice.year}년`);
-    setV("rice", rice.production);
-    setV("riceArea", rice.area);
-    setRank("rice", rankOf(r, (x) => D.rice.byRegion[x]?.production));
-    const yieldKg = rice.area ? (rice.production / rice.area) * 100 : null;
+    const k = state.key;
+    const rice = V.rice[k] || [];
+    setYear("p-crop", `${P.rice}년`);
+    setV("rice", rice[1]);
+    setV("riceArea", rice[0]);
+    setRank("rice", rankText(k, (x) => V.rice[x]?.[1]));
+    const yieldKg = rice[0] ? (rice[1] / rice[0]) * 100 : null;
     $('[data-v="riceYield"]').textContent = yieldKg ? `10a당 ${nf0.format(yieldKg)}kg` : "";
 
-    const crops = Object.entries(D.crops.byRegion[r] || {})
-      .filter(([k, v]) => v > 0 && !/기타|화초/.test(k))
+    const crops = Object.entries(V.crops[k] || {})
+      .filter(([name, v]) => v > 0 && !/기타|화초/.test(name))
       .sort((a, b) => b[1] - a[1])
       .slice(0, 7);
     const max = crops[0]?.[1] || 1;
     $("#bars-crop").innerHTML = crops.length
-      ? crops.map(([k, v]) => `
-        <div class="bar-row"><span class="name">${k}</span>
+      ? crops.map(([name, v]) => `
+        <div class="bar-row"><span class="name">${name}</span>
           <span class="track"><span class="fill" style="width:${(v / max) * 100}%"></span></span>
           <span class="val">${int(v)}</span></div>`).join("")
       : '<p class="note">재배면적 자료가 없습니다.</p>';
   }
 
   function renderGrdp() {
-    const r = state.region;
-    const g = D.grdp.byRegion[r] || {};
-    setYear("p-grdp", `${D.grdp.year}년`);
-    const mult = D.grdp.unit.includes("백만") ? 1e6 : 1;
-    countTo($('[data-v="grdp"]'), g.agri == null ? null : g.agri * mult, won);
-    const share = grdpShare(r);
-    const doShare = grdpShare(SIDO);
-    countTo($('[data-v="grdpShare"]'), share, pct);
-    meter("grdp", share, r === SIDO ? null : doShare, 40);
-    const rk = rankOf(r, grdpShare);
-    setNote("grdp", r === SIDO
-      ? `지역 총생산 ${won(g.total * mult)} 가운데 농림어업 몫 (명목)`
-      : `흰 선은 전라남도 평균 ${pct(doShare)}${rk ? ` · 비중 ${rk}` : ""}`);
+    const k = state.key;
+    const p = parentOf(k);
+    const g = V.grdp[k];
+    setYear("p-grdp", `${grdpYear(k)}년`);
+    countTo($('[data-v="grdp"]'), g?.[0] == null ? null : g[0] * 1e6, won);
+    const s = grdpShare(k);
+    const ps = p ? grdpShare(p) : null;
+    countTo($('[data-v="grdpShare"]'), s, pct);
+    meter("grdp", s, ps, Math.max(20, Math.ceil(Math.max(s || 0, ps || 0) / 10) * 10));
+    const rk = rankText(k, grdpShare);
+    setNote("grdp", p
+      ? `흰 선은 ${label(p)} ${pct(ps)}${rk ? ` · 비중 ${rk}` : ""}`
+      : `지역 총생산 ${won(g?.[1] * 1e6)} 가운데 농림어업 몫 (명목)`);
   }
 
   function renderEcon() {
-    const v = D.economy.values;
-    setYear("p-econ", `${D.economy.year}년`);
-    const mult = D.economy.unit.includes("천") ? 1e3 : 1;
-    setV("income", v.income * mult, won);
-    setV("agriIncome", v.agriIncome * mult, won);
-    setV("assets", v.assets * mult, won);
-    setV("debt", v.debt * mult, won);
-    setNote("econ", state.region === SIDO
-      ? "농가 1가구 평균 · 시도 단위 통계"
-      : `시군구 통계가 없어 ${SIDO} 평균을 보여줍니다.`);
+    const k = state.key;
+    const s = sidoOf(k);
+    const own = level(k) === 0 ? V.economy[NATION] : V.economy[s];
+    const v = own || V.economy[NATION];
+    setYear("p-econ", `${P.economy}년`);
+    ["income", "agriIncome", "assets", "debt"].forEach((name, i) => setV(name, v?.[i] == null ? null : v[i] * 1e3, won));
+    let note = "농가 1가구 평균";
+    if (level(k) === 0) note += " · 전국";
+    else if (!own) note = `광역시·세종은 농가경제조사 대상이 아니어서 전국 평균을 보여줍니다.`;
+    else if (level(k) === 2) note = `시군 통계가 없어 ${T.sidos[s].name} 평균을 보여줍니다.`;
+    else note += ` · ${T.sidos[s].name}`;
+    setNote("econ", note);
   }
 
   function meter(key, value, mark, max = 100) {
@@ -291,11 +355,11 @@
     const m = { t: 22, r: 8, b: 20, l: 8 };
     const x = d3.scalePoint().domain(pts.map((d) => d.y)).range([m.l, w - m.r]);
     const ext = d3.extent(pts, (d) => d.v);
-    const pad = (ext[1] - ext[0]) * 0.25 || ext[1] * 0.1;
+    const pad = (ext[1] - ext[0]) * 0.25 || ext[1] * 0.1 || 1;
     const y = d3.scaleLinear().domain([ext[0] - pad, ext[1] + pad * 0.5]).range([h - m.b, m.t]);
 
-    let defs = svg.selectAll("defs").data([0]).join("defs");
-    defs.selectAll("linearGradient").data([0]).join("linearGradient")
+    svg.selectAll("defs").data([0]).join("defs")
+      .selectAll("linearGradient").data([0]).join("linearGradient")
       .attr("id", "g-farm").attr("x1", 0).attr("x2", 0).attr("y1", 0).attr("y2", 1)
       .selectAll("stop").data([[0, 0.35], [1, 0]]).join("stop")
       .attr("offset", (d) => d[0]).attr("stop-color", "#f5a524").attr("stop-opacity", (d) => d[1]);
@@ -303,7 +367,6 @@
     const area = d3.area().x((d) => x(d.y)).y0(h - m.b).y1((d) => y(d.v)).curve(d3.curveMonotoneX);
     const line = d3.line().x((d) => x(d.y)).y((d) => y(d.v)).curve(d3.curveMonotoneX);
     const t = svg.transition().duration(reduceMotion ? 0 : 600);
-
     svg.selectAll("path.area").data([pts]).join("path").attr("class", "area").attr("fill", "url(#g-farm)").transition(t).attr("d", area);
     svg.selectAll("path.line").data([pts]).join("path").attr("class", "line").attr("fill", "none").attr("stroke", "#f5a524").attr("stroke-width", 2).transition(t).attr("d", line);
     const ends = [pts[0], pts.at(-1)];
@@ -342,14 +405,28 @@
 
   // ---------- 지도 ----------
   const RAMP = ["#3b3428", "#5e4925", "#8a6322", "#c0841f", "#f5a524"];
+  const EMPTY = "#2a2d33";
   const mapSvg = d3.select("#map");
   const tip = $("#tip");
-  const regionsGeo = G.features.filter((f) => !f.properties.context);
-  const contextGeo = G.features.filter((f) => f.properties.context);
+  const obj = T.objects.municipalities;
 
-  // 위도 35도 부근의 경도 축소를 반영한 평면 투영 (폴리곤 방향과 무관하게 동작)
-  const K = Math.cos((34.9 * Math.PI) / 180);
-  const bounds = (() => {
+  // 시군·시도 경계를 하나의 도형으로 합친다 (구 경계선 없이)
+  const unitFeatures = Object.values(UNITS_BY_SIDO).flat().map((k) => ({
+    type: "Feature",
+    properties: { key: k, sido: sidoOf(k) },
+    geometry: topojson.merge(T, GEOMS.filter((g) => unitKeyOf(g) === k)),
+  }));
+  const sidoFeatures = SIDO_CODES.map((s) => ({
+    type: "Feature",
+    properties: { key: s, sido: s },
+    geometry: topojson.merge(T, GEOMS.filter((g) => g.properties.sido === s)),
+  }));
+  const sidoMesh = topojson.mesh(T, obj, (a, b) => a !== b && a.properties.sido !== b.properties.sido);
+  const unitMesh = topojson.mesh(T, obj, (a, b) => a !== b && a.properties.sido === b.properties.sido && unitKeyOf(a) !== unitKeyOf(b));
+
+  // 위도 36도 부근 경도 축소를 반영한 평면 투영 (폴리곤 방향과 무관)
+  const K = Math.cos((36 * Math.PI) / 180);
+  const BOUNDS = (() => {
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     const walk = (c) => {
       if (typeof c[0] === "number") {
@@ -357,11 +434,29 @@
         y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]);
       } else c.forEach(walk);
     };
-    regionsGeo.forEach((f) => walk(f.geometry.coordinates));
+    sidoFeatures.forEach((f) => walk(f.geometry.coordinates));
     return { x0, x1, y0, y1 };
   })();
 
+  const LABEL_AT = { 31: [127.45, 37.2] };
   let path = null;
+  let size = { w: 0, h: 0 };
+  let view = { k: 1, x: 0, y: 0 };
+  const anchor = new Map(); // 지역키 → 라벨 위치(가장 큰 조각의 중심, 기본 좌표)
+
+  // 섬이 많은 지역도 본섬 위에 이름이 오도록 가장 큰 폴리곤의 중심을 쓴다
+  function labelPoint(f) {
+    const g = f.geometry;
+    if (!g) return [NaN, NaN];
+    const polys = g.type === "MultiPolygon" ? g.coordinates : [g.coordinates];
+    let best = null, bestA = -1;
+    for (const c of polys) {
+      const pf = { type: "Polygon", coordinates: c };
+      const a = path.area(pf);
+      if (a > bestA) { bestA = a; best = pf; }
+    }
+    return path.centroid(best);
+  }
 
   function chips() {
     $("#chips").innerHTML = METRICS.map((m) => `<button type="button" data-k="${m.key}" aria-pressed="${m === state.metric}">${m.label}</button>`).join("");
@@ -374,158 +469,215 @@
   }
 
   function drawMap() {
-    const wrap = $("#map-wrap");
-    const w = wrap.clientWidth;
-    const pad = 16;
-    const bw = bounds.x1 - bounds.x0;
-    const bh = bounds.y1 - bounds.y0;
-    // 지도 모양에 맞춰 높이를 정해 위아래 빈 공간을 줄인다
-    const h = Math.round(Math.max(340, Math.min(660, ((w - pad * 2) * bh) / bw + pad * 2)));
+    const w = $("#map-wrap").clientWidth;
+    const h = Math.round(Math.max(380, Math.min(700, w * 0.92)));
+    size = { w, h };
+    const pad = 12;
+    const bw = BOUNDS.x1 - BOUNDS.x0;
+    const bh = BOUNDS.y1 - BOUNDS.y0;
     const s = Math.min((w - pad * 2) / bw, (h - pad * 2) / bh);
     const ox = (w - bw * s) / 2;
     const oy = (h - bh * s) / 2;
-    const proj = d3.geoTransform({
-      point(lon, lat) { this.stream.point(ox + (lon * K - bounds.x0) * s, oy + (bounds.y1 - lat) * s); },
-    });
-    path = d3.geoPath(proj);
+    const project = (lon, lat) => [ox + (lon * K - BOUNDS.x0) * s, oy + (BOUNDS.y1 - lat) * s];
+    path = d3.geoPath(d3.geoTransform({ point(lon, lat) { this.stream.point(...project(lon, lat)); } }));
     mapSvg.attr("viewBox", `0 0 ${w} ${h}`).attr("height", h);
+    anchor.clear();
+    [...sidoFeatures, ...unitFeatures].forEach((f) => anchor.set(f.properties.key, labelPoint(f)));
+    // 서울을 둘러싼 경기도는 중심점이 서울 안에 찍히므로 이름 위치를 직접 정한다 (경도, 위도)
+    Object.entries(LABEL_AT).forEach(([k, ll]) => anchor.set(k, project(...ll)));
 
-    mapSvg.selectAll("g.ctx").data([0]).join("g").attr("class", "ctx")
-      .selectAll("path").data(contextGeo).join("path").attr("class", "context").attr("d", path);
-    const gc = d3.geoPath(proj).centroid({ type: "FeatureCollection", features: contextGeo });
-    const cc = contextGeo.map((f) => path.centroid(f));
-    const cx = d3.mean(cc, (c) => c[0]);
-    const cy = d3.mean(cc, (c) => c[1]);
-    mapSvg.selectAll("text.context-label").data(contextGeo.length ? [0] : []).join("text")
-      .attr("class", "context-label").attr("x", isFinite(gc[0]) ? gc[0] : cx).attr("y", (isFinite(gc[1]) ? gc[1] : cy) + 4).text("광주광역시");
+    const world = mapSvg.selectAll("g.world").data([0]).join("g").attr("class", "world");
+    world.selectAll("g.sidos").data([0]).join("g").attr("class", "sidos")
+      .selectAll("path").data(sidoFeatures, (d) => d.properties.key).join("path")
+      .attr("class", "region sido").attr("d", path)
+      .attr("tabindex", 0).attr("role", "button")
+      .on("mousemove", (e, d) => showTip(e, d.properties.key))
+      .on("mouseleave", hideTip)
+      .on("click", (e, d) => onRegionClick(d.properties.key))
+      .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRegionClick(d.properties.key); } });
+    world.selectAll("g.units").data([0]).join("g").attr("class", "units")
+      .selectAll("path").data(unitFeatures, (d) => d.properties.key).join("path")
+      .attr("class", "region unit hidden").attr("d", path)
+      .attr("tabindex", 0).attr("role", "button")
+      .on("mousemove", (e, d) => showTip(e, d.properties.key))
+      .on("mouseleave", hideTip)
+      .on("click", (e, d) => onRegionClick(d.properties.key))
+      .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRegionClick(d.properties.key); } });
+    world.selectAll("path.mesh-unit").data([unitMesh]).join("path").attr("class", "mesh-unit").attr("d", path);
+    world.selectAll("path.mesh-sido").data([sidoMesh]).join("path").attr("class", "mesh-sido").attr("d", path);
+    mapSvg.selectAll("g.labels").data([0]).join("g").attr("class", "labels");
+    applyView(false);
+  }
 
-    const g = mapSvg.selectAll("g.regions").data([0]).join("g").attr("class", "regions");
-    g.selectAll("path").data(regionsGeo, (d) => d.properties.name).join("path")
-      .attr("class", "region")
-      .attr("d", path)
-      .attr("stroke", "#14161b").attr("stroke-width", 0.8)
-      .attr("tabindex", 0)
-      .attr("role", "button")
-      .on("mousemove", (e, d) => showTip(e, d))
-      .on("mouseleave", () => { tip.hidden = true; })
-      .on("click", (e, d) => select(state.region === d.properties.name ? SIDO : d.properties.name))
-      .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === d.properties.name ? SIDO : d.properties.name); } });
+  function onRegionClick(k) {
+    const cur = state.key;
+    if (level(k) === 1) {
+      // 시도 도형: 전국 화면에서는 그 시도로, 시도 화면에서는 다른 시도로 이동
+      select(k === sidoOf(cur) && level(cur) === 1 ? NATION : k);
+    } else {
+      select(k === cur ? sidoOf(k) : k);
+    }
+  }
 
-    // 목포처럼 작은 시는 이름을 살짝 옮겨 겹침을 줄인다
-    const nudge = { 목포시: [-14, -6], 무안군: [6, -4], 신안군: [-10, 10], 광양시: [6, 4], 여수시: [-4, 14] };
-    mapSvg.selectAll("g.labels").data([0]).join("g").attr("class", "labels")
-      .selectAll("text").data(regionsGeo, (d) => d.properties.name).join("text")
-      .attr("class", "region-label")
-      .attr("x", (d) => path.centroid(d)[0] + (nudge[d.properties.name]?.[0] || 0))
-      .attr("y", (d) => path.centroid(d)[1] + 4 + (nudge[d.properties.name]?.[1] || 0))
-      .text((d) => d.properties.name.replace(/(시|군)$/, ""));
+  // 현재 선택에 맞춰 확대 범위를 정한다: 전국 → 전체, 시도·시군 → 그 시도
+  function targetView() {
+    const s = sidoOf(state.key);
+    if (!s) return { k: 1, x: 0, y: 0 };
+    const f = sidoFeatures.find((d) => d.properties.key === s);
+    const [[x0, y0], [x1, y1]] = path.bounds(f);
+    const pad = 28;
+    const k = Math.min(14, (size.w - pad * 2) / (x1 - x0), (size.h - pad * 2) / (y1 - y0));
+    return { k, x: size.w / 2 - ((x0 + x1) / 2) * k, y: size.h / 2 - ((y0 + y1) / 2) * k };
+  }
 
+  function applyView(animate = true) {
+    view = targetView();
+    const tr = `translate(${view.x},${view.y}) scale(${view.k})`;
+    const world = mapSvg.select("g.world");
+    if (animate && !reduceMotion) world.transition().duration(750).ease(d3.easeCubicInOut).attr("transform", tr);
+    else world.attr("transform", tr);
     paintMap();
+    drawLabels(animate);
   }
 
   let color = null;
 
   function paintMap() {
     const m = state.metric;
-    const vals = SGG.map(m.get).filter((v) => v != null);
-    color = d3.scaleQuantile().domain(vals).range(RAMP);
-    mapSvg.selectAll("path.region")
-      .attr("fill", (d) => { const v = m.get(d.properties.name); return v == null ? "#2a2d33" : color(v); })
-      .attr("aria-label", (d) => `${d.properties.name} ${m.label} ${m.fmt(m.get(d.properties.name))}${m.unit === "%" ? "" : m.unit}`);
-    const sel = state.region;
-    mapSvg.classed("dimmed", sel !== SIDO);
-    mapSvg.selectAll("path.region").classed("sel", (d) => d.properties.name === sel);
-    mapSvg.selectAll("text.region-label").classed("sel", (d) => d.properties.name === sel);
-    mapSvg.selectAll("path.region.sel").raise();
-    $("#reset").hidden = sel === SIDO;
+    const s = sidoOf(state.key);
+    const peers = s ? UNITS_BY_SIDO[s] : SIDO_CODES;
+    const vals = peers.map(m.get).filter((v) => v != null);
+    const single = new Set(vals).size < 2;
+    color = !vals.length ? () => EMPTY : single ? () => RAMP.at(-1) : d3.scaleQuantile().domain(vals).range(RAMP);
+    const fillOf = (k) => { const v = m.get(k); return v == null ? EMPTY : color(v); };
 
-    const q = color.quantiles();
-    const edges = [d3.min(vals), ...q, d3.max(vals)];
-    $("#legend").innerHTML = `<div class="title">${m.label} <span style="color:var(--faint);font-weight:400">${m.year}</span></div>` +
-      RAMP.map((c, i) => `<div class="row"><span class="sw" style="background:${c}"></span>${m.fmt(edges[i])} – ${m.fmt(edges[i + 1])}</div>`).reverse().join("") +
-      (vals.length < SGG.length ? '<div class="row"><span class="sw" style="background:#2a2d33;outline:1px solid #3a3f48"></span>자료 없음</div>' : "");
+    mapSvg.selectAll("path.sido")
+      .classed("context", (d) => !!s && d.properties.key !== s)
+      .classed("hidden", (d) => d.properties.key === s)
+      .attr("fill", (d) => (s ? null : fillOf(d.properties.key)))
+      .attr("aria-label", (d) => `${label(d.properties.key)} ${m.label} ${m.fmt(m.get(d.properties.key))}`);
+    mapSvg.selectAll("path.unit")
+      .classed("hidden", (d) => d.properties.sido !== s)
+      .classed("sel", (d) => d.properties.key === state.key)
+      .attr("fill", (d) => (d.properties.sido === s ? fillOf(d.properties.key) : null))
+      .attr("aria-label", (d) => `${label(d.properties.key)} ${m.label} ${m.fmt(m.get(d.properties.key))}`);
+    mapSvg.select("path.mesh-unit").attr("opacity", s ? 1 : 0);
+    mapSvg.classed("dimmed", level(state.key) === 2);
+    mapSvg.selectAll("path.unit.sel").raise();
+    $("#map").setAttribute("aria-label", `${s ? T.sidos[s].name : "전국"} ${m.label} 지도`);
+
+    const edges = vals.length && !single ? [d3.min(vals), ...color.quantiles(), d3.max(vals)] : [];
+    const rows = !vals.length ? ""
+      : single ? `<span class="row"><span class="sw" style="background:${RAMP.at(-1)}"></span>${m.fmt(vals[0])}</span>`
+      : RAMP.map((c, i) => `<span class="row"><span class="sw" style="background:${c}"></span>${m.fmt(edges[i])}–${m.fmt(edges[i + 1])}</span>`).join("");
+    $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${m.year}</span></span>` + rows +
+      (vals.length < peers.length ? `<span class="row"><span class="sw" style="background:${EMPTY};outline:1px solid #3a3f48"></span>자료 없음</span>` : "");
   }
 
-  function showTip(e, d) {
+  function drawLabels(animate) {
+    const s = sidoOf(state.key);
+    const keys = s ? UNITS_BY_SIDO[s] : SIDO_CODES;
+    const pos = (k) => { const [x, y] = anchor.get(k) || [NaN, NaN]; return [x * view.k + view.x, y * view.k + view.y]; };
+    // 화면에서 너무 작은 지역은 이름을 생략한다 (선택한 지역은 항상 표시)
+    const small = (k) => {
+      if (k === state.key) return false;
+      const f = (s ? unitFeatures : sidoFeatures).find((d) => d.properties.key === k);
+      return path.area(f) * view.k * view.k < (s ? 260 : 120);
+    };
+    const name = (k) => (level(k) === 1 ? T.sidos[k].short : (label(k).endsWith("시부") ? "시부" : label(k).replace(/(시|군|구)$/, "")));
+    const inView = (k) => { const [x, y] = pos(k); return x > 20 && x < size.w - 20 && y > 16 && y < size.h - 10; };
+    // 시도 화면에서는 화면 안에 들어오는 주변 시도 이름을 흐리게 함께 보여준다
+    const ctx = s ? SIDO_CODES.filter((c) => c !== s && inView(c)) : [];
+    const data = [...keys.filter((k) => !small(k) && Number.isFinite(pos(k)[0])), ...ctx];
+    const g = mapSvg.select("g.labels");
+    const sel = g.selectAll("text").data(data, (k) => k).join("text")
+      .attr("class", (k) => `region-label${level(k) === 1 ? " sido-label" : ""}${s && level(k) === 1 ? " ctx" : ""}${k === state.key ? " sel" : ""}`)
+      .attr("x", (k) => pos(k)[0])
+      .attr("y", (k) => pos(k)[1] + 4)
+      .text(name);
+    if (animate && !reduceMotion) sel.style("opacity", 0).transition().delay(550).duration(300).style("opacity", 1);
+    else sel.style("opacity", 1);
+  }
+
+  function showTip(e, k) {
     const m = state.metric;
-    const name = d.properties.name;
-    const v = m.get(name);
-    const rk = (() => {
-      const list = SGG.map((r) => [r, m.get(r)]).filter(([, x]) => x != null).sort((a, b) => b[1] - a[1]);
-      const i = list.findIndex(([r]) => r === name);
-      return i < 0 ? "" : ` · ${i + 1}위`;
-    })();
-    tip.innerHTML = `<b>${name}</b><span>${m.label}</span> ${m.fmt(v)}${m.unit === "%" ? "" : ` ${m.unit}`}<span>${rk}</span>`;
+    const v = m.get(k);
+    const list = peersOf(k).map((r) => [r, m.get(r)]).filter(([, x]) => x != null).sort((a, b) => b[1] - a[1]);
+    const i = list.findIndex(([r]) => r === k);
+    tip.innerHTML = `<b>${label(k)}</b><span>${m.label}</span> ${m.fmt(v)}${m.unit === "%" ? "" : ` ${m.unit}`}<span>${i < 0 ? "" : ` · ${i + 1}위`}</span>`;
     const box = $("#map-wrap").getBoundingClientRect();
     tip.style.left = `${e.clientX - box.left}px`;
     tip.style.top = `${e.clientY - box.top}px`;
     tip.hidden = false;
   }
 
+  const hideTip = () => { tip.hidden = true; };
+
   function renderRank() {
     const m = state.metric;
-    const list = SGG.map((r) => [r, m.get(r)]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
+    const s = sidoOf(state.key);
+    const peers = s ? UNITS_BY_SIDO[s] : SIDO_CODES;
+    const list = peers.map((r) => [r, m.get(r)]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
     const max = list[0]?.[1] || 1;
     const top = list.slice(0, 10);
-    const selIdx = list.findIndex(([r]) => r === state.region);
+    const selIdx = list.findIndex(([r]) => r === state.key);
     const row = ([r, v], i) => `
-      <button type="button" class="rank-row${i < 3 ? " top" : ""}${r === state.region ? " sel" : ""}" data-r="${r}">
-        <span class="no">${i + 1}</span><span>${r}</span>
-        <span class="track"><span class="fill" style="width:${(v / max) * 100}%"></span></span>
+      <button type="button" class="rank-row${i < 3 ? " top" : ""}${r === state.key ? " sel" : ""}" data-r="${r}">
+        <span class="no">${i + 1}</span><span>${shortLabel(r)}</span>
+        <span class="track"><span class="fill" style="width:${Math.max(0, (v / max) * 100)}%"></span></span>
         <span class="val">${m.fmt(v)}</span>
       </button>`;
     const extra = selIdx >= 10 ? `<div class="rank-title" style="margin:6px 0 0"><span>선택한 지역</span></div>${row(list[selIdx], selIdx)}` : "";
-    // 두 열에 위에서 아래로 1–5위, 6–10위가 오도록 배치
-    const left = top.slice(0, 5).map((d, i) => row(d, i)).join("");
-    const right = top.slice(5).map((d, i) => row(d, i + 5)).join("");
-    $("#rank").innerHTML = `
-      <div class="rank-title"><span><b>${m.label}</b> 상위 시군</span><span>${m.year} · ${list.length}개 시군</span></div>
-      <div>${left}</div><div>${right}</div>${extra}`;
-    $$("#rank .rank-row").forEach((b) => b.addEventListener("click", () => select(state.region === b.dataset.r ? SIDO : b.dataset.r)));
+    const scope = s ? `${T.sidos[s].short} 시군` : "시도";
+    $("#rank").innerHTML = list.length ? `
+      <div class="rank-title"><span><b>${m.label}</b> 상위 ${scope}</span><span>${m.year} · ${list.length}곳</span></div>
+      <div>${top.slice(0, 5).map((d, i) => row(d, i)).join("")}</div>
+      <div>${top.slice(5).map((d, i) => row(d, i + 5)).join("")}</div>${extra}` : "";
+    $$("#rank .rank-row").forEach((b) => b.addEventListener("click", () => onRegionClick(b.dataset.r)));
   }
 
   // ---------- 흐르는 증감 띠 ----------
-  function tickerItem(label, arr) {
+  function tickerItem(text, arr) {
     const { value, prev } = lastOf(arr);
-    if (value == null || prev == null || prev === 0) return "";
-    const r = ((value - prev) / prev) * 100;
+    const r = change(value, prev);
+    if (r == null) return "";
     const cls = r > 0 ? "up" : r < 0 ? "down" : "";
     const arrow = r > 0 ? "▲" : r < 0 ? "▼" : "–";
-    return `<span class="tk">${label} <b class="${cls}">${arrow} ${nf1.format(Math.abs(r))}%</b></span>`;
+    return `<span class="tk">${text} <b class="${cls}">${arrow} ${nf1.format(Math.abs(r))}%</b></span>`;
   }
 
   function renderTicker() {
-    const r = state.region;
+    const k = state.key;
     const head = [
-      `<span class="tk tk-region">${r}</span>`,
-      tickerItem("농가", D.farm.households[r]),
-      tickerItem("농가인구", D.farm.population[r]),
-      tickerItem("귀농가구", D.returning.farmHouseholds[r]),
-      tickerItem("귀촌인", D.returning.ruralPersons[r]),
-      tickerItem("경지면적", D.land.total[r]),
+      `<span class="tk tk-region">${label(k)}</span>`,
+      tickerItem("농가", V.households[k]),
+      tickerItem("농가인구", V.population[k]),
+      tickerItem("귀농가구", V.returnFarm[k]),
+      tickerItem("귀촌인", V.returnRural[k]),
+      tickerItem("경지면적", V.land[k]),
     ];
-    const others = SGG.filter((x) => x !== r).flatMap((x) => [
-      `<span class="tk"><b style="color:var(--text)">${x}</b></span>`,
-      tickerItem("농가", D.farm.households[x]),
-      tickerItem("귀촌인", D.returning.ruralPersons[x]),
+    const others = (level(k) === 2 ? peersOf(k) : childrenOf(k)).filter((x) => x !== k).flatMap((x) => [
+      `<span class="tk"><b style="color:var(--text)">${shortLabel(x)}</b></span>`,
+      tickerItem("농가", V.households[x]),
+      tickerItem("귀촌인", V.returnRural[x]),
     ]);
     const html = [...head, ...others].join("");
     const track = $("#ticker");
     track.innerHTML = `${html}<span aria-hidden="true" style="display:contents">${html}</span>`;
-    // 1초에 약 50px씩 흐르도록 길이에 맞춰 속도를 정한다
-    requestAnimationFrame(() => track.style.setProperty("--ticker-dur", `${Math.round(track.scrollWidth / 2 / 50)}s`));
+    requestAnimationFrame(() => track.style.setProperty("--ticker-dur", `${Math.max(20, Math.round(track.scrollWidth / 2 / 50))}s`));
   }
 
   // ---------- 출처 ----------
   function sources() {
     $$("[data-src]").forEach((el) => {
-      const s = D[el.dataset.src]?.source;
+      const s = D.sources[el.dataset.src];
       el.textContent = s ? `출처: ${s}` : "";
     });
     $("#updated").textContent = `데이터 수집일 ${D.updated}`;
   }
 
   // ---------- 전체 갱신 ----------
+  let lastSido = undefined;
   function render() {
     renderTicker();
     renderHero();
@@ -536,18 +688,24 @@
     renderCrop();
     renderGrdp();
     renderEcon();
-    paintMap();
+    const s = sidoOf(state.key);
+    if (s !== lastSido) { applyView(lastSido !== undefined); lastSido = s; }
+    else { paintMap(); drawLabels(false); }
     renderRank();
   }
 
   chips();
   sources();
   drawMap();
-  const fromHash = decodeURIComponent(location.hash.slice(1));
-  select(SGG.includes(fromHash) ? fromHash : SIDO);
+  select(fromHash());
+  window.addEventListener("hashchange", () => { const k = fromHash(); if (k !== state.key) select(k); });
 
   let resizeT;
+  let lastW = $("#map-wrap").clientWidth;
   new ResizeObserver(() => {
+    const w = $("#map-wrap").clientWidth;
+    if (w === lastW) return;
+    lastW = w;
     clearTimeout(resizeT);
     resizeT = setTimeout(() => { drawMap(); renderFarm(); renderReturn(); }, 120);
   }).observe($("#map-wrap"));
