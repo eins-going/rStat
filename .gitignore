@@ -3,3 +3,6 @@
 __pycache__/
 물류기기 공동이용/
 *.csv
+agri_distribution_data/
+db/
+.venv/

@@ -1,0 +1,129 @@
+/* 물류기기 사업동향 대시보드 전용 (style.css 위에 덮어쓴다) */
+/* 화면 전환 탭: 지역 동향(logistics) · 기종점 분석(od) */
+.brand-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.tabs { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.tabs a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 4px 12px; border-radius: 7px; white-space: nowrap; }
+@media (min-width: 1281px) and (min-height: 720px) { .logi:not(.odp) .tabs a { padding: 2px 10px; font-size: 12.5px; } }
+.tabs a:hover { color: var(--text); }
+.tabs a[aria-current="page"] { color: #14161b; background: var(--accent); font-weight: 700; }
+.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.logi .controls { flex-wrap: wrap; }
+.year-ctl { display: inline-flex; align-items: center; gap: 6px; }
+.play {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--accent); font-size: 12px; cursor: pointer; display: inline-grid; place-items: center;
+}
+.play:hover { border-color: var(--accent); }
+.play[aria-pressed="true"] { background: var(--accent-soft); border-color: rgba(245, 165, 36, 0.55); }
+.play:focus-visible, .flow-btn:focus-visible, .groupbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hint {
+  display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--faint); color: var(--muted); font-size: 9.5px; cursor: help; vertical-align: 1px;
+}
+.stats.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.stats.three .stat-value b { font-size: 18px; }
+.stats.two .stat-label small { font-size: 9.5px; }
+
+/* 지표 묶음 · 흐름선 버튼 */
+.groupbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.groupbar button {
+  font: inherit; font-size: 12px; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 2px 8px 3px; cursor: pointer;
+}
+.groupbar button:hover { color: var(--text); }
+.groupbar button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
+.flow-btn {
+  flex: none; font: inherit; font-size: 12px; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 11px; cursor: pointer; white-space: nowrap;
+}
+.flow-btn::before { content: "⤳ "; color: var(--accent); }
+.flow-btn[aria-pressed="true"] { color: #14161b; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.flow-btn[aria-pressed="true"]::before { color: #14161b; }
+
+/* 흐름선 모드 지도 */
+.sido.flowbase { fill: #262a31; }
+.sido.flowbase:hover { fill: #2e333b; }
+.sido.flowbase.sel { fill: rgba(245, 165, 36, 0.28); stroke: #fff; stroke-width: 1.6; }
+.flows path.flow { cursor: pointer; transition: stroke-width 0.3s; }
+.flows path.flow:hover { stroke-opacity: 1 !important; }
+.flow-label {
+  fill: var(--text); font-size: 11px; font-weight: 700; text-anchor: middle; pointer-events: none;
+  paint-order: stroke; stroke: rgba(10, 11, 14, 0.85); stroke-width: 3px;
+}
+.region-label.dim { opacity: 0.55 !important; font-weight: 500; }
+.legend .sw.line { height: 3px; width: 18px; border-radius: 2px; }
+
+/* 순위: 증감 지표는 가운데 기준선에서 양쪽으로 */
+.rank-row .track.div { position: relative; }
+.rank-row .track.div::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: #4a505b; }
+.rank-row .track.div .fill { position: absolute; top: 0; height: 100%; border-radius: 0; opacity: 0.9; }
+.rank-row .track.div .fill.pos { background: var(--up); }
+.rank-row .track.div .fill.neg { background: var(--down); }
+
+/* 차트 툴팁 (화면 기준 위치) */
+.ctip {
+  position: fixed; z-index: 50; pointer-events: none; background: rgba(13, 14, 18, 0.96); border: 1px solid var(--line);
+  border-radius: 9px; padding: 7px 10px; font-size: 12px; line-height: 1.45; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-width: 260px; color: var(--muted);
+}
+.ctip b { display: block; color: var(--text); font-size: 12.5px; margin-bottom: 2px; }
+.ctip .trow { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 6px; }
+.ctip .trow i { width: 8px; height: 8px; border-radius: 2px; }
+.ctip .trow em { font-style: normal; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* 누적 영역 · 히트맵 · 이동 행렬 */
+.stack-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 11px; color: var(--muted); }
+.stack-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 0; }
+.chart.chart-stack { height: 96px; margin-top: 6px; }
+.chart.chart-stack.short { height: 72px; }
+.chart.chart-line { height: 96px; }
+.chart svg .axis text { font-size: 10px; }
+.heat svg, .od svg { display: block; width: 100%; }
+.heat .cell:hover, .od .cell:hover { stroke: #fff; stroke-width: 1; }
+.od { margin-top: 2px; }
+.seg.seg-wide { display: flex; width: 100%; }
+.seg.seg-wide button { flex: 1; padding: 3px 9px; font-size: 12px; }
+
+/* 비중 막대 */
+.logi #bars-crop { display: flex; flex-direction: column; height: auto; gap: 4px; }
+.logi .bar-row.share-row { grid-template-columns: 82px 1fr 46px 54px; }
+.logi .bar-row.share-row.wide { grid-template-columns: 104px 1fr 46px 54px; }
+.logi .bar-row.equip-row { grid-template-columns: 82px 1fr 46px 44px; }
+.share-row .name .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.share-row .name .lq { margin-left: 4px; color: var(--accent); font-size: 10px; font-weight: 700; }
+button.bar-row { width: 100%; font: inherit; color: inherit; background: none; border: 0; padding: 1px 2px; border-radius: 5px; text-align: left; cursor: pointer; }
+button.bar-row:hover { background: var(--panel-2); }
+button.bar-row:hover .name { color: var(--text); }
+.split-legend { flex-wrap: wrap; gap: 2px 10px; justify-content: flex-start; }
+
+@media (min-width: 1281px) and (min-height: 720px) {
+  .play { width: 26px; height: 26px; }
+  .groupbar { margin-bottom: 4px; }
+  .groupbar button { font-size: 11.5px; padding: 1px 7px 2px; }
+  .chart.chart-stack { height: 78px; }
+  .chart.chart-stack.short { height: 60px; }
+  .chart.chart-line { height: 80px; flex: none; }
+  .logi #p-scale .spark { height: 40px; }
+  .logi #p-crop .bars { justify-content: flex-start; }
+  .stats.three { margin-top: 6px; }
+  .stats.three .stat-value b { font-size: 16px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
+  .chart.chart-stack { height: 64px; }
+  .chart.chart-stack.short { height: 50px; }
+  .chart.chart-line { height: 66px; }
+}
+@media (max-width: 760px) {
+  .year-ctl { flex: 1; }
+  .year-ctl .select { flex: 1; }
+  .stats.three .stat-value b { font-size: 16px; }
+  .flow-btn { padding: 3px 8px; }
+}
+@media (max-width: 760px) {
+  .logi .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .logi .controls .select { min-width: 0; }
+  .logi .controls .select select { min-width: 0; }
+  .year-ctl { min-width: 0; }
+}

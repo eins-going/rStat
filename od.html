@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>물류기기 기종점 분석</title>
+  <meta name="description" content="농산물 물류기기 공동이용 실적 2005~2025년을 출발지·도착지 쌍으로 봅니다. 어디서 어디로, 무엇이, 어떤 판로로, 얼마나 멀리 가는지를 전국 대비 비중과 특화도로 비교합니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/logi.css">
+  <link rel="stylesheet" href="assets/od.css">
+</head>
+<body class="logi odp">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="logistics">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역물류기기 사업동향</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="logistics">지역 동향</a>
+          <a href="od" aria-current="page">기종점 분석</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>연도</span>
+          <select id="year"></select>
+        </label>
+        <label class="select">
+          <span>비교</span>
+          <select id="cmp">
+            <option value="1">전년</option>
+            <option value="5">5년 전</option>
+            <option value="10">10년 전</option>
+          </select>
+        </label>
+        <label class="select">
+          <span>품목</span>
+          <select id="crop"></select>
+        </label>
+        <label class="select">
+          <span>판로</span>
+          <select id="dtype"></select>
+        </label>
+      </div>
+    </header>
+
+    <!-- 기종점 고르기: 출발 → 도착 -->
+    <section class="od-pick" aria-label="출발지와 도착지 고르기">
+      <div class="end end-o">
+        <span class="end-tag">출발</span>
+        <select id="o-sido" aria-label="출발 시도"></select>
+        <select id="o-sgg" aria-label="출발 시군"></select>
+      </div>
+      <button type="button" class="swap" id="swap" title="출발과 도착을 맞바꾼다" aria-label="출발과 도착 맞바꾸기">⇄</button>
+      <div class="end end-d">
+        <span class="end-tag">도착</span>
+        <select id="d-sido" aria-label="도착 시도"></select>
+        <select id="d-sgg" aria-label="도착 시군"></select>
+      </div>
+      <button type="button" class="clear" id="clear" hidden>전체 흐름으로</button>
+    </section>
+
+    <section class="od-hero" aria-label="선택한 흐름의 특징">
+      <h1 id="title"></h1>
+      <ul class="insights" id="insights"></ul>
+    </section>
+
+    <main class="od-grid">
+      <section class="od-col" aria-label="흐름 규모·거리·판로">
+        <article class="panel" id="p-kpi">
+          <header class="panel-head">
+            <h2>흐름의 성격</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="kpis">
+            <div class="kpi">
+              <span class="stat-label"><span id="kpi-share-label">전국 대비 비중</span> <small class="hint" id="kpi-share-hint">?</small></span>
+              <b data-v="share"></b><span class="delta" data-d="share"></span>
+            </div>
+            <div class="kpi">
+              <span class="stat-label">평균 직선거리 <small class="hint" title="출발 시군과 도착 시군 중심점 사이 직선거리를 컨테이너 수로 가중 평균한 값. 실제 운행 거리보다 짧다">?</small></span>
+              <b data-v="dist"></b><span class="delta" data-d="dist"></span>
+            </div>
+            <div class="kpi">
+              <span class="stat-label">실질 도착지 수 <small class="hint" title="도착 시군 비중의 HHI 역수. 같은 양을 고르게 받는 도착지가 몇 곳인 것과 같은지 나타낸다. 작을수록 몇 곳에 몰린다">?</small></span>
+              <b data-v="effD"></b><span class="delta" data-d="effD"></span>
+            </div>
+            <div class="kpi">
+              <span class="stat-label">실질 출발지 수 <small class="hint" title="출발 시군 비중의 HHI 역수. 작을수록 몇 곳에서만 보낸다">?</small></span>
+              <b data-v="effO"></b><span class="delta" data-d="effO"></span>
+            </div>
+          </div>
+          <h3 class="sub-head" id="share-head">전국 대비 비중 추이 <span>연도를 누르면 그 해로</span></h3>
+          <div class="chart chart-line" id="chart-share" aria-label="전국 대비 비중 추이"></div>
+          <footer class="src" data-src></footer>
+        </article>
+
+        <article class="panel" id="p-dist">
+          <header class="panel-head">
+            <h2>얼마나 멀리</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="dist-legend" id="leg-dist"></div>
+          <div class="dist-bars" id="dist-bars"></div>
+          <h3 class="sub-head">평균 직선거리 추이 <span>km</span></h3>
+          <div class="line-legend" id="leg-distline"></div>
+          <div class="chart chart-line" id="chart-dist" aria-label="평균 직선거리 추이"></div>
+          <footer class="src" data-src></footer>
+        </article>
+
+        <article class="panel" id="p-dtype">
+          <header class="panel-head">
+            <h2>어떤 판로로</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="bars" id="bars-dtype"></div>
+          <p class="note">도착 업체 유형별 비중 · 오른쪽은 비교 시점 대비 증감(%p) · 흰 선은 전국</p>
+          <footer class="src" data-src></footer>
+        </article>
+      </section>
+
+      <section class="od-main" aria-label="흐름 지도와 기종점 순위">
+        <div class="map-box">
+          <div class="map-bar">
+            <div class="seg" id="lv" role="group" aria-label="흐름 단위">
+              <button type="button" data-lv="sgg" aria-pressed="true">시군 단위</button>
+              <button type="button" data-lv="sido" aria-pressed="false">시도 단위</button>
+            </div>
+            <div class="seg" id="clickmode" role="group" aria-label="지도를 누르면">
+              <span class="seg-label">지도를 누르면</span>
+              <button type="button" data-cm="o" aria-pressed="true">출발로</button>
+              <button type="button" data-cm="d" aria-pressed="false">도착으로</button>
+            </div>
+          </div>
+          <div class="map-wrap od-map-wrap" id="map-wrap">
+            <svg id="odmap" role="img" aria-label="출발지에서 도착지로 가는 흐름 지도">
+              <defs>
+                <marker id="od-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#f5a524"/></marker>
+              </defs>
+            </svg>
+          </div>
+          <div class="legend" id="map-legend"></div>
+        </div>
+
+        <article class="panel" id="p-pairs">
+          <header class="panel-head">
+            <h2>기종점 순위</h2>
+            <span class="chip" id="pairs-chip"></span>
+          </header>
+          <div class="table-wrap">
+            <table class="pairs" id="pairs">
+              <thead>
+                <tr>
+                  <th scope="col" class="no">#</th>
+                  <th scope="col" class="nm">출발 → 도착</th>
+                  <th scope="col" class="sh">비중</th>
+                  <th scope="col" class="num">증감</th>
+                  <th scope="col" class="num">거리</th>
+                  <th scope="col">주품목</th>
+                  <th scope="col">특화 품목 <small class="hint" title="흐름 안 품목 비중 ÷ 전국 품목 비중. 흐름 안 비중이 3% 이상인 품목 가운데 가장 큰 것">?</small></th>
+                  <th scope="col">판로 구성</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="note">행을 누르면 그 기종점을 고른다 · 비중은 전국(품목·판로를 고르면 그 안) 대비, 증감은 비교 시점 대비 %p</p>
+          <footer class="src" data-src></footer>
+        </article>
+      </section>
+
+      <section class="od-col" aria-label="품목 구성">
+        <article class="panel" id="p-crop">
+          <header class="panel-head">
+            <h2>무엇이 갔나</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="crop-head"><span>품목</span><span>흐름 안 비중</span><span>증감</span><span title="흐름 안 비중 ÷ 전국 비중">특화도</span><span title="그 품목의 평균 직선거리">거리</span></div>
+          <div class="crop-list" id="crop-list"></div>
+          <p class="note" id="crop-note"></p>
+          <footer class="src" data-src></footer>
+        </article>
+
+        <article class="panel" id="p-matrix">
+          <header class="panel-head">
+            <h2 id="matrix-title">무엇이 어디로</h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="matrix" id="matrix"></div>
+          <p class="note" id="matrix-note"></p>
+          <footer class="src" data-src></footer>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>자료: 물류기기 공동이용 실적(2005~2025년, 해마다 1~11월, 컨테이너). 출발은 출하 주체 소재지, 도착은 도착 업체 소재지 기준이며 생산지·소비지와 다를 수 있습니다. 거리는 시군 중심점 사이 직선거리입니다. 사업 예산 규모가 해마다 달라 절대량보다 비중으로 비교합니다.</p>
+    </footer>
+  </div>
+
+  <div class="ctip" id="ctip" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/od.js"></script>
+  <script src="assets/od.js"></script>
+</body>
+</html>
