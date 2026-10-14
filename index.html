@@ -222,8 +222,11 @@
             <div class="tile"><span>농가부채</span><b data-v="debt"></b></div>
           </div>
           <p class="note" data-note="econ"></p>
-          <h3 class="sub-head">영농형태별 농가소득 <span>전국 · 만 원</span><button type="button" class="econ-toggle" id="econ-toggle" aria-expanded="false" aria-controls="bars-econ">보기</button></h3>
-          <div class="bars bars-econ" id="bars-econ"></div>
+          <h3 class="sub-head">특성별 농가소득 <span>전국 · 만 원</span><button type="button" class="econ-toggle" id="econ-toggle" aria-expanded="false" aria-controls="econ-detail">보기</button></h3>
+          <div class="econ-detail" id="econ-detail">
+            <div class="seg econ-tabs" id="econ-tabs" role="tablist" aria-label="농가소득 구분 기준"></div>
+            <div class="bars bars-econ" id="bars-econ" role="tabpanel"></div>
+          </div>
           <footer class="src" data-src="economy"></footer>
         </article>
       </section>

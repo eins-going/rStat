@@ -724,7 +724,7 @@ body {
 .econ-toggle { display: none; margin-left: 8px; font: inherit; font-size: 11px; color: var(--accent); background: none; border: 1px solid rgba(245, 165, 36, 0.45); border-radius: 6px; padding: 0 7px; cursor: pointer; }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) {
   .econ-toggle { display: inline-block; }
-  #p-econ:not(.show-types) .bars-econ { display: none; }
+  #p-econ:not(.show-types) .econ-detail { display: none; }
   [data-note="econ"] { display: none; }
   #p-econ .sub-head { margin-bottom: 0; }
 }
@@ -794,3 +794,18 @@ body {
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) { #bars-crop { height: 66px; } }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) { #bars-crop { height: 58px; } }
 .sub-head .nowrap { white-space: nowrap; }
+
+/* 특성별 농가소득 탭 */
+.econ-tabs { display: flex; flex-wrap: wrap; width: 100%; margin-bottom: 6px; }
+.econ-tabs button { flex: 1 1 auto; font-size: 11px; padding: 2px 6px; }
+.bars-econ .bar-row { grid-template-columns: 74px 1fr 48px; }
+@media (min-width: 1281px) and (min-height: 720px) {
+  .bars-econ .bar-row { grid-template-columns: 62px 1fr 36px; }
+  .bars-econ .bar-row:nth-child(n+6), .bars-econ .bar-row:nth-child(n+7), .bars-econ .bar-row:nth-child(n+5) { display: grid; }
+}
+@media (min-width: 1281px) and (min-height: 720px) {
+  [data-note="econ"] { display: none; }
+  .econ-tabs { margin-bottom: 4px; }
+  .econ-tabs button { padding: 1px 6px; }
+  .bars-econ { row-gap: 1px; }
+}

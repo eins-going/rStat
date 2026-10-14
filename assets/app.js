@@ -200,7 +200,7 @@
   ];
   const withUnit = (m, v) => `${m.fmt(v)}${m.unit && m.unit !== "%" ? ` ${m.unit}` : ""}`;
 
-  const state = { key: NATION, metric: METRICS[0], rankScope: "local" };
+  const state = { key: NATION, metric: METRICS[0], rankScope: "local", econGroup: "영농형태" };
 
   // ---------- 선택 상자 ----------
   const sidoSel = $("#sido");
@@ -391,12 +391,25 @@
     else note += ` · ${T.sidos[s].name}`;
     setNote("econ", note);
     $("#p-econ .tiles").title = note;
-    const types = [...V.economyByType].sort((a, b) => b.income - a.income);
-    const maxT = types[0]?.income || 1;
-    $("#bars-econ").innerHTML = types.map((t) => `
-      <div class="bar-row" title="농업소득 ${int(t.agriIncome / 10)}만 원"><span class="name">${t.type}</span>
-        <span class="track"><span class="fill" style="width:${(t.income / maxT) * 100}%"></span></span>
-        <span class="val">${int(t.income / 10)}</span></div>`).join("");
+    renderEconBreakdown();
+  }
+
+  // 특성별 농가소득(전국): 영농형태·경지규모·경영주 연령·전겸업·가구원수 탭
+  function renderEconBreakdown() {
+    const groups = Object.keys(V.economyBreakdown || {});
+    if (!groups.length) return;
+    if (!groups.includes(state.econGroup)) state.econGroup = groups[0];
+    $("#econ-tabs").innerHTML = groups.map((g) =>
+      `<button type="button" role="tab" data-g="${g}" aria-selected="${g === state.econGroup}" aria-pressed="${g === state.econGroup}">${g}</button>`).join("");
+    $$("#econ-tabs button").forEach((b) => b.addEventListener("click", () => { state.econGroup = b.dataset.g; renderEconBreakdown(); }));
+    let items = [...V.economyBreakdown[state.econGroup]];
+    if (state.econGroup === "영농형태") items.sort((a, b) => b.income - a.income); // 순서가 없는 분류만 소득순
+    const maxT = Math.max(...items.map((d) => d.income)) || 1;
+    const short = (n) => n.replace(/~(.+?)ha 미만/, "~$1ha");
+    $("#bars-econ").innerHTML = items.map((d) => `
+      <div class="bar-row" title="${d.name} · 농가소득 ${int(d.income / 10)}만 원 · 농업소득 ${int(d.agriIncome / 10)}만 원"><span class="name">${short(d.name)}</span>
+        <span class="track"><span class="fill" style="width:${(d.income / maxT) * 100}%"></span></span>
+        <span class="val">${int(d.income / 10)}</span></div>`).join("");
   }
 
   function renderBudget() {
@@ -942,6 +955,7 @@
     const open = $("#p-econ").classList.toggle("show-types");
     e.currentTarget.setAttribute("aria-expanded", open);
     e.currentTarget.textContent = open ? "접기" : "보기";
+    if (open) $("#econ-detail").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
   });
   drawMap();
   select(fromHash());

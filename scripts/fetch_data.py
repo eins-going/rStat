@@ -339,14 +339,27 @@ def main():
             econ[cmap[r["C1"]]][want.index(r["ITM_NM"])] = round(num(r["DT"]))
     v["economy"] = dict(econ)
     out["periods"]["economy"] = rows[0]["PRD_DE"]
-    # 영농형태(품목)별 농가소득·농업소득 — 전국 단위만 있다
-    types = [it for it in dims["C"]["items"] if it["name"].startswith("영농형태-")]
-    rows = data("101", "DT_1EA1201", "Y", 1, ["+".join(it["id"] for it in types)])
-    by_type = {it["id"]: {"type": it["name"].split("-", 1)[1]} for it in types}
+    # 농가 특성별 농가소득·농업소득 (전국 단위만 있다): 영농형태·경지규모·경영주 연령·전겸업·가구원수
+    groups = [("영농형태", "영농형태-", None), ("경지규모", "경지규모-", None),
+              ("경영주 연령", "경영주연령-", {"50세 미만", "50 - 59세", "60 - 69세", "70세 이상"}),  # 겹치지 않는 구간만
+              ("전·겸업", "전·겸업별-", None), ("가구원수", "가구원-", None)]
+    picked = {}
+    for gname, prefix, only in groups:
+        for it in dims["C"]["items"]:
+            if it["name"].startswith(prefix):
+                label = it["name"][len(prefix):]
+                if only is None or label in only:
+                    picked[it["id"]] = (gname, label)
+    rows = data("101", "DT_1EA1201", "Y", 1, ["+".join(picked)])
+    vals = defaultdict(dict)
     for r in rows:
-        if r["C1"] in by_type and r["ITM_NM"] in ("농가소득(경상소득+비경상소득)", "농업소득"):
-            by_type[r["C1"]]["income" if r["ITM_NM"].startswith("농가소득") else "agriIncome"] = round(num(r["DT"]))
-    v["economyByType"] = [t for t in by_type.values() if t.get("income")]
+        if r["C1"] in picked and r["ITM_NM"] in ("농가소득(경상소득+비경상소득)", "농업소득"):
+            vals[r["C1"]]["income" if r["ITM_NM"].startswith("농가소득") else "agriIncome"] = round(num(r["DT"]))
+    breakdown = {g: [] for g, _, _ in groups}
+    for cid, (gname, label) in picked.items():
+        if vals[cid].get("income"):
+            breakdown[gname].append({"name": label.replace(" - ", "~").replace("-", "~"), **vals[cid]})
+    v["economyBreakdown"] = breakdown
     out["units"] = {"economy": "천원", "grdp": "백만원"}
     out["sources"]["economy"] = "통계청 농가경제조사 (KOSIS DT_1EA1201) · 도 단위"
 
