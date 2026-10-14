@@ -629,34 +629,48 @@
     state.metric = m;
     const i = METRICS.indexOf(m);
     $$("#chips button").forEach((x, j) => x.setAttribute("aria-pressed", j === i));
-    $("#chip-prev").disabled = i === 0;
-    $("#chip-next").disabled = i === METRICS.length - 1;
     $("#chip-count").textContent = `${i + 1} / ${METRICS.length}`;
     if (scroll) {
-      // 고른 지표 버튼이 지표 줄 가운데 오도록 가로로 스크롤한다
+      // 고른 지표 버튼이 줄 밖에 있으면 보이는 곳으로 옮긴다
       const bar = $("#chips");
       const b = $$("#chips button")[i];
-      bar.scrollTo({ left: b.offsetLeft - bar.clientWidth / 2 + b.offsetWidth / 2, behavior: reduceMotion ? "auto" : "smooth" });
+      if (b.offsetLeft < bar.scrollLeft || b.offsetLeft + b.offsetWidth > bar.scrollLeft + bar.clientWidth) {
+        bar.scrollTo({ left: b.offsetLeft - bar.clientWidth / 2 + b.offsetWidth / 2, behavior: reduceMotion ? "auto" : "smooth" });
+      }
     }
     paintMap();
     renderRank();
   }
 
+  // ◀ ▶는 지표 줄만 넘긴다. 지표는 버튼을 직접 눌러 고른다
+  function syncChipNav() {
+    const bar = $("#chips");
+    $("#chip-prev").disabled = bar.scrollLeft <= 1;
+    $("#chip-next").disabled = bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 1;
+  }
+
   function chips() {
-    $("#chips").innerHTML = METRICS.map((m) => `<button type="button" data-k="${m.key}" aria-pressed="${m === state.metric}">${m.label}</button>`).join("");
-    $$("#chips button").forEach((b) => b.addEventListener("click", () => setMetric(METRICS.find((m) => m.key === b.dataset.k))));
-    const step = (d) => setMetric(METRICS[Math.min(METRICS.length - 1, Math.max(0, METRICS.indexOf(state.metric) + d))]);
-    $("#chip-prev").addEventListener("click", () => step(-1));
-    $("#chip-next").addEventListener("click", () => step(1));
-    $("#chips").addEventListener("keydown", (e) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        step(e.key === "ArrowLeft" ? -1 : 1);
-        $$("#chips button")[METRICS.indexOf(state.metric)].focus();
-      }
+    const bar = $("#chips");
+    bar.innerHTML = METRICS.map((m) => `<button type="button" data-k="${m.key}" aria-pressed="${m === state.metric}">${m.label}</button>`).join("");
+    $$("#chips button").forEach((b) => b.addEventListener("click", () => setMetric(METRICS.find((m) => m.key === b.dataset.k), false)));
+    const page = (d) => bar.scrollBy({ left: d * bar.clientWidth * 0.8, behavior: reduceMotion ? "auto" : "smooth" });
+    $("#chip-prev").addEventListener("click", () => page(-1));
+    $("#chip-next").addEventListener("click", () => page(1));
+    bar.addEventListener("scroll", syncChipNav, { passive: true });
+    new ResizeObserver(syncChipNav).observe(bar);
+    // 키보드 ← →: 선택하지 않고 이웃 버튼으로 포커스만 옮긴다 (Enter·Space로 선택)
+    bar.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const btns = $$("#chips button");
+      const i = btns.indexOf(document.activeElement);
+      if (i < 0) return;
+      e.preventDefault();
+      const next = btns[Math.min(btns.length - 1, Math.max(0, i + (e.key === "ArrowLeft" ? -1 : 1)))];
+      next.focus();
+      next.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
-    $("#chip-prev").disabled = true;
     $("#chip-count").textContent = `1 / ${METRICS.length}`;
+    syncChipNav();
   }
 
   const FIT = window.matchMedia("(min-width: 1281px) and (min-height: 720px)");
