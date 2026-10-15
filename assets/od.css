@@ -1,19 +1,17 @@
 /* 물류기기 기종점 분석 (style.css · logi.css 위에 덮어쓴다)
    이 화면은 한 화면 맞춤 대신 아래로 이어지는 페이지라 style.css의 한 화면 모드를 끈다 */
 html:has(body.odp), body.odp { height: auto; overflow: visible; }
-.odp .app { height: auto; display: block; max-width: 1600px; padding: 0 24px 32px; }
-/* 상단 2줄, 왼쪽 정렬, 좌우 너비를 채운다
+.odp .app { height: auto; display: block; padding-bottom: 32px; } /* 폭·좌우 여백은 지역 동향과 같게 (style.css .app) */
+/* 상단 2줄, 왼쪽 정렬, 좌우 너비를 채운다 (제목·탭·높이·여백은 logi.css 공통 상단)
    1줄: 브랜드·탭 | 출발 → 도착 (남는 너비를 출발·도착 선택 상자가 나눠 갖는다)
    2줄: 조건 6칸을 같은 폭으로 */
-.odp .topbar { justify-content: flex-start; align-items: center; gap: 8px 14px; padding: 12px 0 10px; }
-.odp .brand { font-size: 14px; gap: 8px; }
-.odp .brand-mark { width: 20px; height: 20px; }
-.odp .brand-wrap { flex: none; gap: 12px; }
-.odp .tabs a { padding: 3px 10px; font-size: 12.5px; }
+.odp .topbar { justify-content: flex-start; }
+.odp .brand-wrap { flex: none; }
 .odp .controls { flex: 1 1 100%; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
-.odp .select { min-width: 0; gap: 6px; padding: 3px 3px 3px 9px; border-radius: 8px; }
+.odp .select { min-width: 0; }
 .odp .select select { flex: 1; width: 0; min-width: 0; }
 .odp .select select, .od-pick select { text-overflow: ellipsis; font-size: 13px; padding: 4px 24px 4px 8px; }
+.od-pick select { height: 30px; }
 
 /* 출발 → 도착 고르기 */
 .od-pick { flex: 1 1 400px; display: flex; align-items: center; gap: 6px; min-width: 0; }
