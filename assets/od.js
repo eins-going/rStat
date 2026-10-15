@@ -74,6 +74,24 @@
   const NC = D.crops.length;
   const NT = D.dtypes.length;
   const NS = D.stypes.length;
+  // 기기별 집계: 첫 기기(컨테이너)는 od.js에 있고, 나머지는 고를 때 data/od_<기기>.js를 불러온다
+  const EQ = D.equips;
+  const FACTS = { [EQ[0].name]: D.f };
+  const loading = new Map();
+  function loadEq(i) {
+    const e = EQ[i];
+    if (FACTS[e.name]) return Promise.resolve();
+    if (!loading.has(i)) {
+      loading.set(i, new Promise((resolve, reject) => {
+        const sc = document.createElement("script");
+        sc.src = `data/${e.file}`;
+        sc.onload = () => { FACTS[e.name] = window.AGRI_OD_EQ[e.name]; resolve(); };
+        sc.onerror = () => { loading.delete(i); reject(new Error(`${e.file}을 불러오지 못했습니다`)); };
+        document.head.appendChild(sc);
+      }));
+    }
+    return loading.get(i);
+  }
   const rSido = R.map((k) => sidoOf(k));
   const RI = new Map(R.map((k, i) => [k, i]));
 
@@ -121,7 +139,7 @@
   for (const s in DATA_UNITS) DATA_UNITS[s].sort((a, b) => unitRank(label(a)) - unitRank(label(b)) || label(a).localeCompare(label(b), "ko"));
 
   // ---------- 상태 ----------
-  const state = { o: NATION, d: NATION, crop: -1, dt: -1, sh: -1, yi: LAST, cmp: 1, lv: "sgg", cm: "o" };
+  const state = { o: NATION, d: NATION, eq: 0, crop: -1, dt: -1, sh: -1, yi: LAST, cmp: 1, lv: "sgg", cm: "o" };
   const baseI = () => (state.yi - state.cmp >= 0 ? state.yi - state.cmp : null);
   const yearText = () => `${Y[state.yi]}년 1~11월`;
   const cmpText = () => (baseI() == null ? "비교 시점 없음" : `${Y[baseI()]}년 대비`);
@@ -129,6 +147,7 @@
   const cropName = () => (state.crop >= 0 ? D.crops[state.crop] : null);
   const dtName = () => (state.dt >= 0 ? D.dtypes[state.dt] : null);
   const shName = () => (state.sh >= 0 ? D.stypes[state.sh] : null);
+  const eqName = () => EQ[state.eq].name;
   // 비중의 분모: 전국(품목·판로·출하 주체를 골랐으면 그 안)
   const univText = () => `전국${shName() ? ` ${shName()}` : ""}${cropName() ? ` ${cropName()}` : ""}${dtName() ? ` ${dtName()}행` : ""}`;
 
@@ -144,7 +163,7 @@
   // ---------- 집계: 한 해의 행을 한 번 훑어 화면에 필요한 값을 모은다 ----------
   // U: 전국(품목·판로·출하 주체 조건) · S: 선택 흐름 · cropN/dtN/shN: 전국 구성 · crop/dt/sh: 선택 흐름 구성(그 축의 조건은 빼고)
   function compute(i, light = false) {
-    const [O, Dd, C, Tt, Sh, Q] = D.f[i];
+    const [O, Dd, C, Tt, Sh, Q] = FACTS[eqName()][i];
     const r = {
       U: 0, Ud: 0, S: 0, Sd: 0, X: 0,
       band: new Float64Array(BANDS.length), bandU: new Float64Array(BANDS.length),
@@ -201,7 +220,7 @@
   // 연도별 추이는 조건이 바뀔 때만 다시 센다
   let trendSig = null, trend = null;
   function getTrend() {
-    const sig = `${state.o}|${state.d}|${state.crop}|${state.dt}|${state.sh}`;
+    const sig = `${state.eq}|${state.o}|${state.d}|${state.crop}|${state.dt}|${state.sh}`;
     if (sig !== trendSig) {
       trend = Y.map((_, i) => {
         const r = compute(i, true);
@@ -213,7 +232,8 @@
   }
 
   // ---------- 선택 상자 ----------
-  const yearSel = $("#year"), cmpSel = $("#cmp"), cropSel = $("#crop"), dtSel = $("#dtype"), shSel = $("#ship");
+  const yearSel = $("#year"), cmpSel = $("#cmp"), cropSel = $("#crop"), dtSel = $("#dtype"), shSel = $("#ship"), eqSel = $("#equip");
+  eqSel.innerHTML = EQ.map((e, i) => `<option value="${i}">${esc(e.name)}${e.from > Y[0] || e.to < Y[LAST] ? ` (${e.from}~${e.to === Y[LAST] ? "" : e.to})` : ""}</option>`).join("");
   yearSel.innerHTML = Y.map((y, i) => `<option value="${i}">${y}년</option>`).reverse().join("");
   cropSel.innerHTML = `<option value="-1">전체</option>${D.crops.map((c, i) => `<option value="${i}">${esc(c)}</option>`).join("")}`;
   dtSel.innerHTML = `<option value="-1">전체</option>${D.dtypes.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join("")}`;
@@ -243,6 +263,25 @@
   cropSel.addEventListener("change", () => { state.crop = +cropSel.value; render(); });
   dtSel.addEventListener("change", () => { state.dt = +dtSel.value; render(); });
   shSel.addEventListener("change", () => { state.sh = +shSel.value; render(); });
+  eqSel.addEventListener("change", () => setEq(+eqSel.value));
+
+  // 기기를 바꾸면 그 기기 자료를 불러온 뒤 그린다. 자료가 없는 연도를 보고 있었으면 그 기기의 마지막 연도로 옮긴다
+  async function setEq(i) {
+    eqSel.disabled = true;
+    try {
+      await loadEq(i);
+    } catch (err) {
+      alert(err.message);
+      eqSel.disabled = false;
+      eqSel.value = state.eq;
+      return;
+    }
+    eqSel.disabled = false;
+    state.eq = i;
+    const e = EQ[i];
+    if (Y[state.yi] < e.from || Y[state.yi] > e.to) state.yi = Y.indexOf(e.to);
+    render();
+  }
   $$("#lv button").forEach((b) => b.addEventListener("click", () => { state.lv = b.dataset.lv; render(); }));
   $$("#clickmode button").forEach((b) => b.addEventListener("click", () => { state.cm = b.dataset.cm; syncControls(); }));
 
@@ -260,6 +299,7 @@
     cropSel.value = state.crop;
     dtSel.value = state.dt;
     shSel.value = state.sh;
+    eqSel.value = state.eq;
     fillEnd("o");
     fillEnd("d");
     $("#clear").hidden = isAll();
@@ -270,6 +310,7 @@
   // 주소 해시에 상태를 남겨 링크로 공유한다
   function syncURL() {
     const p = new URLSearchParams();
+    if (state.eq) p.set("e", eqName());
     if (state.o !== NATION) p.set("o", state.o);
     if (state.d !== NATION) p.set("d", state.d);
     if (state.crop >= 0) p.set("c", D.crops[state.crop]);
@@ -289,6 +330,7 @@
     state.crop = D.crops.indexOf(p.get("c"));
     state.dt = D.dtypes.indexOf(p.get("t"));
     state.sh = D.stypes.indexOf(p.get("s"));
+    state.eq = Math.max(0, EQ.findIndex((e) => e.name === p.get("e")));
     const yi = Y.indexOf(+p.get("y"));
     if (yi >= 0) state.yi = yi;
     if (["1", "5", "10"].includes(p.get("cmp"))) state.cmp = +p.get("cmp");
@@ -581,7 +623,7 @@
   // ---------- 제목과 특징 요약 ----------
   function renderHero() {
     const o = state.o, d = state.d;
-    const tags = [shName(), cropName(), dtName() && `${dtName()}행`].filter(Boolean);
+    const tags = [eqName(), shName(), cropName(), dtName() && `${dtName()}행`].filter(Boolean);
     $("#title").innerHTML = isAll()
       ? `전국 물류기기 흐름${tags.length ? ` <span class="tag">${esc(tags.join(" · "))}</span>` : ""}`
       : `<span class="o">${esc(fullLabel(o))}</span><span class="arrow">→</span><span class="d">${esc(fullLabel(d))}</span>${tags.length ? ` <span class="tag">${esc(tags.join(" · "))}</span>` : ""}`;
@@ -661,7 +703,7 @@
     const all = isAll();
     const cr = cur.S ? (cur.X / cur.S) * 100 : null, crB = b && b.S ? (b.X / b.S) * 100 : null;
     $("#kpi-share-label").textContent = all ? "다른 시도행 비중" : "전국 대비 비중";
-    $("#kpi-share-hint").title = all ? "출발 시도와 도착 시도가 다른 컨테이너의 비중" : "이 흐름의 컨테이너 ÷ 전국 컨테이너 (품목·판로·출하 주체를 고르면 그 안에서). 사업 예산 규모가 해마다 달라도 비교할 수 있다";
+    $("#kpi-share-hint").title = all ? `출발 시도와 도착 시도가 다른 ${eqName()}의 비중` : `이 흐름의 ${eqName()} ÷ 전국 ${eqName()} (품목·판로·출하 주체를 고르면 그 안에서). 사업 예산 규모가 해마다 달라도 비교할 수 있다`;
     $("#share-head").firstChild.textContent = all ? "다른 시도행 비중 추이 " : "전국 대비 비중 추이 ";
     if (all) setKpi("share", cr, pct, ok(cr) && ok(crB) ? cr - crB : null, pp);
     else setKpi("share", sh, pctS, ok(sh) && ok(shB) ? sh - shB : null, pp);
@@ -788,7 +830,7 @@
       </button>`;
     }).join("") : '<p class="note">자료가 없습니다.</p>';
     $$("[data-c]", el).forEach((b) => b.addEventListener("click", () => { state.crop = state.crop === +b.dataset.c ? -1 : +b.dataset.c; render(); }));
-    $("#crop-note").textContent = `컨테이너 기준 · 증감은 ${cmpText()} %p · 특화도는 ${isAll() ? "기종점을 고르면 계산" : "흐름 안 비중 ÷ 전국 비중"} · 품목을 누르면 그 품목만 본다${cropName() ? " (이 표는 품목 조건을 빼고 계산)" : ""}`;
+    $("#crop-note").textContent = `${eqName()} 기준 · 증감은 ${cmpText()} %p · 특화도는 ${isAll() ? "기종점을 고르면 계산" : "흐름 안 비중 ÷ 전국 비중"} · 품목을 누르면 그 품목만 본다${cropName() ? " (이 표는 품목 조건을 빼고 계산)" : ""}`;
   }
 
   function renderMatrix() {
@@ -860,7 +902,7 @@
     syncControls();
     syncURL();
     $$("[data-year]").forEach((el) => { el.textContent = `${yearText()} · ${cmpText()}`; });
-    $$("[data-src]").forEach((el) => { el.textContent = `자료: ${D.source}`; });
+    $$("[data-src]").forEach((el) => { el.textContent = `자료: ${D.source} · ${eqName()}`; });
     renderHero();
     renderKpi();
     renderDist();
@@ -874,7 +916,8 @@
 
   fromURL();
   drawMap();
-  render();
+  if (state.eq) loadEq(state.eq).then(render, () => { state.eq = 0; render(); });
+  else render();
   let rt = null;
   window.addEventListener("resize", () => {
     clearTimeout(rt);
