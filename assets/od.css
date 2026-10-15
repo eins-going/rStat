@@ -119,7 +119,7 @@ button.bar-row.sel, .crop-row2.sel { background: var(--accent-soft); box-shadow:
 .ctip br + br { display: none; }
 
 /* 기종점 순위 표 */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; overscroll-behavior-x: contain; } /* 표 끝에 닿은 가로 스크롤이 페이지로 넘어가지 않게 */
 .pairs { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .pairs th { color: var(--faint); font-weight: 500; font-size: 11.5px; text-align: left; padding: 0 8px 6px 0; white-space: nowrap; }
 .pairs td { padding: 6px 8px 6px 0; border-top: 1px solid var(--line); white-space: nowrap; }

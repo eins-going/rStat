@@ -19,6 +19,8 @@
 * { box-sizing: border-box; }
 
 html, body {
+  /* 트랙패드로 스크롤하다 가로로 밀려도 브라우저 '뒤로 가기' 제스처가 일어나지 않게 */
+  overscroll-behavior-x: none;
   margin: 0;
   background: var(--bg);
   color: var(--text);

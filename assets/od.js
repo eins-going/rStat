@@ -919,7 +919,11 @@
   if (state.eq) loadEq(state.eq).then(render, () => { state.eq = 0; render(); });
   else render();
   let rt = null;
+  // 높이만 바뀐 경우(휴대폰에서 스크롤할 때 주소창이 숨었다 나타남)는 다시 그리지 않는다
+  let lastW = window.innerWidth;
   window.addEventListener("resize", () => {
+    if (window.innerWidth === lastW) return;
+    lastW = window.innerWidth;
     clearTimeout(rt);
     rt = setTimeout(() => {
       if ($("#map-wrap").clientWidth !== mapW) drawMap();
