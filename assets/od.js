@@ -1,6 +1,6 @@
 (() => {
   // 물류기기 기종점 분석 — 출발 시군 → 도착 시군 × 품목 × 판로 집계(data/od.js)를 화면에서 걸러 비중으로 본다
-  // 사업 예산 규모가 해마다 달라 절대량 대신 전국(같은 품목·판로) 대비 비중, 구성비, 특화도, 거리로 비교한다
+  // 사업 예산 규모가 해마다 달라 절대량 대신 전국(같은 품목·판로·출하 주체) 대비 비중, 구성비, 특화도, 거리로 비교한다
   const D = window.AGRI_OD;
   const T = window.AGRI_TOPO;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -51,6 +51,7 @@
   const CAT = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#9085e9"];
   const OTHER = "#5a606b";
   const DT_COLOR = [...CAT.slice(0, D.dtypes.length - 1), OTHER];
+  const SH_COLOR = [...CAT.slice(0, D.stypes.length - 1), OTHER]; // logi.js 출하 주체 구성과 같은 색
   // 거리 구간: 한 색(호박색)의 밝기 단계, 멀수록 밝다
   const BANDS = [
     { name: "시군 안", max: 0.5 },
@@ -72,6 +73,7 @@
   const NR = R.length;
   const NC = D.crops.length;
   const NT = D.dtypes.length;
+  const NS = D.stypes.length;
   const rSido = R.map((k) => sidoOf(k));
   const RI = new Map(R.map((k, i) => [k, i]));
 
@@ -119,15 +121,16 @@
   for (const s in DATA_UNITS) DATA_UNITS[s].sort((a, b) => unitRank(label(a)) - unitRank(label(b)) || label(a).localeCompare(label(b), "ko"));
 
   // ---------- 상태 ----------
-  const state = { o: NATION, d: NATION, crop: -1, dt: -1, yi: LAST, cmp: 1, lv: "sgg", cm: "o" };
+  const state = { o: NATION, d: NATION, crop: -1, dt: -1, sh: -1, yi: LAST, cmp: 1, lv: "sgg", cm: "o" };
   const baseI = () => (state.yi - state.cmp >= 0 ? state.yi - state.cmp : null);
   const yearText = () => `${Y[state.yi]}년 1~11월`;
   const cmpText = () => (baseI() == null ? "비교 시점 없음" : `${Y[baseI()]}년 대비`);
   const isAll = () => state.o === NATION && state.d === NATION;
   const cropName = () => (state.crop >= 0 ? D.crops[state.crop] : null);
   const dtName = () => (state.dt >= 0 ? D.dtypes[state.dt] : null);
-  // 비중의 분모: 전국(품목·판로를 골랐으면 그 품목·판로)
-  const univText = () => `전국${cropName() ? ` ${cropName()}` : ""}${dtName() ? ` ${dtName()}행` : ""}`;
+  const shName = () => (state.sh >= 0 ? D.stypes[state.sh] : null);
+  // 비중의 분모: 전국(품목·판로·출하 주체를 골랐으면 그 안)
+  const univText = () => `전국${shName() ? ` ${shName()}` : ""}${cropName() ? ` ${cropName()}` : ""}${dtName() ? ` ${dtName()}행` : ""}`;
 
   const matcher = (k) => {
     const m = new Uint8Array(NR);
@@ -139,35 +142,39 @@
   const lvKey = (i, end) => (state.lv === "sido" && level(state[end]) !== 2 ? rSido[i] : R[i]);
 
   // ---------- 집계: 한 해의 행을 한 번 훑어 화면에 필요한 값을 모은다 ----------
-  // U: 전국(품목·판로 조건) · S: 선택 흐름 · cropN/dtN: 전국 구성 · crop/dt: 선택 흐름 구성(그 축의 조건은 빼고)
+  // U: 전국(품목·판로·출하 주체 조건) · S: 선택 흐름 · cropN/dtN/shN: 전국 구성 · crop/dt/sh: 선택 흐름 구성(그 축의 조건은 빼고)
   function compute(i, light = false) {
-    const [O, Dd, C, Tt, Q] = D.f[i];
+    const [O, Dd, C, Tt, Sh, Q] = D.f[i];
     const r = {
       U: 0, Ud: 0, S: 0, Sd: 0, X: 0,
       band: new Float64Array(BANDS.length), bandU: new Float64Array(BANDS.length),
       crop: new Float64Array(NC), cropD: new Float64Array(NC), cropN: new Float64Array(NC), cropND: new Float64Array(NC),
       dt: new Float64Array(NT), dtN: new Float64Array(NT),
+      sh: new Float64Array(NS), shN: new Float64Array(NS),
       byO: new Float64Array(NR), byD: new Float64Array(NR),
       pairs: new Map(), cell: new Map(),
     };
-    const cf = state.crop, tf = state.dt;
+    const cf = state.crop, tf = state.dt, sf = state.sh;
     for (let j = 0; j < Q.length; j++) {
-      const o = O[j], d = Dd[j], c = C[j], t = Tt[j], q = Q[j];
+      const o = O[j], d = Dd[j], c = C[j], t = Tt[j], h = Sh[j], q = Q[j];
       const dist = DIST[o * NR + d];
-      const cOk = cf < 0 || c === cf, tOk = tf < 0 || t === tf;
-      if (tOk) { r.cropN[c] += q; r.cropND[c] += q * dist; }
-      if (cOk) r.dtN[t] += q;
-      if (cOk && tOk) { r.U += q; r.Ud += q * dist; if (!light) r.bandU[bandOf(dist)] += q; }
+      const cOk = cf < 0 || c === cf, tOk = tf < 0 || t === tf, sOk = sf < 0 || h === sf;
+      if (tOk && sOk) { r.cropN[c] += q; r.cropND[c] += q * dist; }
+      if (cOk && sOk) r.dtN[t] += q;
+      if (cOk && tOk) r.shN[h] += q;
+      const all = cOk && tOk && sOk;
+      if (all) { r.U += q; r.Ud += q * dist; if (!light) r.bandU[bandOf(dist)] += q; }
       if (!mO[o] || !mD[d]) continue;
-      if (cOk && tOk) { r.S += q; r.Sd += q * dist; if (rSido[o] !== rSido[d]) r.X += q; }
+      if (all) { r.S += q; r.Sd += q * dist; if (rSido[o] !== rSido[d]) r.X += q; }
       if (light) continue;
-      if (tOk) {
+      if (tOk && sOk) {
         r.crop[c] += q; r.cropD[c] += q * dist;
         const ck = `${c}|${cpKey(o, d, t)}`;
         r.cell.set(ck, (r.cell.get(ck) || 0) + q);
       }
-      if (cOk) r.dt[t] += q;
-      if (!(cOk && tOk)) continue;
+      if (cOk && sOk) r.dt[t] += q;
+      if (cOk && tOk) r.sh[h] += q;
+      if (!all) continue;
       r.band[bandOf(dist)] += q;
       r.byO[o] += q; r.byD[d] += q;
       const pk = `${lvKey(o, "o")}>${lvKey(d, "d")}`;
@@ -194,7 +201,7 @@
   // 연도별 추이는 조건이 바뀔 때만 다시 센다
   let trendSig = null, trend = null;
   function getTrend() {
-    const sig = `${state.o}|${state.d}|${state.crop}|${state.dt}`;
+    const sig = `${state.o}|${state.d}|${state.crop}|${state.dt}|${state.sh}`;
     if (sig !== trendSig) {
       trend = Y.map((_, i) => {
         const r = compute(i, true);
@@ -206,10 +213,11 @@
   }
 
   // ---------- 선택 상자 ----------
-  const yearSel = $("#year"), cmpSel = $("#cmp"), cropSel = $("#crop"), dtSel = $("#dtype");
+  const yearSel = $("#year"), cmpSel = $("#cmp"), cropSel = $("#crop"), dtSel = $("#dtype"), shSel = $("#ship");
   yearSel.innerHTML = Y.map((y, i) => `<option value="${i}">${y}년</option>`).reverse().join("");
   cropSel.innerHTML = `<option value="-1">전체</option>${D.crops.map((c, i) => `<option value="${i}">${esc(c)}</option>`).join("")}`;
   dtSel.innerHTML = `<option value="-1">전체</option>${D.dtypes.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join("")}`;
+  shSel.innerHTML = `<option value="-1">전체</option>${D.stypes.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join("")}`;
   const endSel = (end) => ({ sido: $(`#${end}-sido`), sgg: $(`#${end}-sgg`) });
 
   function fillEnd(end) {
@@ -234,6 +242,7 @@
   cmpSel.addEventListener("change", () => { state.cmp = +cmpSel.value; render(); });
   cropSel.addEventListener("change", () => { state.crop = +cropSel.value; render(); });
   dtSel.addEventListener("change", () => { state.dt = +dtSel.value; render(); });
+  shSel.addEventListener("change", () => { state.sh = +shSel.value; render(); });
   $$("#lv button").forEach((b) => b.addEventListener("click", () => { state.lv = b.dataset.lv; render(); }));
   $$("#clickmode button").forEach((b) => b.addEventListener("click", () => { state.cm = b.dataset.cm; syncControls(); }));
 
@@ -250,6 +259,7 @@
     cmpSel.value = state.cmp;
     cropSel.value = state.crop;
     dtSel.value = state.dt;
+    shSel.value = state.sh;
     fillEnd("o");
     fillEnd("d");
     $("#clear").hidden = isAll();
@@ -264,6 +274,7 @@
     if (state.d !== NATION) p.set("d", state.d);
     if (state.crop >= 0) p.set("c", D.crops[state.crop]);
     if (state.dt >= 0) p.set("t", D.dtypes[state.dt]);
+    if (state.sh >= 0) p.set("s", D.stypes[state.sh]);
     if (state.yi !== LAST) p.set("y", Y[state.yi]);
     if (state.cmp !== 1) p.set("cmp", state.cmp);
     if (state.lv !== "sgg") p.set("lv", state.lv);
@@ -277,6 +288,7 @@
     if (okKey(p.get("d"))) state.d = p.get("d");
     state.crop = D.crops.indexOf(p.get("c"));
     state.dt = D.dtypes.indexOf(p.get("t"));
+    state.sh = D.stypes.indexOf(p.get("s"));
     const yi = Y.indexOf(+p.get("y"));
     if (yi >= 0) state.yi = yi;
     if (["1", "5", "10"].includes(p.get("cmp"))) state.cmp = +p.get("cmp");
@@ -364,10 +376,11 @@
     return { x0, x1, y0, y1 };
   })();
   let project = null, path = null, mapW = 0;
+  let view = d3.zoomIdentity; // 사용자가 확대·이동한 시점. 경계는 transform으로, 흐름선·원·이름은 이 값을 곱한 화면 좌표로 그린다
   const pt = (k) => {
     const i = RI.get(k);
     const c = i != null ? CENTER[i] : mainCenter(k);
-    return c ? project(...c) : null;
+    return c ? view.apply(project(...c)) : null;
   };
 
   function drawMap() {
@@ -382,6 +395,14 @@
     path = d3.geoPath(d3.geoTransform({ point(lon, lat) { this.stream.point(...project(lon, lat)); } }));
     mapSvg.attr("viewBox", `0 0 ${w} ${h}`).attr("height", h);
     const base = mapSvg.selectAll("g.base").data([0]).join("g").attr("class", "base");
+    // 크기가 바뀌면 투영이 새로 잡히므로 시점도 처음으로 돌린다
+    zoom.translateExtent([[-w / 2, -h / 2], [w * 1.5, h * 1.5]]);
+    silent = true;
+    mapSvg.interrupt().call(zoom.transform, d3.zoomIdentity);
+    silent = false;
+    view = d3.zoomIdentity;
+    base.attr("transform", null);
+    syncZoomCtl();
     base.selectAll("path.unit").data(unitFeatures, (f) => f.properties.key).join("path")
       .attr("class", "unit-od").attr("d", path).attr("tabindex", 0).attr("role", "button")
       .attr("aria-label", (f) => fullLabel(f.properties.key))
@@ -393,6 +414,45 @@
     mapSvg.selectAll("g.hubs").data([0]).join("g").attr("class", "hubs");
     mapSvg.selectAll("g.names").data([0]).join("g").attr("class", "names");
   }
+
+  // ---------- 확대·축소·이동 ----------
+  // + − 버튼은 언제나, 끌기와 휠은 손 버튼을 켰을 때만 지도를 움직인다 (페이지 스크롤을 뺏지 않게)
+  let panMode = false;
+  let silent = false;
+  const zoom = d3.zoom()
+    .scaleExtent([1, 24])
+    .filter((e) => panMode && !e.button && (e.type === "wheel" || e.type === "mousedown" || e.type === "touchstart"))
+    .on("start", (e) => { if (e.sourceEvent?.type !== "wheel") $("#map-wrap").classList.toggle("grabbing", !!e.sourceEvent); })
+    .on("zoom", (e) => {
+      if (silent) return;
+      view = e.transform;
+      mapSvg.select("g.base").attr("transform", view);
+      hideCtip();
+      paintMap();
+      syncZoomCtl();
+    })
+    .on("end", () => $("#map-wrap").classList.remove("grabbing"));
+  mapSvg.call(zoom).on("dblclick.zoom", null);
+  const setTouch = () => mapSvg.style("touch-action", panMode ? "none" : null);
+  setTouch();
+
+  function syncZoomCtl() {
+    const [k0, k1] = zoom.scaleExtent();
+    $("#zoom-in").disabled = view.k >= k1 - 1e-6;
+    $("#zoom-out").disabled = view.k <= k0 + 1e-6;
+    $("#zoom-fit").disabled = view.k === 1 && view.x === 0 && view.y === 0;
+  }
+
+  const zoomTo = (fn) => mapSvg.interrupt().transition().duration(reduceMotion ? 0 : 280).call(...fn);
+  $("#zoom-in").addEventListener("click", () => zoomTo([zoom.scaleBy, 1.6]));
+  $("#zoom-out").addEventListener("click", () => zoomTo([zoom.scaleBy, 1 / 1.6]));
+  $("#zoom-fit").addEventListener("click", () => zoomTo([zoom.transform, d3.zoomIdentity]));
+  $("#zoom-pan").addEventListener("click", (e) => {
+    panMode = !panMode;
+    e.currentTarget.setAttribute("aria-pressed", panMode);
+    $("#map-wrap").classList.toggle("panning", panMode);
+    setTouch();
+  });
 
   function onRegionClick(unit) {
     const k = state.lv === "sido" ? sidoOf(unit) : unit;
@@ -521,7 +581,7 @@
   // ---------- 제목과 특징 요약 ----------
   function renderHero() {
     const o = state.o, d = state.d;
-    const tags = [cropName(), dtName() && `${dtName()}행`].filter(Boolean);
+    const tags = [shName(), cropName(), dtName() && `${dtName()}행`].filter(Boolean);
     $("#title").innerHTML = isAll()
       ? `전국 물류기기 흐름${tags.length ? ` <span class="tag">${esc(tags.join(" · "))}</span>` : ""}`
       : `<span class="o">${esc(fullLabel(o))}</span><span class="arrow">→</span><span class="d">${esc(fullLabel(d))}</span>${tags.length ? ` <span class="tag">${esc(tags.join(" · "))}</span>` : ""}`;
@@ -575,6 +635,13 @@
       const nat = dtNTot ? (cur.dtN[t] / dtNTot) * 100 : null;
       li.push(`<li><i class="ic">▣</i><span>판로 <b>${esc(D.dtypes[t])} ${pct((cur.dt[t] / dtTot) * 100)}</b>${isAll() ? "" : ` (전국 ${pct(nat)})`}${dtName() ? " · 판로 조건을 빼고 계산" : ""}</span></li>`);
     }
+    // 출하 주체
+    const shTot = cur.sh.reduce((a, c) => a + c, 0), shNTot = cur.shN.reduce((a, c) => a + c, 0);
+    if (shTot) {
+      const h = cur.sh.indexOf(Math.max(...cur.sh));
+      const nat = shNTot ? (cur.shN[h] / shNTot) * 100 : null;
+      li.push(`<li><i class="ic">◎</i><span>출하 주체 <b>${esc(D.stypes[h])} ${pct((cur.sh[h] / shTot) * 100)}</b>${isAll() ? "" : ` (전국 ${pct(nat)})`}${shName() ? " · 출하 주체 조건을 빼고 계산" : ""}</span></li>`);
+    }
     $("#insights").innerHTML = li.join("");
   }
 
@@ -594,7 +661,7 @@
     const all = isAll();
     const cr = cur.S ? (cur.X / cur.S) * 100 : null, crB = b && b.S ? (b.X / b.S) * 100 : null;
     $("#kpi-share-label").textContent = all ? "다른 시도행 비중" : "전국 대비 비중";
-    $("#kpi-share-hint").title = all ? "출발 시도와 도착 시도가 다른 컨테이너의 비중" : "이 흐름의 컨테이너 ÷ 전국 컨테이너 (품목·판로를 고르면 그 품목·판로 안에서). 사업 예산 규모가 해마다 달라도 비교할 수 있다";
+    $("#kpi-share-hint").title = all ? "출발 시도와 도착 시도가 다른 컨테이너의 비중" : "이 흐름의 컨테이너 ÷ 전국 컨테이너 (품목·판로·출하 주체를 고르면 그 안에서). 사업 예산 규모가 해마다 달라도 비교할 수 있다";
     $("#share-head").firstChild.textContent = all ? "다른 시도행 비중 추이 " : "전국 대비 비중 추이 ";
     if (all) setKpi("share", cr, pct, ok(cr) && ok(crB) ? cr - crB : null, pp);
     else setKpi("share", sh, pctS, ok(sh) && ok(shB) ? sh - shB : null, pp);
@@ -635,19 +702,22 @@
       <span class="track mark-track"><span class="fill" style="width:${Math.min(100, c || 0)}%;background:${color}"></span>${ok(nat) && !isAll() ? `<span class="nat-mark" style="left:${Math.min(100, nat)}%"></span>` : ""}</span>
       <span class="val">${pct(c)}</span><span class="chg ${cls}">${txt}</span></button>`;
   }
-  function renderDtype() {
-    const tot = cur.dt.reduce((a, b) => a + b, 0), totN = cur.dtN.reduce((a, b) => a + b, 0);
-    const bt = base ? base.dt.reduce((a, b) => a + b, 0) : 0;
-    const items = D.dtypes.map((name, t) => ({
-      name, t, color: DT_COLOR[t],
-      cur: tot ? (cur.dt[t] / tot) * 100 : null,
-      prev: bt ? (base.dt[t] / bt) * 100 : null,
-      nat: totN ? (cur.dtN[t] / totN) * 100 : null,
+  // 구성 막대: 판로(dt)와 출하 주체(sh)가 같은 꼴. 행을 누르면 그 값으로 거르고, 다시 누르면 푼다
+  function renderComposition(key, names, colors, el) {
+    const sum = (a) => a.reduce((x, y) => x + y, 0);
+    const tot = sum(cur[key]), totN = sum(cur[`${key}N`]);
+    const bt = base ? sum(base[key]) : 0;
+    const items = names.map((name, t) => ({
+      name, t, color: colors[t],
+      cur: tot ? (cur[key][t] / tot) * 100 : null,
+      prev: bt ? (base[key][t] / bt) * 100 : null,
+      nat: totN ? (cur[`${key}N`][t] / totN) * 100 : null,
     })).filter((d) => d.cur > 0 || d.prev > 0).sort((a, b) => (b.cur ?? 0) - (a.cur ?? 0));
-    const el = $("#bars-dtype");
-    el.innerHTML = items.length ? items.map((d) => shareRow({ ...d, sel: state.dt === d.t, data: `data-dt="${d.t}"` })).join("") : '<p class="note">자료가 없습니다.</p>';
-    $$("[data-dt]", el).forEach((b) => b.addEventListener("click", () => { state.dt = state.dt === +b.dataset.dt ? -1 : +b.dataset.dt; render(); }));
+    el.innerHTML = items.length ? items.map((d) => shareRow({ ...d, sel: state[key] === d.t, data: `data-${key}="${d.t}"` })).join("") : '<p class="note">자료가 없습니다.</p>';
+    $$(`[data-${key}]`, el).forEach((b) => b.addEventListener("click", () => { const v = +b.dataset[key]; state[key] = state[key] === v ? -1 : v; render(); }));
   }
+  const renderDtype = () => renderComposition("dt", D.dtypes, DT_COLOR, $("#bars-dtype"));
+  const renderShip = () => renderComposition("sh", D.stypes, SH_COLOR, $("#bars-ship"));
 
   // ---------- 가운데: 기종점 순위 ----------
   function renderPairs() {
@@ -795,6 +865,7 @@
     renderKpi();
     renderDist();
     renderDtype();
+    renderShip();
     paintMap();
     renderPairs();
     renderCrops();

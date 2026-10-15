@@ -469,6 +469,38 @@ body {
 }
 .reset:hover { border-color: var(--accent); }
 
+/* 지도 확대·축소·이동 */
+.zoom-ctl {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.zoom-ctl button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.zoom-ctl button + button { border-top: 1px solid var(--line); }
+.zoom-ctl button:hover:not(:disabled) { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+.zoom-ctl button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.zoom-ctl button:disabled { color: var(--faint); opacity: 0.5; cursor: default; }
+.zoom-ctl button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.zoom-ctl svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.map-wrap.panning svg, .map-wrap.panning .region, .map-wrap.panning .unit-od { cursor: grab; }
+.map-wrap.panning.grabbing svg, .map-wrap.panning.grabbing .region, .map-wrap.panning.grabbing .unit-od { cursor: grabbing; }
+
 /* 순위 */
 .rank { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
 .rank-title { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }

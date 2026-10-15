@@ -651,10 +651,54 @@
       .attr("class", "region unit hidden").attr("d", path));
     world.selectAll("path.mesh-unit").data([unitMesh]).join("path").attr("class", "mesh-unit").attr("d", path);
     world.selectAll("path.mesh-sido").data([sidoMesh]).join("path").attr("class", "mesh-sido").attr("d", path);
-    world.selectAll("g.flows").data([0]).join("g").attr("class", "flows");
+    // 흐름선은 화면 좌표로 그린다 (확대해도 선 굵기·화살촉·이름 크기가 그대로)
+    mapSvg.selectAll("g.flows").data([0]).join("g").attr("class", "flows");
     mapSvg.selectAll("g.labels").data([0]).join("g").attr("class", "labels");
+    zoom.translateExtent([[-w / 2, -h / 2], [w * 1.5, h * 1.5]]);
     applyView(false);
   }
+
+  // ---------- 확대·축소·이동 ----------
+  // + − 버튼은 언제나, 끌기와 휠은 손 버튼을 켰을 때만 지도를 움직인다 (페이지 스크롤을 뺏지 않게)
+  let panMode = false;
+  let silent = false; // 지역 선택으로 시점을 옮길 때는 zoom 이벤트를 무시한다
+  const zoom = d3.zoom()
+    .scaleExtent([1, 48])
+    .filter((e) => panMode && !e.button && (e.type === "wheel" || e.type === "mousedown" || e.type === "touchstart"))
+    .on("start", (e) => { if (e.sourceEvent?.type !== "wheel") $("#map-wrap").classList.toggle("grabbing", !!e.sourceEvent); })
+    .on("zoom", (e) => {
+      if (silent) return;
+      const t = e.transform;
+      view = { k: t.k, x: t.x, y: t.y };
+      mapSvg.select("g.world").interrupt().attr("transform", t);
+      hideTip();
+      drawLabels(false);
+      drawFlows();
+      syncZoomCtl();
+    })
+    .on("end", () => $("#map-wrap").classList.remove("grabbing"));
+  mapSvg.call(zoom).on("dblclick.zoom", null);
+  const setTouch = () => mapSvg.style("touch-action", panMode ? "none" : null);
+  setTouch();
+
+  function syncZoomCtl() {
+    const base = targetView();
+    const [k0, k1] = zoom.scaleExtent();
+    $("#zoom-in").disabled = view.k >= k1 - 1e-6;
+    $("#zoom-out").disabled = view.k <= k0 + 1e-6;
+    $("#zoom-fit").disabled = Math.abs(view.k - base.k) < 1e-3 && Math.abs(view.x - base.x) < 0.5 && Math.abs(view.y - base.y) < 0.5;
+  }
+
+  const zoomBy = (f) => mapSvg.interrupt().transition().duration(reduceMotion ? 0 : 280).call(zoom.scaleBy, f);
+  $("#zoom-in").addEventListener("click", () => zoomBy(1.6));
+  $("#zoom-out").addEventListener("click", () => zoomBy(1 / 1.6));
+  $("#zoom-fit").addEventListener("click", () => applyView(true));
+  $("#zoom-pan").addEventListener("click", (e) => {
+    panMode = !panMode;
+    e.currentTarget.setAttribute("aria-pressed", panMode);
+    $("#map-wrap").classList.toggle("panning", panMode);
+    setTouch();
+  });
 
   function onRegionClick(k) {
     const cur = state.key;
@@ -678,11 +722,20 @@
     view = targetView();
     lastViewKey = `${state.flow ? "flow" : sidoOf(state.key) || NATION}`;
     const tr = `translate(${view.x},${view.y}) scale(${view.k})`;
+    // 사용자가 옮겨 둔 시점은 버리고 zoom 상태를 선택한 지역 시점에 맞춘다
+    silent = true;
+    mapSvg.interrupt().call(zoom.transform, d3.zoomIdentity.translate(view.x, view.y).scale(view.k));
+    silent = false;
+    syncZoomCtl();
     const world = mapSvg.select("g.world");
     if (animate && !reduceMotion) world.transition().duration(750).ease(d3.easeCubicInOut).attr("transform", tr);
-    else world.attr("transform", tr);
+    else world.interrupt().attr("transform", tr); // 진행 중인 이동이 새 시점을 덮어쓰지 않게
     paintMap();
     drawLabels(animate);
+    // 흐름선은 지도가 다 옮겨진 뒤에 나타나게 한다
+    const flows = mapSvg.select("g.flows").interrupt();
+    if (animate && !reduceMotion) flows.style("opacity", 0).transition().delay(550).duration(300).style("opacity", 1);
+    else flows.style("opacity", 1);
   }
 
   let color = null;
@@ -751,7 +804,7 @@
   // ---------- 흐름선 ----------
   const SIDOS_OD = D.od.sidos;
   const odAt = (i) => D.od.m[i];
-  const anchorOf = (k) => anchor.get(k) || anchor.get(sidoOf(k)) || null;
+  const anchorOf = (k) => { const a = anchor.get(k) || anchor.get(sidoOf(k)); return a ? [a[0] * view.k + view.x, a[1] * view.k + view.y] : null; };
 
   // 현재 선택에 맞는 흐름 목록: [{from, to, share(%), q?}]
   function flowList() {
@@ -855,7 +908,7 @@
       .attr("y", (k) => pos(k)[1] + 4)
       .text(name);
     if (animate && !reduceMotion) sel.style("opacity", 0).transition().delay(550).duration(300).style("opacity", 1);
-    else sel.style("opacity", 1);
+    else sel.interrupt().style("opacity", 1);
   }
 
   function showTip(e, k) {
