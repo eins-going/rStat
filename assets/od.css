@@ -2,25 +2,28 @@
    이 화면은 한 화면 맞춤 대신 아래로 이어지는 페이지라 style.css의 한 화면 모드를 끈다 */
 html:has(body.odp), body.odp { height: auto; overflow: visible; }
 .odp .app { height: auto; display: block; max-width: 1600px; padding: 0 24px 32px; }
-/* 상단: 브랜드·탭, 출발 → 도착, 조건을 한 흐름에 놓고 넘치면 줄을 바꾼다 (넓은 화면 1줄, 좁으면 2줄)
-   선택 상자는 목록에서 가장 긴 항목이 아니라 고른 값의 길이만큼만 차지한다 */
-.odp .topbar { justify-content: flex-start; gap: 8px 14px; padding: 12px 0 10px; }
+/* 상단 2줄, 왼쪽 정렬, 좌우 너비를 채운다
+   1줄: 브랜드·탭 | 출발 → 도착 (남는 너비를 출발·도착 선택 상자가 나눠 갖는다)
+   2줄: 조건 6칸을 같은 폭으로 */
+.odp .topbar { justify-content: flex-start; align-items: center; gap: 8px 14px; padding: 12px 0 10px; }
 .odp .brand { font-size: 14px; gap: 8px; }
 .odp .brand-mark { width: 20px; height: 20px; }
-.odp .brand-wrap { gap: 12px; }
+.odp .brand-wrap { flex: none; gap: 12px; }
 .odp .tabs a { padding: 3px 10px; font-size: 12.5px; }
-.odp .controls { gap: 6px; margin-left: auto; }
-.odp .select { gap: 6px; padding: 3px 3px 3px 9px; border-radius: 8px; }
-.odp .select select, .od-pick select { field-sizing: content; max-width: 11em; text-overflow: ellipsis; font-size: 13px; padding: 4px 24px 4px 8px; background-position: right 8px center; }
+.odp .controls { flex: 1 1 100%; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.odp .select { min-width: 0; gap: 6px; padding: 3px 3px 3px 9px; border-radius: 8px; }
+.odp .select select { flex: 1; width: 0; min-width: 0; }
+.odp .select select, .od-pick select { text-overflow: ellipsis; font-size: 13px; padding: 4px 24px 4px 8px; }
 
 /* 출발 → 도착 고르기 */
-.od-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.od-pick .end { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.od-pick { flex: 1 1 400px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.od-pick .end { flex: 1 1 0; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.od-pick .end select { flex: 1 1 0; width: 0; }
 .od-pick .end-tag { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; }
 .end-o .end-tag { color: #14161b; background: var(--accent); }
 .end-d .end-tag { color: #0e1a26; background: #5fb3ff; }
 .od-pick select {
-  appearance: none; background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239aa1ad'/%3E%3C/svg%3E") no-repeat right 10px center;
+  appearance: none; background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239aa1ad'/%3E%3C/svg%3E") no-repeat right 8px center;
   border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; font-weight: 600;
   cursor: pointer; min-width: 0;
 }
@@ -178,14 +181,13 @@ button.bar-row.sel, .crop-row2.sel { background: var(--accent-soft); box-shadow:
 @media (max-width: 760px) {
   .odp .app { padding: 0 16px 24px; }
   .od-grid { grid-template-columns: 1fr; }
-  .od-pick { width: 100%; }
+  .odp .brand-wrap { flex: 1 1 100%; }
+  .od-pick { flex-basis: 100%; flex-wrap: wrap; }
   .od-pick .end-o { flex: 1 1 calc(100% - 40px); }
   .od-pick .end-d { flex: 1 1 100%; padding-right: 34px; }
-  .od-pick .end select { flex: 1; width: 0; max-width: none; }
   .clear { width: 100%; }
   .insights { grid-template-columns: 1fr; }
   .insights li { font-size: 13.5px; }
-  .odp .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; margin-left: 0; }
-  .odp .select select { max-width: none; }
+  .odp .controls { grid-template-columns: 1fr 1fr; }
   .seg-label { display: none; }
 }
