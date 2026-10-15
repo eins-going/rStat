@@ -23,6 +23,21 @@
           <a href="od" aria-current="page">기종점 분석</a>
         </nav>
       </div>
+      <!-- 기종점 고르기: 출발 → 도착 -->
+      <section class="od-pick" aria-label="출발지와 도착지 고르기">
+        <div class="end end-o">
+          <span class="end-tag">출발</span>
+          <select id="o-sido" aria-label="출발 시도"></select>
+          <select id="o-sgg" aria-label="출발 시군"></select>
+        </div>
+        <button type="button" class="swap" id="swap" title="출발과 도착을 맞바꾼다" aria-label="출발과 도착 맞바꾸기">⇄</button>
+        <div class="end end-d">
+          <span class="end-tag">도착</span>
+          <select id="d-sido" aria-label="도착 시도"></select>
+          <select id="d-sgg" aria-label="도착 시군"></select>
+        </div>
+        <button type="button" class="clear" id="clear" hidden>전체 흐름으로</button>
+      </section>
       <div class="controls">
         <label class="select">
           <span>연도</span>
@@ -55,21 +70,6 @@
       </div>
     </header>
 
-    <!-- 기종점 고르기: 출발 → 도착 -->
-    <section class="od-pick" aria-label="출발지와 도착지 고르기">
-      <div class="end end-o">
-        <span class="end-tag">출발</span>
-        <select id="o-sido" aria-label="출발 시도"></select>
-        <select id="o-sgg" aria-label="출발 시군"></select>
-      </div>
-      <button type="button" class="swap" id="swap" title="출발과 도착을 맞바꾼다" aria-label="출발과 도착 맞바꾸기">⇄</button>
-      <div class="end end-d">
-        <span class="end-tag">도착</span>
-        <select id="d-sido" aria-label="도착 시도"></select>
-        <select id="d-sgg" aria-label="도착 시군"></select>
-      </div>
-      <button type="button" class="clear" id="clear" hidden>전체 흐름으로</button>
-    </section>
 
     <section class="od-hero" aria-label="선택한 흐름의 특징">
       <h1 id="title"></h1>

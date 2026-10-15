@@ -2,29 +2,35 @@
    이 화면은 한 화면 맞춤 대신 아래로 이어지는 페이지라 style.css의 한 화면 모드를 끈다 */
 html:has(body.odp), body.odp { height: auto; overflow: visible; }
 .odp .app { height: auto; display: block; max-width: 1600px; padding: 0 24px 32px; }
-.odp .topbar { padding: 14px 0 10px; }
+/* 상단: 브랜드·탭, 출발 → 도착, 조건을 한 흐름에 놓고 넘치면 줄을 바꾼다 (넓은 화면 1줄, 좁으면 2줄)
+   선택 상자는 목록에서 가장 긴 항목이 아니라 고른 값의 길이만큼만 차지한다 */
+.odp .topbar { justify-content: flex-start; gap: 8px 14px; padding: 12px 0 10px; }
+.odp .brand { font-size: 14px; gap: 8px; }
+.odp .brand-mark { width: 20px; height: 20px; }
+.odp .brand-wrap { gap: 12px; }
+.odp .tabs a { padding: 3px 10px; font-size: 12.5px; }
+.odp .controls { gap: 6px; margin-left: auto; }
+.odp .select { gap: 6px; padding: 3px 3px 3px 9px; border-radius: 8px; }
+.odp .select select, .od-pick select { field-sizing: content; max-width: 11em; text-overflow: ellipsis; font-size: 13px; padding: 4px 24px 4px 8px; background-position: right 8px center; }
 
 /* 출발 → 도착 고르기 */
-.od-pick {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px;
-}
-.od-pick .end { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.od-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.od-pick .end { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .od-pick .end-tag { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; }
 .end-o .end-tag { color: #14161b; background: var(--accent); }
 .end-d .end-tag { color: #0e1a26; background: #5fb3ff; }
 .od-pick select {
   appearance: none; background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239aa1ad'/%3E%3C/svg%3E") no-repeat right 10px center;
-  border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; font-size: 14px; font-weight: 600;
-  padding: 5px 30px 5px 10px; cursor: pointer; min-width: 0;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; font-weight: 600;
+  cursor: pointer; min-width: 0;
 }
 .od-pick select:disabled { opacity: 0.5; cursor: default; }
 .od-pick select:focus-visible, .swap:focus-visible, .clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .swap, .clear {
   font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
 }
-.swap { width: 34px; height: 32px; font-size: 16px; }
-.clear { font-size: 12.5px; padding: 5px 12px; margin-left: auto; color: var(--muted); }
+.swap { width: 28px; height: 28px; font-size: 14px; padding: 0; }
+.clear { font-size: 12px; padding: 4px 10px; color: var(--muted); }
 .swap:hover, .clear:hover { border-color: var(--accent); color: var(--accent); }
 
 /* 제목 + 특징 요약 */
@@ -172,12 +178,14 @@ button.bar-row.sel, .crop-row2.sel { background: var(--accent-soft); box-shadow:
 @media (max-width: 760px) {
   .odp .app { padding: 0 16px 24px; }
   .od-grid { grid-template-columns: 1fr; }
-  .od-pick .end { width: 100%; }
-  .od-pick .end select { flex: 1; width: 0; }
-  .swap { margin: 0 auto; transform: rotate(90deg); }
-  .clear { margin: 0; width: 100%; }
+  .od-pick { width: 100%; }
+  .od-pick .end-o { flex: 1 1 calc(100% - 40px); }
+  .od-pick .end-d { flex: 1 1 100%; padding-right: 34px; }
+  .od-pick .end select { flex: 1; width: 0; max-width: none; }
+  .clear { width: 100%; }
   .insights { grid-template-columns: 1fr; }
   .insights li { font-size: 13.5px; }
-  .odp .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+  .odp .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; margin-left: 0; }
+  .odp .select select { max-width: none; }
   .seg-label { display: none; }
 }
