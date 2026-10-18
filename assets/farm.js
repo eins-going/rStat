@@ -36,7 +36,7 @@
   let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle, facLayer;
   const ui = {};
   const drawn = new Map(); // 팜맵 ID → 그려 둔 필지 레이어
-  const st = { base: "sat", labels: true, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, full: false, tileErrors: 0, tileLoads: 0 };
+  const st = { base: "sat", labels: false, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, full: false, tileErrors: 0, tileLoads: 0 };
 
   function busy(d) {
     pending += d;
@@ -60,7 +60,7 @@
       <span class="seg fv-base" role="group" aria-label="배경 지도">
         <button type="button" data-base="sat" aria-pressed="true">위성</button><button type="button" data-base="map" aria-pressed="false">지도</button>
       </span>
-      <label class="fv-check"><input type="checkbox" data-ui="labels" checked> 지명</label>
+      <label class="fv-check"><input type="checkbox" data-ui="labels"> 지명</label>
       <button type="button" class="fv-expand" data-ui="expand" aria-pressed="false" aria-label="크게 보기" title="크게 보기">${ICON.expand}</button>`;
     H.map.innerHTML = `
       <div class="fv-map" data-ui="map"></div>
@@ -448,7 +448,9 @@
     const list = facShown().map((r) => `
       <li><button type="button" data-key="${esc(r.key)}"${r.key === fst.sel ? ' aria-current="true"' : ""}><i style="--c:${FD.colors[r.kind]}"></i><span>${esc(r.name)}</span>${r.exact ? "" : "<em>위치 불명확</em>"}</button></li>`).join("");
     const off = fst.here.filter((r) => !r.exact).length;
-    ui.facs.innerHTML = `${head}<div class="fv-fchips" role="group" aria-label="시설 종류">${chips}</div>${card}
+    const shown = facShown().length;
+    ui.facs.innerHTML = `${head}<div class="fv-fchips" role="group" aria-label="시설 종류 (눌러서 켜고 끄기)">${chips}</div>${card}
+      <div class="fv-fl-head"><span>시설 목록 <b>${nf.format(shown)}</b>곳</span><span>누르면 그 위치로</span></div>
       <ol class="fv-flist">${list}</ol>
       ${off ? `<p class="fv-note">주소가 마을·읍면·시군까지만 있는 ${nf.format(off)}곳은 지도에 찍지 않고 목록에만 두었습니다.</p>` : ""}`;
     ui.facs.querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => {
