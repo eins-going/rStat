@@ -129,22 +129,23 @@
     "가을(10~11월 검침)에 가장 많이 쓴다. 곡물 건조, 곶감·농산물 건조와 저온저장이 큰 지역에서 흔하다.",
     `한 해 내내 고르게 쓴다(가장 많은 달이 가장 적은 달의 ${P.flatAmp}배 미만). 축산·저온저장처럼 계절을 덜 타는 수요가 크다.`,
   ];
+  // 지표: label은 범례·순위·툴팁에 쓰는 온전한 이름, chip은 묶음(group) 안에서 쓰는 짧은 이름
   const METRICS = [
-    { key: "yoy", label: "전년 같은 달 대비", kind: "div", get: (k, i) => yoy(k, i), fmt: pctS,
+    { key: "yoy", group: "사용량", chip: "전년 같은 달", label: "사용량 전년 같은 달 대비", kind: "div", get: (k, i) => yoy(k, i), fmt: pctS,
       note: "기준월 사용량을 전년 같은 달과 비교" },
-    { key: "norm", label: "평년 대비", kind: "div", get: (k, i) => norm(k, i)?.dev ?? null, fmt: pctS,
+    { key: "norm", group: "사용량", chip: "평년", label: "사용량 평년 대비", kind: "div", get: (k, i) => norm(k, i)?.dev ?? null, fmt: pctS,
       note: "기준월 사용량을 직전 5년 같은 달 평균과 비교" },
-    { key: "yoy12", label: "최근 12개월 증감", kind: "div", get: (k, i) => yoy12(k, i), fmt: pctS,
+    { key: "yoy12", group: "사용량", chip: "최근 12개월", label: "사용량 최근 12개월 증감", kind: "div", get: (k, i) => yoy12(k, i), fmt: pctS,
       note: "기준월까지 12개월 합계를 그 전 12개월과 비교. 날씨 영향을 덜 받는 추세" },
-    { key: "season", label: "계절 유형", kind: "cat", get: (k) => seasonOf(k)?.[0] ?? null, fmt: (v) => P.types[v] ?? "–",
-      note: `${P.seasonYears[0]}~${P.seasonYears[1]}년 월별 사용량 모양(검침월 기준)` },
-    { key: "per", label: "고객 1호당 사용량", kind: "seq", get: (k, i) => perCust(k, i), fmt: (v) => (ok(v) ? `${int(v)}kWh` : "–"),
-      note: "최근 12개월 사용량 ÷ 고객호수 (연간). 시설·축산처럼 전기를 많이 쓰는 농업이 클수록 높다" },
-    { key: "kw", label: "계약전력 증감", kind: "div", get: (k, i) => yoy(k, i, "w"), fmt: pctS,
+    { key: "per", group: "고객·설비", chip: "1호당 사용량", label: "고객 1호당 연간 사용량", kind: "seq", get: (k, i) => perCust(k, i), fmt: (v) => (ok(v) ? `${int(v)}kWh` : "–"),
+      note: "최근 12개월 사용량 ÷ 고객호수. 시설·축산처럼 전기를 많이 쓰는 농업이 클수록 높다" },
+    { key: "kw", group: "고객·설비", chip: "계약전력", label: "계약전력 전년 같은 달 대비", kind: "div", get: (k, i) => yoy(k, i, "w"), fmt: pctS,
       note: "계약전력(설비 규모)을 전년 같은 달과 비교. 시설 투자나 철거를 반영" },
-    { key: "inv", label: "신설·증설 활발도", kind: "seq", get: (k, i) => { const v = invest(k, i), c = custAt(k, i); return v && c ? (v.grow / c) * 1000 : null; },
+    { key: "inv", group: "고객·설비", chip: "신설·증설", label: "고객 1천 호당 신설·증설", kind: "seq", get: (k, i) => { const v = invest(k, i), c = custAt(k, i); return v && c ? (v.grow / c) * 1000 : null; },
       fmt: (v) => (ok(v) ? `${nf0.format(v)}건` : "–"),
-      note: "최근 12개월 신설+증설 건수, 농사용 고객 1천 호당 (한전 산업분류 농업·임업·어업). 한전 집계 건수라 고객 수 증감과는 다르다" },
+      note: "최근 12개월 신설+증설 건수 ÷ 농사용 고객 1천 호 (한전 산업분류 농업·임업·어업). 한전 집계 건수라 고객 수 증감과는 다르다" },
+    { key: "season", group: "계절", chip: "계절 유형", label: "계절 유형", kind: "cat", get: (k) => seasonOf(k)?.[0] ?? null, fmt: (v) => P.types[v] ?? "–",
+      note: `${P.seasonYears[0]}~${P.seasonYears[1]}년 월별 사용량 모양(검침월 기준)` },
   ];
 
   const state = { key: NATION, i: LAST, metric: METRICS[0] };
@@ -323,7 +324,9 @@
 
   // ---------- 지표 칩 ----------
   function renderChips() {
-    $("#chips").innerHTML = METRICS.map((m) => `<button type="button" data-k="${m.key}" aria-pressed="${m === state.metric}">${m.label}</button>`).join("");
+    // 묶음 이름(사용량 · 고객·설비 · 계절)을 칩 앞에 단다
+    const many = (g) => METRICS.filter((m) => m.group === g).length > 1; // 칩이 하나뿐인 묶음(계절)은 이름을 달지 않는다
+    $("#chips").innerHTML = METRICS.map((m, j) => `${(j === 0 || METRICS[j - 1].group !== m.group) && many(m.group) ? `<span class="pw-chip-g">${m.group}</span>` : ""}<button type="button" data-k="${m.key}" aria-pressed="${m === state.metric}" title="${m.label}">${m.chip}</button>`).join("");
     $$("#chips button").forEach((b) => b.addEventListener("click", () => {
       state.metric = METRICS.find((m) => m.key === b.dataset.k);
       $$("#chips button").forEach((x) => x.setAttribute("aria-pressed", x === b));
@@ -502,8 +505,8 @@
     const cur = invest(k, i), prev = invest(k, i - 12);
     $("#invest-range").textContent = i >= 11 ? `${monthText(i - 11).replace("년 ", ".").replace("월", "")}~${monthText(i).replace("년 ", ".").replace("월", "")}` : "";
     const d = (a, b) => (cur && prev ? ratio(a, b) : null);
-    setStat("grow", count(cur?.grow, "건"), d(cur?.grow, prev?.grow), "전년 같은 기간");
-    setStat("cancel", count(cur?.x, "건"), d(cur?.x, prev?.x), "전년 같은 기간");
+    setStat("grow", count(cur?.grow, "건"), d(cur?.grow, prev?.grow), "전년동기");
+    setStat("cancel", count(cur?.x, "건"), d(cur?.x, prev?.x), "전년동기");
     const c = custAt(k, i);
     $("#invest-net").innerHTML = cur
       ? `<span>신설 <b>${int(cur.n)}</b> · 증설 <b>${int(cur.e)}</b></span>${c ? `<span>고객 1천 호당 신설·증설 <b>${nf0.format((cur.grow / c) * 1000)}</b>건</span>` : ""}`
