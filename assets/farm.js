@@ -256,18 +256,12 @@
   const ha = (m2) => (m2 < 10000 ? nf2 : nf1).format(m2 / 10000);
   const area = (m2) => `<b>${nf.format(m2)}</b>㎡ <span>${nf.format(Math.round(m2 / 3.3058))}평 · ${ha(m2)}ha</span>`;
 
+  // 분류·지번·면적만 보여 준다 (판독 영상·변경 구분·지번코드·팜맵 ID는 싣지 않는다)
   function parcelCard(p) {
-    const changed = p.change && p.change !== "유지";
     return `
       <article class="fv-parcel">
         <div class="fv-p-head"><span class="fv-kind" style="--c:${colorOf(p.kind)}">${esc(p.kind || "기타")}</span><h4>${esc(p.emd)} ${esc(p.lnm)}</h4></div>
         <p class="fv-area">${area(p.area)}</p>
-        <dl>
-          <div><dt>판독 영상</dt><dd>${esc(p.image)}${p.date ? ` · ${esc(p.date)}` : ""}</dd></div>
-          <div><dt>변경 구분</dt><dd${changed ? ' class="fv-changed"' : ""}>${esc(p.change || "–")}${p.history ? ` <span>(갱신 ${esc(p.history)})</span>` : ""}</dd></div>
-          <div><dt>지번코드</dt><dd class="fv-mono">${esc(p.pnu)}</dd></div>
-          <div><dt>팜맵 ID</dt><dd class="fv-mono">${esc(p.id)}</dd></div>
-        </dl>
       </article>`;
   }
 
@@ -282,7 +276,7 @@
       const sum = features.reduce((s, f) => s + f.properties.area, 0);
       body = `<p class="fv-multi">이 지번에 걸친 필지 <b>${features.length}</b>개 · 합계 ${area(sum)}</p>${features.map((f) => parcelCard(f.properties)).join("")}`;
     }
-    ui.parcel.innerHTML = `${head}${body}<p class="fv-note" title="팜맵은 항공·위성영상을 판독해 실제 경작지를 구획한 지도로, 법적 효력이 없습니다.">영상 판독으로 구획한 참고 자료로, 지적도의 법적 경계와 다를 수 있습니다.</p>`;
+    ui.parcel.innerHTML = `${head}${body}`;
     ui.parcel.querySelector('[data-act="clear"]').addEventListener("click", clearAll);
   }
 
