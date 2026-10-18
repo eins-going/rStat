@@ -382,6 +382,7 @@
     $('[data-note="now"]').textContent = notes.join(" ");
     drawBand();
     drawTrend();
+    drawCust();
   }
 
   // 막대·선 그림 공통
@@ -427,32 +428,38 @@
     $("#band-key").innerHTML = `<span><i class="cur"></i>${y0}년</span><span><i class="prev"></i>${y0 - 1}년</span><span><i class="band"></i>${y0 - 5}~${y0 - 1}년 범위</span>`;
   }
 
-  // 장기 추이: 최근 12개월 합계, 누르면 그 달로
-  function drawTrend() {
+  // 월별 장기 그래프 (2010~), 누르면 그 달로. zero=false면 세로축을 0이 아닌 최솟값 근처에서 시작한다
+  function drawSeries(id, get, fmt, zero = true) {
     const k = state.key, i = state.i;
-    const el = $("#chart-trend");
+    const el = $(`#${id}`);
     const { svg, w, h } = frame(el, 90);
-    const pts = M.map((_, j) => [j, sum12(k, j)]).filter(([, v]) => ok(v));
-    if (!pts.length) return;
-    const m = { l: 40, r: 8, t: 6, b: 16 };
+    const pts = M.map((_, j) => [j, get(k, j)]).filter(([, v]) => ok(v));
+    if (!pts.length) { svg.append("text").attr("x", 8).attr("y", 20).attr("class", "pw-empty").text("자료 없음"); return; }
+    const m = { l: 44, r: 8, t: 6, b: 16 };
     const x = d3.scaleLinear().domain([0, LAST]).range([m.l, w - m.r]);
-    const y = d3.scaleLinear().domain([0, d3.max(pts, (d) => d[1]) * 1.05]).nice(2).range([h - m.b, m.t]);
-    svg.append("g").attr("class", "pw-axis").selectAll("g").data(y.ticks(2)).join("g").call((g) => {
+    const lo = d3.min(pts, (d) => d[1]), hi = d3.max(pts, (d) => d[1]);
+    const y = d3.scaleLinear().domain(zero ? [0, hi * 1.05] : [lo - (hi - lo) * 0.15, hi + (hi - lo) * 0.1 || hi + 1]).nice(3).range([h - m.b, m.t]);
+    const nt = h < 110 ? 2 : 3;
+    svg.append("g").attr("class", "pw-axis").selectAll("g").data(y.ticks(nt)).join("g").call((g) => {
       g.append("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", (d) => y(d)).attr("y2", (d) => y(d));
-      g.append("text").attr("x", m.l - 6).attr("y", (d) => y(d) + 4).attr("text-anchor", "end").text((d) => (d ? energy(d).join("") : "0"));
+      g.append("text").attr("x", m.l - 6).attr("y", (d) => y(d) + 4).attr("text-anchor", "end").text((d) => (d || !zero ? fmt(d) : "0"));
     });
     const years = [...new Set(M.map((s) => s.slice(0, 4)))].filter((yy, j) => j % 4 === 0 || yy === M[LAST].slice(0, 4));
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(years).join("text")
       .attr("x", (yy) => x(M.indexOf(`${yy}-01`) < 0 ? 0 : M.indexOf(`${yy}-01`))).attr("y", h - 3).attr("text-anchor", "middle").text((yy) => `'${yy.slice(2)}`);
     svg.append("path").attr("class", "pw-trendarea").attr("d", d3.area().x((d) => x(d[0])).y0(h - m.b).y1((d) => y(d[1]))(pts));
     svg.append("path").attr("class", "pw-cur").attr("d", d3.line().x((d) => x(d[0])).y((d) => y(d[1]))(pts));
-    const v = sum12(k, i);
+    const v = get(k, i);
     svg.append("line").attr("class", "pw-mark").attr("x1", x(i)).attr("x2", x(i)).attr("y1", m.t).attr("y2", h - m.b);
     if (ok(v)) svg.append("circle").attr("class", "pw-dot").attr("cx", x(i)).attr("cy", y(v)).attr("r", 3.5);
     svg.append("rect").attr("x", m.l).attr("y", 0).attr("width", w - m.l - m.r).attr("height", h).attr("fill", "transparent").style("cursor", "pointer")
       .on("click", (e) => setMonth(Math.max(0, Math.min(LAST, Math.round(x.invert(d3.pointer(e)[0]))))))
       .append("title").text("누르면 그 달로");
   }
+  // 장기 추이: 최근 12개월 사용량 합계
+  const drawTrend = () => drawSeries("chart-trend", (k, j) => sum12(k, j), (d) => energy(d).join(""));
+  // 고객 수: 원자료 시군구가 빠진 달은 뺀다
+  const drawCust = () => drawSeries("chart-cust", (k, j) => (gap(k, j) ? null : at(k, "c", j)), (d) => (Math.abs(d) >= 1e5 ? `${nf0.format(d / 1e4)}만` : int(d)), false);
 
   // ---------- 오른쪽: 계절 유형 ----------
   function renderSeason() {
@@ -520,28 +527,6 @@
     $("#invest-key").innerHTML = `<span><i class="n"></i>신설</span><span><i class="e"></i>증설</span><span><i class="x"></i>해지</span>`;
   }
 
-  // ---------- 오른쪽: 이상 신호 ----------
-  const ALERT_MIN = 10; // 평년 평균과 이만큼(%) 이상 다르고 직전 5년 범위를 벗어난 곳
-  function alertsFor(peers, i) {
-    return peers.map((k) => [k, norm(k, i)]).filter(([, n]) => n && n.out && Math.abs(n.dev) >= ALERT_MIN)
-      .sort((a, b) => Math.abs(b[1].dev) - Math.abs(a[1].dev));
-  }
-  function renderAlerts() {
-    const i = state.i, s = sidoOf(state.key);
-    const peers = s ? UNITS_BY_SIDO[s] : ALL_UNITS;
-    const list = alertsFor(peers, i);
-    const ups = list.filter(([, n]) => n.dev > 0).length;
-    $("#alert-note").innerHTML = `${s ? T.sidos[s].short : "전국"} 시군 ${peers.length}곳 중 <b>${list.length}곳</b>이 직전 5년 같은 달 범위를 벗어나고 평균과 ${ALERT_MIN}% 이상 차이 남`
-      + (list.length ? ` (많이 씀 ${ups} · 적게 씀 ${list.length - ups})` : "");
-    $("#alerts").innerHTML = list.slice(0, 14).map(([k, n]) => `
-      <li><button type="button" data-r="${k}" class="${k === state.key ? "sel" : ""}">
-        <span class="nm">${esc(s ? label(k) : fullLabel(k))}</span>
-        <span class="v ${n.dev > 0 ? "up" : "down"}">${n.dev > 0 ? "▲" : "▼"} ${nf1.format(Math.abs(n.dev))}%</span>
-        <span class="rg">${energyText(n.v)} · 평년 ${energyText(n.lo)}~${energyText(n.hi)}</span>
-      </button></li>`).join("") + (list.length > 14 ? `<li class="pw-more">외 ${list.length - 14}곳</li>` : "");
-    $$("#alerts [data-r]").forEach((b) => b.addEventListener("click", () => select(b.dataset.r)));
-  }
-
   // ---------- 가운데 제목 ----------
   function renderHero() {
     const k = state.key;
@@ -561,7 +546,6 @@
     renderNow();
     renderSeason();
     renderInvest();
-    renderAlerts();
     paintMap();
     renderRank();
     applyView(animate);
@@ -591,7 +575,7 @@
     paintMap();
   }).observe($("#map-wrap"));
   // 그림 칸은 패널이 자리를 잡은 뒤에야 크기가 정해진다 → 크기가 바뀌면 그 그림만 다시 그린다
-  const redraw = { "chart-band": drawBand, "chart-trend": drawTrend, "chart-season": renderSeason, "chart-invest": renderInvest };
+  const redraw = { "chart-band": drawBand, "chart-trend": drawTrend, "chart-cust": drawCust, "chart-season": renderSeason, "chart-invest": renderInvest };
   const sizes = new Map();
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {

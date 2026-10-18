@@ -60,36 +60,20 @@
 .pw-tag.sel { border-color: var(--accent); color: var(--accent); }
 .pw-more { font-size: 11px; color: var(--faint); }
 
-/* 이상 신호 */
-.pw-alert-note { margin: 0 0 6px; color: var(--muted); }
-.pw-alert-note b { color: var(--accent); }
-.pw-flag { color: var(--accent); }
-.pw-alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.pw-alerts button {
-  width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; align-items: baseline;
-  font: inherit; text-align: left; color: var(--text); background: none; border: 0; border-radius: 6px; padding: 3px 6px; cursor: pointer;
-}
-.pw-alerts button:hover, .pw-alerts button.sel { background: var(--panel-2); }
-.pw-alerts .nm { font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pw-alerts .v { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.pw-alerts .v.up { color: var(--up); }
-.pw-alerts .v.down { color: var(--down); }
-.pw-alerts .rg { grid-column: 1 / -1; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
-.pw-alerts .pw-more { padding: 2px 6px; }
-
 /* 한 화면 맞춤(style.css와 같은 기준): 좌우 열이 화면 높이를 넘지 않게 그림과 목록이 남는 높이를 나눠 쓴다 */
 .pw .note { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (min-width: 1281px) and (min-height: 720px) {
   .pw .col { overflow: hidden; }
   .pw .col > .panel { flex: 0 0 auto; min-height: 0; }
-  .pw #p-now { flex: 1 1 0; }
-  /* 장기 추이와 월별 사용량이 남는 높이를 나눠 써서 패널 아래가 비지 않게 */
-  .pw #p-now .pw-trend { flex: 1 1 0; min-height: 70px; height: auto; }
-  .pw #p-now .pw-band { flex: 1.4 1 0; min-height: 100px; height: auto; }
+  /* 왼쪽: 고객 패널이 남는 높이를 쓰고(고객 수 추이), 가입 현황은 막대 그림만 늘어난다
+     오른쪽: 사용량 패널이 남는 높이를 장기 추이·월별 사용량으로 나눠 쓴다 */
+  .pw #p-cust { flex: 1 1 0; }
+  .pw #p-cust .pw-trend { flex: 1 1 0; min-height: 80px; height: auto; }
+  .pw #p-invest .pw-inv { height: 120px; }
+  .pw #p-use { flex: 1 1 0; }
+  .pw #p-use .pw-trend { flex: 1 1 0; min-height: 70px; height: auto; }
+  .pw #p-use .pw-band { flex: 1.4 1 0; min-height: 100px; height: auto; }
   .pw .pw-prof { height: 92px; }
-  .pw .pw-inv { height: 86px; }
-  .pw #p-alert { flex: 1 1 0; overflow: hidden; }
-  .pw #p-alert .pw-alerts { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
   .pw .stats.two { row-gap: 8px; }
   .pw .sub-head { margin: 8px 0 3px; }
   .pw .stat-value b { font-size: 19px; }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>농사용 전기 모니터</title>
-  <meta name="description" content="한전 농사용 전기 사용량을 시군·월 단위로 보며 지역 농업활동을 살핍니다. 전년 같은 달 대비 증감, 평년 범위를 벗어난 지역, 계절 유형, 시설 투자(신설·증설·해지)를 봅니다.">
+  <meta name="description" content="한전 농사용 전기 사용량을 시군·월 단위로 보며 지역 농업활동을 살핍니다. 전년 같은 달 대비 증감, 평년 범위를 벗어난 지역, 계절 유형, 가입 현황(신설·증설·해지)을 봅니다.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/power.css">
@@ -40,15 +40,15 @@
     </header>
 
     <main class="grid">
-      <section class="col col-left" aria-label="사용량">
-        <article class="panel" id="p-now">
+      <section class="col col-left" aria-label="고객·가입 현황">
+        <article class="panel" id="p-cust">
           <header class="panel-head">
-            <h2>농사용 전기 <span class="h2-scope" id="now-scope"></span></h2>
+            <h2>고객 <span class="h2-scope" id="now-scope"></span></h2>
             <span class="chip" data-month></span>
           </header>
           <div class="stats two">
             <div class="stat">
-              <span class="stat-label">고객</span>
+              <span class="stat-label">농사용 고객</span>
               <span class="stat-value"><b data-v="cust"></b><small data-u="cust"></small></span>
               <span class="delta" data-d="cust"></span>
             </div>
@@ -57,24 +57,32 @@
               <span class="stat-value"><b data-v="kw"></b><small data-u="kw"></small></span>
               <span class="delta" data-d="kw"></span>
             </div>
-            <div class="stat">
-              <span class="stat-label">사용량</span>
-              <span class="stat-value"><b data-v="kwh"></b><small data-u="kwh"></small></span>
-              <span class="delta" data-d="kwh"></span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">평년 같은 달 대비 <small class="hint" title="직전 5년 같은 달 사용량 평균과 비교. 띠는 그 5년의 최소~최대">?</small></span>
-              <span class="stat-value"><b data-v="norm"></b></span>
-              <span class="delta" data-d="norm"></span>
-            </div>
           </div>
           <p class="note" data-note="now"></p>
-          <h3 class="sub-head">장기 추이 <span>최근 12개월 합계 · 누르면 그 달로</span></h3>
-          <div class="chart pw-trend" id="chart-trend" aria-label="최근 12개월 사용량 합계 추이"></div>
-          <h3 class="sub-head">월별 사용량 <span id="band-note">선택 연도 · 전년 · 직전 5년 범위</span></h3>
-          <div class="chart pw-band" id="chart-band" aria-label="월별 사용량과 평년 범위"></div>
-          <div class="pw-key" id="band-key"></div>
-          <footer class="src">자료: 한국전력공사 전력데이터 개방포털 계약종별 전력사용량(농사용) · 검침월 기준</footer>
+          <h3 class="sub-head">고객 수 추이 <span>호 · 누르면 그 달로</span></h3>
+          <div class="chart pw-trend" id="chart-cust" aria-label="농사용 고객 수 추이"></div>
+        </article>
+
+        <article class="panel" id="p-invest">
+          <header class="panel-head">
+            <h2>가입 현황 <small class="hint" title="한전 산업분류 농업·임업·어업 전기 고객의 신설·증설·해지 건수(최근 12개월). 증설은 계약전력을 늘린 경우. 한전 집계 건수라 고객 수 증감과는 다르다">?</small></h2>
+            <span class="chip" id="invest-range"></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">신설 + 증설</span>
+              <span class="stat-value"><b data-v="grow"></b><small data-u="grow"></small></span>
+              <span class="delta" data-d="grow"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">해지</span>
+              <span class="stat-value"><b data-v="cancel"></b><small data-u="cancel"></small></span>
+              <span class="delta" data-d="cancel"></span>
+            </div>
+          </div>
+          <p class="sub-line" id="invest-net"></p>
+          <div class="chart pw-inv" id="chart-invest" aria-label="월별 신설·증설·해지"></div>
+          <div class="pw-key" id="invest-key"></div>
         </article>
       </section>
 
@@ -97,7 +105,31 @@
         </div>
       </section>
 
-      <section class="col col-right" aria-label="계절·투자·이상 신호">
+      <section class="col col-right" aria-label="사용량·계절 유형">
+        <article class="panel" id="p-use">
+          <header class="panel-head">
+            <h2>사용량</h2>
+            <span class="chip" data-month></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">사용량</span>
+              <span class="stat-value"><b data-v="kwh"></b><small data-u="kwh"></small></span>
+              <span class="delta" data-d="kwh"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">평년 같은 달 대비 <small class="hint" title="직전 5년 같은 달 사용량 평균과 비교. 띠는 그 5년의 최소~최대">?</small></span>
+              <span class="stat-value"><b data-v="norm"></b></span>
+              <span class="delta" data-d="norm"></span>
+            </div>
+          </div>
+          <h3 class="sub-head">장기 추이 <span>최근 12개월 합계 · 누르면 그 달로</span></h3>
+          <div class="chart pw-trend" id="chart-trend" aria-label="최근 12개월 사용량 합계 추이"></div>
+          <h3 class="sub-head">월별 사용량 <span id="band-note">선택 연도 · 전년 · 직전 5년 범위</span></h3>
+          <div class="chart pw-band" id="chart-band" aria-label="월별 사용량과 평년 범위"></div>
+          <div class="pw-key" id="band-key"></div>
+        </article>
+
         <article class="panel" id="p-season">
           <header class="panel-head">
             <h2>계절 유형</h2>
@@ -107,38 +139,6 @@
           <div class="chart pw-prof" id="chart-season" aria-label="월별 사용량 비중"></div>
           <div class="pw-key" id="season-key"></div>
           <p class="note" id="season-note"></p>
-        </article>
-
-        <article class="panel" id="p-invest">
-          <header class="panel-head">
-            <h2>설비 투자 흐름</h2>
-            <span class="chip" id="invest-range"></span>
-          </header>
-          <div class="stats two">
-            <div class="stat">
-              <span class="stat-label">신설 + 증설</span>
-              <span class="stat-value"><b data-v="grow"></b><small data-u="grow"></small></span>
-              <span class="delta" data-d="grow"></span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">해지</span>
-              <span class="stat-value"><b data-v="cancel"></b><small data-u="cancel"></small></span>
-              <span class="delta" data-d="cancel"></span>
-            </div>
-          </div>
-          <p class="sub-line" id="invest-net"></p>
-          <div class="chart pw-inv" id="chart-invest" aria-label="월별 신설·증설·해지"></div>
-          <div class="pw-key" id="invest-key"></div>
-          <p class="note">한전 산업분류 농업·임업·어업의 신설·증설·해지 건수(최근 12개월). 증설은 계약전력을 늘린 경우. 한전 집계 건수라 고객 수 증감과는 다르다</p>
-        </article>
-
-        <article class="panel" id="p-alert">
-          <header class="panel-head">
-            <h2>이상 신호</h2>
-            <span class="chip" data-month></span>
-          </header>
-          <p class="note pw-alert-note" id="alert-note"></p>
-          <ol class="pw-alerts" id="alerts"></ol>
         </article>
       </section>
     </main>
