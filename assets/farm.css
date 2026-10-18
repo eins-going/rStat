@@ -234,3 +234,51 @@ html.fv-lock, html.fv-lock body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .fv-progress::before { animation-duration: 3s; }
 }
+
+/* 유통시설 (자세히 보기) — 색은 data/facilities.js의 colors */
+.fv-legend .fv-lg-h { color: var(--faint); }
+.fv-sub { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 2px; }
+.fv-fchips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.fv-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--faint);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+.fv-fchip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px #fff; opacity: 0.35; }
+.fv-fchip b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.fv-fchip[aria-pressed="true"] { color: var(--text); }
+.fv-fchip[aria-pressed="true"] i { opacity: 1; }
+.fv-fchip:hover { border-color: var(--accent); }
+.fv-fcard { margin-bottom: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.03); }
+.fv-fcard .fv-link { margin-top: 6px; }
+.fv-fac dl div { grid-template-columns: 76px 1fr; }
+.fv-fac .fv-p-head { flex-wrap: wrap; margin-bottom: 4px; }
+.fv-flist { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; }
+.fv-flist button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+.fv-flist button:hover, .fv-flist button[aria-current="true"] { background: rgba(255, 255, 255, 0.06); }
+.fv-flist i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px #fff; }
+.fv-flist span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fv-flist em { flex: none; margin-left: auto; font-style: normal; font-size: 11px; color: var(--faint); }
+.fv-ftip { font-size: 12px; }

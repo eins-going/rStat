@@ -7,8 +7,7 @@
   const nf = new Intl.NumberFormat("ko-KR");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // 미곡처리장 · 산지유통센터 · 로컬푸드 직매장 · 6차산업 인증 사업자 · 과수 생산단지 · 수출전문농가단지 · 수출검역단지
-  const COLORS = ["#f5a524", "#5fb37c", "#ff7ab6", "#6cb8ff", "#ff5d5d", "#c6e05a", "#b28dff"];
+  const COLORS = D.colors; // 종류별 색 (scripts/build_facilities.py의 COLORS)
   const SIX = D.kinds.indexOf("6차산업 인증 사업자");
   const EXACT = new Set(["도로명", "지번", "좌표", "상호"]);
   const PREC_NOTE = {

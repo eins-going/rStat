@@ -1,5 +1,5 @@
-// 위성 지도: 가운데 지도 카드 안에서 VWorld 항공영상 위에 팜맵 필지를 그린다.
-// 시군에서 '위성 지도'를 처음 고를 때만 Leaflet과 함께 불러온다 (app.js의 loadFarm·setView).
+// 자세히 보기: 가운데 지도 카드 안에서 VWorld 항공영상 위에 팜맵 필지와 그 시군의 유통시설(data/facilities.js)을 그린다.
+// 시군에서 '자세히 보기'를 처음 고를 때만 Leaflet·시설 자료와 함께 불러온다 (app.js의 loadFarm·setView).
 (() => {
   const API = "/api/farmmap";
   const KIND_COLOR = { 논: "#5cc8ff", 밭: "#ffd23f", 과수: "#ff7ab6", 시설: "#ff6a5c" };
@@ -33,7 +33,7 @@
   }
 
   let H = null; // 지도 카드 안의 자리: { card, bar, map, info }
-  let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle;
+  let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle, facLayer;
   const ui = {};
   const drawn = new Map(); // 팜맵 ID → 그려 둔 필지 레이어
   const st = { base: "sat", labels: true, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, full: false, tileErrors: 0, tileLoads: 0 };
@@ -66,8 +66,9 @@
       <div class="fv-map" data-ui="map"></div>
       <div class="fv-progress" aria-hidden="true"></div>
       <p class="fv-hint" data-ui="hint" aria-live="polite" hidden></p>
-      <ul class="fv-legend" aria-label="팜맵 판독 분류">${KINDS.map((k) => `<li><i style="--c:${KIND_COLOR[k]}"></i>${k}</li>`).join("")}</ul>`;
+      <ul class="fv-legend" aria-label="팜맵 판독 분류"><li class="fv-lg-h">필지</li>${KINDS.map((k) => `<li><i style="--c:${KIND_COLOR[k]}"></i>${k}</li>`).join("")}</ul>`;
     H.info.innerHTML = `
+      <section class="fv-sec" data-ui="facs" aria-label="유통시설"></section>
       <section class="fv-sec" data-ui="parcel" aria-label="필지 정보"></section>
       <section class="fv-sec" data-ui="near" aria-label="주변 농경지"></section>`;
     for (const el of [H.bar, H.map, H.info]) el.querySelectorAll("[data-ui]").forEach((x) => { ui[x.dataset.ui] = x; });
@@ -112,7 +113,7 @@
       zoomControl: false,
     });
     L.control.zoom({ position: "bottomright", zoomInTitle: "확대", zoomOutTitle: "축소" }).addTo(map);
-    map.attributionControl.setPrefix(false).addAttribution("영상 VWorld · 필지 팜맵(농정원)");
+    map.attributionControl.setPrefix(false).addAttribution("영상 VWorld · 필지 팜맵(농정원) · 시설 공공데이터 외");
     // 인증키의 서비스 URL이 맞지 않으면 타일이 모두 실패한다 (바다 등 일부 실패는 정상)
     Object.values(bases).forEach((t) => t
       .on("tileload", () => { st.tileLoads++; })
@@ -121,6 +122,8 @@
       }));
     regionLayer = L.layerGroup().addTo(map);
     parcelLayer = L.featureGroup().addTo(map);
+    map.createPane("fv-facs").style.zIndex = 450; // 필지(400) 위, 툴팁 아래
+    facLayer = L.layerGroup().addTo(map);
     marker = L.circleMarker([0, 0], { radius: 5, color: "#fff", weight: 2, fillColor: "#f5a524", fillOpacity: 1, interactive: false });
     circle = L.circle([0, 0], { radius: 500, color: "#fff", weight: 1.5, opacity: 0.8, dashArray: "6 6", fill: false, interactive: false });
     syncLayers();
@@ -176,6 +179,7 @@
     const outline = L.polygon(polys.map((p) => p.map(flip)), { color: "#f5a524", weight: 2, fill: false, interactive: false }).addTo(regionLayer);
     map.fitBounds(outline.getBounds(), { padding: [16, 16], animate: false });
     syncMask();
+    setFacilities(geometry, st.unit);
   }
 
   // 필지를 볼 만큼 확대하면 덮개를 걷는다 (2013년 경계라 실제 경계와 어긋나는 곳이 있다)
@@ -337,6 +341,133 @@
     }));
   }
 
+  // ---------- 유통시설 ----------
+  // 유통시설 지도(facilities.html)와 같은 자료. 시군 경계 안의 시설만 고른다.
+  // 주소가 읍면·시군까지만 있어 그 중심에 놓인 곳은 확대한 지도에서 오해를 사므로 목록에만 싣는다.
+  const FD = window.AGRI_FACILITIES;
+  const F_EXACT = new Set(["도로명", "지번", "좌표", "상호"]);
+  const F_PREC = {
+    도로명: "도로명주소 위치", 지번: "지번주소 위치", 좌표: "자료에 적힌 위경도", 상호: "시설 이름 장소검색 위치",
+    리: "마을(리) 중심 — 지도에 표시 안 함", 읍면동: "읍면동 중심 — 지도에 표시 안 함", 시군구: "시군 중심 — 지도에 표시 안 함",
+  };
+  const facRows = FD ? FD.rows
+    .map(([kind, lon, lat, prec, name, road, jibun, tel, info, sgg]) => ({ kind, lon, lat, prec: prec >= 0 ? FD.precs[prec] : "", name, road, jibun, tel, info, sgg }))
+    .filter((r) => r.lon != null && r.prec !== "시도") // 시도 중심은 어느 시군의 시설인지 알 수 없다
+    .map((r, i) => {
+      const exact = F_EXACT.has(r.prec);
+      // 같은 건물에 놓인 시설은 한 점으로 묶고, 지역 중심에 놓인 시설은 따로 고른다
+      return { ...r, exact, key: exact ? `${r.lon},${r.lat}` : `#${i}` };
+    }) : [];
+  const fst = { here: [], kinds: new Set(), sel: null };
+
+  // 점이 시군 경계(Polygon·MultiPolygon, 구멍 포함) 안에 있는지
+  function inRing(x, y, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function inGeometry(x, y, geometry) {
+    const polys = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+    return polys.some(([outer, ...holes]) => inRing(x, y, outer) && !holes.some((h) => inRing(x, y, h)));
+  }
+
+  // 경계는 2013년 것을 단순화해 시군 끝자락의 시설이 밖으로 빠지거나 이웃 시군 시설이 들어온다.
+  // 그래서 주소의 시군(sgg, build_facilities.py가 붙인다)이 이 시군이면 경계 밖 3km까지 담고,
+  // 경계 안이어도 주소가 다른 시군이면 뺀다. 광역시 '○○시부'는 주소가 구 단위라 경계로만 가린다.
+  const stem = (s) => (s || "").replace(/(시|군)$/, "");
+  function setFacilities(geometry, unit) {
+    const xs = [], ys = [];
+    (geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates).forEach((p) => p[0].forEach(([x, y]) => { xs.push(x); ys.push(y); }));
+    const pad = 0.035;
+    const [x0, x1, y0, y1] = [Math.min(...xs) - pad, Math.max(...xs) + pad, Math.min(...ys) - pad, Math.max(...ys) + pad];
+    const byAddr = unit && !/시부$/.test(unit);
+    fst.here = facRows
+      .filter((r) => {
+        if (r.lon < x0 || r.lon > x1 || r.lat < y0 || r.lat > y1) return false;
+        if (byAddr && r.sgg) return stem(r.sgg) === stem(unit);
+        return inGeometry(r.lon, r.lat, geometry);
+      })
+      .sort((a, b) => a.kind - b.kind || a.name.localeCompare(b.name, "ko"));
+    fst.kinds = new Set(fst.here.map((r) => r.kind));
+    fst.sel = null;
+    drawFacilities();
+    renderFacs();
+  }
+
+  const facShown = () => fst.here.filter((r) => fst.kinds.has(r.kind));
+
+  function drawFacilities() {
+    facLayer.clearLayers();
+    const groups = new Map();
+    for (const r of facShown()) if (r.exact) (groups.get(r.key) || groups.set(r.key, []).get(r.key)).push(r);
+    for (const [key, list] of groups) {
+      const r0 = list[0], c = FD.colors[r0.kind], sel = fst.sel === key;
+      const m = L.circleMarker([r0.lat, r0.lon], {
+        pane: "fv-facs", radius: sel ? 9 : list.length > 1 ? 7.5 : 6.5,
+        color: sel ? "#111" : "#fff", weight: sel ? 3 : 2, fillColor: c, fillOpacity: 1,
+      });
+      m.bindTooltip(`<b>${esc(list.length > 1 ? `${r0.name} 외 ${list.length - 1}곳` : r0.name)}</b><br>${esc(FD.kinds[r0.kind])}`, { direction: "top", offset: [0, -6], className: "fv-ftip" });
+      m.on("click", (e) => { L.DomEvent.stopPropagation(e); selectFac(key); });
+      m.addTo(facLayer);
+    }
+  }
+
+  function selectFac(key, fly = false) {
+    fst.sel = key;
+    const r = fst.here.find((x) => x.key === key);
+    if (fly && r?.exact) map.setView([r.lat, r.lon], Math.max(map.getZoom(), 16));
+    drawFacilities();
+    renderFacs();
+  }
+
+  const fmtInfo = (k, v) => (/능력/.test(k) && /^\d+(\.\d+)?$/.test(v) ? `${nf.format(+v)}톤` : k === "직원" && /^\d+$/.test(v) ? `${v}명` : v);
+
+  function facCard(r) {
+    const row = (k, v) => (v ? `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>` : "");
+    return `
+      <article class="fv-parcel fv-fac">
+        <div class="fv-p-head"><span class="fv-kind" style="--c:${FD.colors[r.kind]}">${esc(FD.kinds[r.kind])}</span><h4>${esc(r.name)}</h4></div>
+        <dl>
+          ${row("주소", r.road)}${row(r.road ? "지번" : "주소", r.jibun)}${row("전화", r.tel)}
+          ${Object.entries(r.info).map(([k, v]) => row(k, fmtInfo(k, v))).join("")}
+          <div><dt>위치</dt><dd${r.exact ? "" : ' class="fv-changed"'}>${esc(F_PREC[r.prec] || r.prec)}</dd></div>
+        </dl>
+      </article>`;
+  }
+
+  function renderFacs() {
+    if (!FD) { ui.facs.innerHTML = ""; return; }
+    const head = `<div class="fv-sec-head"><h3>유통시설 <span class="fv-sub">${nf.format(fst.here.length)}곳</span></h3><a class="fv-link" href="facilities" target="_blank" rel="noopener">전국 지도</a></div>`;
+    if (!fst.here.length) {
+      ui.facs.innerHTML = `${head}<p class="fv-empty">이 시군 안에 표시할 시설이 없습니다.</p>`;
+      return;
+    }
+    const count = new Map();
+    fst.here.forEach((r) => count.set(r.kind, (count.get(r.kind) || 0) + 1));
+    const chips = [...count].map(([k, n]) => `
+      <button type="button" class="fv-fchip" data-k="${k}" aria-pressed="${fst.kinds.has(k)}"><i style="--c:${FD.colors[k]}"></i>${esc(FD.kinds[k])}<b>${nf.format(n)}</b></button>`).join("");
+    const picked = fst.sel ? fst.here.filter((r) => r.key === fst.sel) : [];
+    const card = picked.length ? `<div class="fv-fcard">${picked.map(facCard).join("")}<button type="button" class="fv-link" data-act="unpick">닫기</button></div>` : "";
+    const list = facShown().map((r) => `
+      <li><button type="button" data-key="${esc(r.key)}"${r.key === fst.sel ? ' aria-current="true"' : ""}><i style="--c:${FD.colors[r.kind]}"></i><span>${esc(r.name)}</span>${r.exact ? "" : "<em>위치 불명확</em>"}</button></li>`).join("");
+    const off = fst.here.filter((r) => !r.exact).length;
+    ui.facs.innerHTML = `${head}<div class="fv-fchips" role="group" aria-label="시설 종류">${chips}</div>${card}
+      <ol class="fv-flist">${list}</ol>
+      ${off ? `<p class="fv-note">주소가 마을·읍면·시군까지만 있는 ${nf.format(off)}곳은 지도에 찍지 않고 목록에만 두었습니다.</p>` : ""}`;
+    ui.facs.querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => {
+      const k = +b.dataset.k;
+      if (fst.kinds.has(k)) fst.kinds.delete(k); else fst.kinds.add(k);
+      if (!fst.kinds.size) count.forEach((_, kk) => fst.kinds.add(kk));
+      drawFacilities();
+      renderFacs();
+    }));
+    ui.facs.querySelectorAll("[data-key]").forEach((b) => b.addEventListener("click", () => selectFac(b.dataset.key, true)));
+    ui.facs.querySelector('[data-act="unpick"]')?.addEventListener("click", () => { fst.sel = null; drawFacilities(); renderFacs(); });
+  }
+
   // ---------- 검색 ----------
   async function search() {
     const q = ui.q.value.trim();
@@ -367,17 +498,17 @@
     H.bar.hidden = H.map.hidden = H.info.hidden = !on;
   }
 
-  async function show(hosts, { title, geometry }) {
+  async function show(hosts, { title, unit, geometry }) {
     if (!H) build(hosts);
     toggleHosts(true);
     if (!map) {
-      hint("위성 지도를 불러오는 중…");
+      hint("자세히 보기를 불러오는 중…");
       try {
         const cfg = await api({ op: "config" });
         if (!map) initMap(cfg.vworld);
         hint("");
       } catch (err) {
-        hint(`위성 지도를 열 수 없습니다: ${err.message}`, true);
+        hint(`자세히 보기를 열 수 없습니다: ${err.message}`, true);
         return;
       }
     }
@@ -385,6 +516,7 @@
     if (st.region !== title) {
       if (st.region) clearAll();
       st.region = title;
+      st.unit = unit;
       setRegion(geometry);
     }
   }

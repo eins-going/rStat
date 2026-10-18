@@ -36,6 +36,9 @@ from build_farms import (AT, ROOT, SIDO_FULL, VWorld, district_point, geocode, l
 EXACT = ("도로명", "지번", "상호", "좌표")
 KINDS = {"rpc": "미곡처리장(도정업체)", "apc": "산지유통센터(APC)", "lf": "로컬푸드 직매장", "six": "6차산업 인증 사업자",
          "fruit": "과수 생산단지", "exp": "수출전문농가단지", "quar": "수출검역단지(선과장)"}
+# 점 색 (유통시설 지도와 통계 페이지의 '자세히 보기'가 같이 쓴다)
+COLORS = {"rpc": "#f5a524", "apc": "#5fb37c", "lf": "#ff7ab6", "six": "#6cb8ff",
+          "fruit": "#ff5d5d", "exp": "#c6e05a", "quar": "#b28dff"}
 
 
 def find(prefix):
@@ -384,6 +387,16 @@ def locate_quar(vw, f, known):
     return (r[0], r[1], level, r[2]) if r else None
 
 
+def sgg_of(f):
+    """시설이 속한 시군 이름(김해시, 청주시; 광역시는 구). 좌표를 찾은 주소에서, 없으면 고친 원주소에서 읽는다.
+    통계 페이지의 '자세히 보기'가 단순화한 시군 경계 가까이에 있는 시설을 주소로 가려 담는 데 쓴다."""
+    for text in (f["ref"].split(" · ")[-1], fix_admin(fix_typos(f["road"] or f["jibun"]))):
+        p = parse_addr(text)
+        if p and p["sigungu"]:
+            return p["sigungu"].split()[0]
+    return ""
+
+
 def main():
     vw = VWorld(load_env()["VWORLD_API_KEY"])
     facs = load_rpc() + load_apc() + load_localfood() + load_six() + load_fruit() + load_export()
@@ -437,8 +450,9 @@ def main():
                      round(f["lon"], 6) if f["lon"] is not None else None,
                      round(f["lat"], 6) if f["lat"] is not None else None,
                      precs.index(f["prec"]) if f["prec"] in precs else -1,
-                     f["name"], f.get("raw", f["road"]), "" if "raw" in f else f["jibun"], f["tel"], info])
-    data = {"built": time.strftime("%Y-%m-%d"), "kinds": list(kinds.values()), "providers": providers, "precs": precs, "rows": rows}
+                     f["name"], f.get("raw", f["road"]), "" if "raw" in f else f["jibun"], f["tel"], info, sgg_of(f)])
+    # 행: [종류, 경도, 위도, 정밀도, 이름, 주소, 지번, 전화, {정보}, 시군]
+    data = {"built": time.strftime("%Y-%m-%d"), "kinds": list(kinds.values()), "colors": [COLORS[k] for k in kinds], "providers": providers, "precs": precs, "rows": rows}
     with open(os.path.join(ROOT, "data", "facilities.js"), "w", encoding="utf-8") as fh:
         fh.write("// 미곡처리장·APC·로컬푸드 직매장·6차산업·과수 생산단지·수출전문농가단지·수출검역단지 + VWorld 좌표 (scripts/build_facilities.py)\n")
         fh.write("window.AGRI_FACILITIES = ")

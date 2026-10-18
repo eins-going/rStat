@@ -224,9 +224,9 @@
     if (level(state.key) === 2) warmFarm();
   }
 
-  // ---------- 위성 지도 (시군에서만, 처음 고를 때 Leaflet과 함께 불러온다) ----------
+  // ---------- 자세히 보기 (시군에서만, 처음 고를 때 Leaflet·시설 자료와 함께 불러온다) ----------
   const FARM_CSS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css", "assets/farm.css"];
-  const FARM_JS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js", "assets/farm.js"];
+  const FARM_JS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js", "data/facilities.js", "assets/farm.js"];
   let farmWarm = false;
   let farmReady = null;
 
@@ -256,7 +256,7 @@
       const el = Object.assign(document.createElement(tag), attrs, { onload: ok, onerror: fail });
       document.head.append(el);
     });
-    // 스크립트는 함께 받되 순서대로 실행한다 (Leaflet → farm.js)
+    // 스크립트는 함께 받되 순서대로 실행한다 (Leaflet → 시설 자료 → farm.js)
     farmReady = Promise.all([
       ...FARM_CSS.map((href) => load("link", { rel: "stylesheet", href })),
       ...FARM_JS.map((src) => load("script", { src, async: false })),
@@ -267,7 +267,7 @@
   const viewSeg = $("#view-seg");
   viewSeg.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
 
-  // 통계 지도 ↔ 위성 지도. 위성은 시군에서만 고를 수 있고, 다른 시군을 고르면 그 시군으로 옮겨 간다
+  // 통계 지도 ↔ 자세히 보기. 자세히 보기는 시군에서만 고를 수 있고, 다른 시군을 고르면 그 시군으로 옮겨 간다
   async function setView(v) {
     if (level(state.key) !== 2) v = "stats";
     state.view = v;
@@ -282,20 +282,20 @@
       viewSeg.title = "";
       window.FarmView.show(
         { card: $("#map-card"), bar: $("#sat-bar"), map: $("#sat-map"), info: $("#sat-info") },
-        { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, geometry: unitFeatures.find((f) => f.properties.key === k).geometry },
+        { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, unit: label(k), geometry: unitFeatures.find((f) => f.properties.key === k).geometry },
       );
     } catch {
-      viewSeg.title = "위성 지도를 불러오지 못했습니다. 다시 눌러 주세요.";
+      viewSeg.title = "자세히 보기를 불러오지 못했습니다. 다시 눌러 주세요.";
       if (state.key === k) setView("stats");
     } finally {
       viewSeg.classList.remove("loading");
     }
   }
 
-  // #경기도 · #경기도/가평군 · 위성 지도면 #경기도/가평군/위성
+  // #경기도 · #경기도/가평군 · 자세히 보기면 #경기도/가평군/자세히 (예전 링크의 /위성도 받는다)
   function toHash(k) {
     if (k === NATION) return "";
-    const path = level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}${state.view === "sat" ? "/위성" : ""}`;
+    const path = level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}${state.view === "sat" ? "/자세히" : ""}`;
     return `#${encodeURIComponent(path)}`;
   }
 
@@ -307,7 +307,7 @@
     return u || s;
   }
 
-  const viewFromHash = () => (decodeURIComponent(location.hash.slice(1)).split("/")[2] === "위성" ? "sat" : "stats");
+  const viewFromHash = () => (["자세히", "위성"].includes(decodeURIComponent(location.hash.slice(1)).split("/")[2]) ? "sat" : "stats");
 
   function syncHash() {
     const hash = toHash(state.key);
