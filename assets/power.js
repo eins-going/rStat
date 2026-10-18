@@ -411,13 +411,16 @@
   // 막대·선 그림 공통
   function frame(el, h0) {
     const w = el.clientWidth || 300, h = el.clientHeight || h0;
+    el._wh = [w, h]; // 그린 크기 (크기가 그대로면 다시 그리지 않는다)
     el.innerHTML = "";
     const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${w} ${h}`);
     return { svg, w, h };
   }
 
   // 월별 사용량: 선택 연도 · 전년 · 직전 5년 범위
-  function drawBand() {
+  // animate: 지역·기준월을 바꿨을 때 선이 왼쪽에서 오른쪽으로 그려지게 (창 크기만 바뀌면 그냥 그린다)
+  const SWEEP = 1100;
+  function drawBand(animate = true) {
     const k = state.key, i = state.i;
     const el = $("#chart-band");
     const { svg, w, h } = frame(el, 150);
@@ -441,13 +444,23 @@
     });
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(months).join("text")
       .attr("x", (d) => x(d)).attr("y", h - 4).attr("text-anchor", "middle").text((d) => d);
+    // 범위 띠·전년·선택 연도 선을 한 묶음으로 잘라 두고, 자르는 상자를 왼쪽에서 오른쪽으로 넓힌다
+    const sweep = animate && !reduceMotion;
+    const clip = svg.append("defs").append("clipPath").attr("id", "pw-band-clip")
+      .append("rect").attr("x", 0).attr("y", 0).attr("height", h).attr("width", sweep ? m.l : w);
+    const plot = svg.append("g").attr("clip-path", "url(#pw-band-clip)");
     const area = d3.area().defined((d) => d).x((d, j) => x(months[j])).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveMonotoneX);
-    svg.append("path").attr("class", "pw-bandarea").attr("d", area(band));
+    plot.append("path").attr("class", "pw-bandarea").attr("d", area(band));
     const line = d3.line().defined(ok).x((d, j) => x(months[j])).y((d) => y(d)).curve(d3.curveMonotoneX);
-    svg.append("path").attr("class", "pw-prev").attr("d", line(prev));
-    svg.append("path").attr("class", "pw-cur").attr("d", line(cur));
+    plot.append("path").attr("class", "pw-prev").attr("d", line(prev));
+    plot.append("path").attr("class", "pw-cur").attr("d", line(cur));
+    if (sweep) clip.transition().duration(SWEEP).ease(d3.easeCubicInOut).attr("width", w);
     const sm = +M[i].slice(5);
-    if (ok(cur[sm - 1])) svg.append("circle").attr("class", "pw-dot").attr("cx", x(sm)).attr("cy", y(cur[sm - 1])).attr("r", 4);
+    if (ok(cur[sm - 1])) {
+      // 선택한 달의 점은 선이 그 자리에 닿을 때 나타난다
+      const dot = svg.append("circle").attr("class", "pw-dot").attr("cx", x(sm)).attr("cy", y(cur[sm - 1])).attr("r", 4);
+      if (sweep) dot.style("opacity", 0).transition().delay(SWEEP * Math.min(1, (x(sm) - m.l) / (w - m.l - m.r))).duration(200).style("opacity", 1);
+    }
     $("#band-key").innerHTML = `<span><i class="cur"></i>${y0}년</span><span><i class="prev"></i>${y0 - 1}년</span><span><i class="band"></i>${y0 - 5}~${y0 - 1}년 범위</span>`;
   }
 
@@ -605,14 +618,12 @@
     paintMap();
   }).observe($("#map-wrap"));
   // 그림 칸은 패널이 자리를 잡은 뒤에야 크기가 정해진다 → 크기가 바뀌면 그 그림만 다시 그린다
-  const redraw = { "chart-band": drawBand, "chart-trend": drawTrend, "chart-cust": drawCust, "chart-kw": drawKw, "chart-season": renderSeason, "chart-invest": renderInvest };
-  const sizes = new Map();
+  const redraw = { "chart-band": () => drawBand(false), "chart-trend": drawTrend, "chart-cust": drawCust, "chart-kw": drawKw, "chart-season": renderSeason, "chart-invest": renderInvest };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;
-      const prev = sizes.get(e.target.id);
-      sizes.set(e.target.id, [width, height]);
-      if (prev && Math.abs(prev[0] - width) < 1 && Math.abs(prev[1] - height) < 1) continue;
+      const drawn = e.target._wh;
+      if (drawn && Math.abs(drawn[0] - width) < 1 && Math.abs(drawn[1] - height) < 1) continue; // 그린 크기 그대로
       redraw[e.target.id]();
     }
   });
