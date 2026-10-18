@@ -620,22 +620,6 @@
     lineChart("#chart-share", [{ name: A ? "다른 시도행" : "비중", color: ACC, values: tr.map((t) => (A ? t.cross : t.share)) }], pctS, (v) => `${v < 10 && v % 1 ? nf1.format(v) : nf0.format(v)}%`);
   }
 
-  function renderDist() {
-    $("#leg-dist").innerHTML = BANDS.map((b, j) => `<span><i style="background:${BAND_COLOR[j]}"></i>${b.name}</span>`).join("");
-    const rows = all() ? [{ name: "전국", arr: cur.bandU, tot: cur.U }]
-      : [{ name: "이 흐름", arr: cur.band, tot: cur.S }, { name: "전국", arr: cur.bandU, tot: cur.U }];
-    $("#dist-bars").innerHTML = rows.map((r) => `
-      <div class="dist-row"><span class="name">${r.name}</span><span class="dist-track">${r.tot ? [...r.arr].map((q, j) => {
-        const s = (q / r.tot) * 100;
-        return s > 0 ? `<span class="seg-b" style="flex-basis:${s}%;background:${BAND_COLOR[j]}" data-tip="${esc(`${r.name} · ${BANDS[j].name}`)}|${s}">${s >= 9 ? `<em>${nf0.format(s)}</em>` : ""}</span>` : "";
-      }).join("") : ""}</span></div>`).join("");
-    $$("#dist-bars .seg-b").forEach((el) => {
-      const [name, s] = el.dataset.tip.split("|");
-      el.addEventListener("mousemove", (e) => showCtip(e, `<b>${esc(name)}</b>${pct(+s)}`));
-      el.addEventListener("mouseleave", hideCtip);
-    });
-  }
-
   // 판로(dt)·출하 주체(sh) 구성. 행을 누르면 그 값으로 거르고, 다시 누르면 푼다
   function renderComposition(key, names, colors, el) {
     const sum = (a) => a.reduce((x, y) => x + y, 0);
@@ -658,6 +642,32 @@
     }).join("") : '<p class="note">자료가 없습니다.</p>';
     if (items.length && key === "dt") el.insertAdjacentHTML("afterbegin", `<div class="mix-head"><span></span><span></span><span>${all() ? "비중" : "이 흐름"}</span><span>${all() ? "" : "전국"}</span><span>전년대비</span></div>`);
     $$(`[data-${key}]`, el).forEach((b) => b.addEventListener("click", () => { const v = +b.dataset[key]; state[key] = state[key] === v ? -1 : v; render(); }));
+  }
+
+  // ---------- 왼쪽: 기기 사용량 비중 (data/flow_mon.js eq) ----------
+  function renderEquip() {
+    const side = state.dir === "in" && !all() ? "d" : "o";
+    const yi = MON.years.indexOf(Y[state.yi]);
+    const el = $("#bars-equip");
+    const mine = MON.eq?.[side]?.[state.k], nat = MON.eq?.[side]?.["00"];
+    if (yi < 0 || !mine) { el.innerHTML = `<p class="note">${yi < 0 ? `${MON.years[0]}~${MON.years.at(-1)}년만 싣습니다.` : "자료가 없습니다."}</p>`; return; }
+    const shareOf = (arr, j) => { const row = arr?.[j]; const t = row ? row.reduce((a, b) => a + b, 0) : 0; return t ? row.map((x) => (x / t) * 100) : null; };
+    const cur = shareOf(mine, yi), prev = yi > 0 ? shareOf(mine, yi - 1) : null, natS = shareOf(nat, yi);
+    if (!cur) { el.innerHTML = '<p class="note">이 해에는 자료가 없습니다.</p>'; return; }
+    const COLORS = ["#f5a524", "#3987e5", "#199e70", "#9085e9", "#d55181", "#c98500", "#7d8590"];
+    const rows = MON.eqNames.map((name, i) => ({ name, i, c: cur[i], p: prev?.[i], n: natS?.[i], color: COLORS[i] }))
+      .filter((r) => r.c > 0 || r.p > 0).sort((a, b) => b.c - a.c);
+    el.innerHTML = `<div class="mix-head"><span></span><span></span><span>${all() ? "비중" : "이 흐름"}</span><span>${all() ? "" : "전국"}</span><span>전년대비</span></div>` + rows.map((r) => {
+      const d = ok(r.c) && ok(r.p) ? r.c - r.p : null;
+      const cls = d == null ? "" : d > 0 ? "up" : d < 0 ? "down" : "";
+      const ei = EQ.findIndex((e) => e.name === r.name);
+      return `<button type="button" class="bar-row share-row${ei === state.eq ? " sel" : ""}" data-eq="${ei}" title="${esc(`${r.name} · ${pct(r.c)}${ok(r.n) ? ` (전국 ${pct(r.n)})` : ""} · 누르면 이 기기의 흐름`)}">
+        <span class="name"><i class="sw" style="background:${r.color}"></i>${esc(r.name)}</span>
+        <span class="track mark-track"><span class="fill" style="width:${Math.min(100, r.c)}%;background:${r.color}"></span>${ok(r.n) && !all() ? `<span class="nat-mark" style="left:${Math.min(100, r.n)}%"></span>` : ""}</span>
+        <span class="val">${pct(r.c)}</span><span class="natv">${all() ? "" : pct(r.n)}</span>
+        <span class="chg ${cls}">${d == null ? "–" : `${d > 0 ? "▲" : d < 0 ? "▼" : ""}${nf1.format(Math.abs(d))}%p`}</span></button>`;
+    }).join("");
+    $$("[data-eq]", el).forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.eq; if (i >= 0 && i !== state.eq) setEq(i); }));
   }
 
   // ---------- 가운데: 지도 아래 상대 지역 순위 ----------
@@ -805,7 +815,7 @@
     $$("[data-year]").forEach((el) => { el.textContent = yearText(); });
     renderTitle();
     renderKpi();
-    renderDist();
+    renderEquip();
     renderComposition("dt", D.dtypes, DT_COLOR, $("#bars-dtype"));
     renderComposition("sh", D.stypes, SH_COLOR, $("#bars-ship"));
     paintMap();
