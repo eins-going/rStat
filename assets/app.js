@@ -355,8 +355,8 @@
     setYear("p-farm", `${P.farm[hh.i] ?? P.farm.at(-1)}년${census ? " 총조사" : ""}`);
     setV("households", hh.value);
     setV("population", pop.value);
-    setD("households", deltaHTML(hh.value, hh.prev, hh.label, true));
-    setD("population", deltaHTML(pop.value, pop.prev, pop.label, true));
+    setD("households", deltaHTML(hh.value, hh.prev, hh.label));
+    setD("population", deltaHTML(pop.value, pop.prev, pop.label));
 
     const y = youngOperator(k), py = p ? youngOperator(p) : null;
     const o = oldOperator(k), po = p ? oldOperator(p) : null;
