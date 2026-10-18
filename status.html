@@ -31,19 +31,21 @@
         <p id="generated"></p>
       </div>
       <ul class="st-summary" id="summary"></ul>
-
-      <h2 class="st-h2">자동 수집 <span>이 PC가 정해진 때에 받아 검사한 뒤 배포합니다</span></h2>
-      <div class="st-list" id="auto"></div>
-
-      <h2 class="st-h2">수동 다운로드 <span>자동으로 받을 수 없어 원자료 파일을 손으로 내려받아 넣어야 합니다</span></h2>
-      <div class="st-list" id="manual"></div>
-
-      <h2 class="st-h2">기타 <span>수집하지 않거나 행정구역 개편 때만 손보는 자료</span></h2>
-      <div class="st-list" id="other"></div>
+      <div class="st-bar">
+        <span class="seg" id="freq" role="group" aria-label="갱신 주기"></span>
+        <span class="st-legend"><i class="m-auto"></i>자동 수집 <i class="m-manual"></i>수동 다운로드 — 자동으로 받을 수 없어 원자료 파일을 손으로 내려받아 넣어야 한다</span>
+      </div>
+      <div class="st-table-wrap">
+        <table class="st-table" id="table">
+          <thead><tr><th>지표</th><th>화면</th><th>주기</th><th>수집</th><th>자료 시점</th><th>수집일</th><th>상태</th><th>다음</th><th>출처 · 받는 곳</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="st-foot-note">수동 다운로드 자료는 받은 파일을 정해진 폴더에 넣으면 다음 자동 실행 때 반영된다. 공표 일정이 늦으면 자동 수집은 60일 동안 1주마다 다시 확인한다.</p>
     </main>
 
     <footer class="foot">
-      <p>계획: scripts/update_plan.toml · 실행: scripts/update.py (이 PC의 systemd 사용자 타이머 rstat-update.timer, 매일) · 기록: docs/data_sources.md</p>
+      <p>이 PC에서 매일 정해진 때에 수집하고, 검사를 통과한 자료만 배포한다.</p>
     </footer>
   </div>
   <script src="data/status.js"></script>

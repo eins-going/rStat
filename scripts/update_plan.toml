@@ -11,16 +11,224 @@
 # check: update.py의 검사 이름 (실패하면 outputs를 되돌리고 배포하지 않는다)
 
 [[source]]
-id = "kosis"
-name = "주요 통계 (KOSIS·지방재정365)"
+id = "kosis_farm"
+name = "농가·농가인구"
 page = "주요 통계"
 method = "auto"
-schedule = { kind = "monthly", day = 20 }
-commands = [["scripts/fetch_data.py"]]
+schedule = { kind = "yearly", months = [5], day = 1 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "farm"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "매년 4월 하순 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "농가·농가인구"
+origin = "통계청 농림어업조사 (KOSIS DT_1EA1011)"
+freq = "연"
+cadence = "매년 4월 하순 공표"
+period = "kosis:farm"
+
+[[source]]
+id = "kosis_returning"
+name = "귀농·귀촌"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [7], day = 1 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "returning"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "매년 6월 하순 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "귀농·귀촌"
+origin = "통계청 귀농어·귀촌인통계 (KOSIS DT_1A02008, DT_1A02015)"
+freq = "연"
+cadence = "매년 6월 하순 공표"
+period = "kosis:returning"
+
+[[source]]
+id = "kosis_land"
+name = "경지면적 (논·밭)"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [2], day = 20 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "land"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "매년 2월 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "경지면적 (논·밭)"
+origin = "통계청 농업면적조사 (KOSIS DT_1EB002)"
+freq = "연"
+cadence = "매년 2월 공표"
+period = "kosis:land"
+
+[[source]]
+id = "kosis_livestock"
+name = "가축 사육 (한우·젖소·닭)"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [2, 5, 8, 11], day = 25 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "livestock"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "분기 끝나고 약 1.5개월 뒤 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "가축 사육 (한우·젖소·닭)"
+origin = "통계청 가축동향조사 (KOSIS DT_1EO251, DT_1EO100)"
+freq = "분기"
+cadence = "분기 끝나고 약 1.5개월 뒤 공표"
+period = "kosis:livestock"
+
+[[source]]
+id = "kosis_rice"
+name = "쌀 생산량·논벼 재배면적"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [11], day = 20 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "rice"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "매년 11월 중순 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "쌀 생산량·논벼 재배면적"
+origin = "통계청 농작물생산조사 (KOSIS DT_1ET0294)"
+freq = "연"
+cadence = "매년 11월 중순 공표"
+period = "kosis:rice"
+
+[[source]]
+id = "kosis_economy"
+name = "농가경제 (소득·자산·부채)"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [5], day = 20 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "economy"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "매년 5월 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "농가경제 (소득·자산·부채)"
+origin = "통계청 농가경제조사 (KOSIS DT_1EA1201)"
+freq = "연"
+cadence = "매년 5월 공표"
+period = "kosis:economy"
+
+[[source]]
+id = "kosis_grdp"
+name = "지역소득 (GRDP)"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [12], day = 28 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "grdp"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "시도 12월, 시군은 시도마다 늦게 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "지역소득 (GRDP)"
+origin = "통계청·시도 지역내총생산 (KOSIS DT_1C91 등)"
+freq = "연"
+cadence = "시도 12월, 시군은 시도마다 늦게 공표"
+period = "kosis:grdp"
+
+[[source]]
+id = "kosis_budget"
+name = "농업·농촌 예산"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [3], day = 15 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "budget"]]
 outputs = ["data/data.js"]
 check = "kosis"
 keys = ["KOSIS_API_KEY", "lofin_api_key"]
-note = "지표마다 발표 시기가 다르지만 스크립트가 늘 최신 시점을 가져온다. 가축동향은 분기(분기 끝 약 2개월 뒤), 농가·경지·쌀·귀농귀촌·농가경제·GRDP는 연 1회, 예산은 2~3월."
+note = "회계연도 초(2~3월) 공개. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "농업·농촌 예산"
+origin = "행정안전부 지방재정365 세출예산"
+freq = "연"
+cadence = "회계연도 초(2~3월) 공개"
+period = "kosis:budget"
+
+[[source]]
+id = "kosis_aging"
+name = "경영주 연령·고령 농가인구"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [7], day = 1 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "aging"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "총조사(5년마다), 해마다 7월에 새 결과가 있는지 확인. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "경영주 연령·고령 농가인구"
+origin = "통계청 농림어업총조사 (KOSIS DT_1AG25202, DT_1AG25101)"
+freq = "5년"
+cadence = "총조사(5년마다), 해마다 7월에 새 결과가 있는지 확인"
+period = "kosis:aging"
+
+[[source]]
+id = "kosis_livestock_census"
+name = "가축 사육 (돼지·오리)"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [7], day = 1 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "livestock_census"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "총조사(5년마다). 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "가축 사육 (돼지·오리)"
+origin = "통계청 농림어업총조사 (KOSIS DT_1AG25505, DT_1AG25508)"
+freq = "5년"
+cadence = "총조사(5년마다)"
+period = "kosis:census"
+
+[[source]]
+id = "kosis_crops"
+name = "채소·특용작물 재배면적"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [7], day = 1 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "crops"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "총조사(5년마다), 새 총조사 표는 직접 추가해야 한다. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "채소·특용작물 재배면적"
+origin = "통계청 농림어업총조사 (KOSIS DT_1AG25403 등)"
+freq = "5년"
+cadence = "총조사(5년마다), 새 총조사 표는 직접 추가해야 한다"
+period = "kosis:cropYears"
 
 [[source]]
 id = "kepco"
@@ -34,16 +242,37 @@ check = "kepco"
 keys = ["KEPCO_API_KEY"]
 note = "매월, 약 2개월 늦게 나온다. 새 달만 받고 마지막 두 달은 다시 받는다. 빠르게 부르면 401이 잠깐 나와 스크립트가 쉬었다 다시 부른다."
 
+[[source.dataset]]
+name = "농사용 전력사용량 (고객·사용량·계약전력)"
+origin = "한전 전력데이터 개방포털 계약종별 전력사용량"
+freq = "월"
+cadence = "매월, 약 2개월 늦게"
+period = "kepco"
+
+[[source.dataset]]
+name = "농업 전기 고객 신설·증설·해지"
+origin = "한전 전력데이터 개방포털 산업분류별 전기사용고객 증감"
+freq = "월"
+cadence = "매월, 약 2개월 늦게"
+period = "kepco"
+
 [[source]]
 id = "agrix_corp"
 name = "농업법인 (농업경영체 등록정보)"
-page = "(화면 없음, db/agrix.duckdb)"
+page = "(화면 없음, DB만)"
 method = "auto"
 schedule = { kind = "yearly", months = [4], day = 1 }
 commands = [["scripts/fetch_agrix_corp.py"]]
 outputs = []
 check = "agrix"
 note = "연 1회(3월 무렵) 갱신. 아직 화면에 싣지 않아 DB만 갱신한다."
+
+[[source.dataset]]
+name = "농업법인 수 (영농조합·농업회사법인)"
+origin = "농림축산식품부 농업경영체 등록정보 (uni.agrix.go.kr)"
+freq = "연"
+cadence = "매년 3월 무렵 갱신"
+period = "agrix"
 
 [[source]]
 id = "logistics"
@@ -60,6 +289,15 @@ how = [
   "agri_distribution_data/에 'YYYY년 물류기기 공동 이용-작성일.csv' 꼴로 넣는다 (같은 연도의 예전 파일은 지운다).",
   "다음 자동 실행 때 정제 → DB → 원자료 대조 검증 → 집계가 돌고, 검증을 통과하면 배포된다.",
 ]
+
+[[source.dataset]]
+name = "물류기기 공동이용 실적 (기종점·품목·판로·월별)"
+origin = "물류기기 공동이용 원자료 (공개 내려받기 주소 없음)"
+freq = "연"
+cadence = "매년 1~2월 전년도 파일"
+period = "logistics"
+file = "agri_distribution_data/*.csv"
+where = "제공처에서 연도별 원자료 파일을 받아 물류 원자료 폴더에 넣는다"
 
 [[source]]
 id = "facilities"
@@ -82,6 +320,70 @@ how = [
   "과수 생산단지(농사로)는 명령이 직접 받는다. 좌표는 VWorld로 찾고 결과는 at_data/cache에 남는다.",
 ]
 
+[[source.dataset]]
+name = "미곡처리장 (도정업체)"
+origin = "공공데이터포털 전국미곡처리장표준데이터"
+freq = "수시"
+cadence = "지자체가 올릴 때"
+period = "fac:0"
+file = "at_data/전국미곡처리장표준데이터-*.xls"
+where = "data.go.kr에서 '전국미곡처리장표준데이터' 내려받기"
+
+[[source.dataset]]
+name = "산지유통센터 (APC)"
+origin = "공공데이터포털 전국농산물산지유통센터(APC) 표준데이터"
+freq = "수시"
+cadence = "지자체가 올릴 때"
+period = "fac:1"
+file = "at_data/전국농산물산지유통센터_APC_표준데이터-*.xls"
+where = "data.go.kr에서 '전국농산물산지유통센터 표준데이터' 내려받기"
+
+[[source.dataset]]
+name = "로컬푸드 직매장"
+origin = "농림축산식품부 국비지원 로컬푸드 직매장 운영현황 (2021년 기준)"
+freq = "없음"
+cadence = "2021년 자료뿐"
+period = "fac:2"
+file = "at_data/국비지원+로컬푸드+직매장*.xlsx"
+where = "새 자료가 나오면 바꾼다"
+
+[[source.dataset]]
+name = "6차산업 인증 사업자"
+origin = "공공데이터포털 농림축산식품부_6차산업 인증 사업자 현황 (2020년)"
+freq = "수시"
+cadence = "지금 파일은 2020년"
+period = "fac:3"
+file = "at_data/농림축산식품부_6차산업 인증 사업자 현황_*.csv"
+where = "data.go.kr에서 '6차산업 인증 사업자 현황' 내려받기"
+
+[[source.dataset]]
+name = "과수 생산단지"
+origin = "농촌진흥청 농사로 OpenAPI (fruitGrowingArea)"
+freq = "수시"
+cadence = "거의 바뀌지 않음"
+period = "fac:4"
+file = "at_data/fruit_area.json"
+auto = true
+where = "자동으로 받음 (농사로 OpenAPI)"
+
+[[source.dataset]]
+name = "수출전문농가단지"
+origin = "공공데이터포털 한국농수산식품유통공사_수출전문농가단지 정보"
+freq = "연"
+cadence = "해마다"
+period = "fac:5"
+file = "at_data/한국농수산식품유통공사_수출전문농가단지 정보_*.csv"
+where = "data.go.kr에서 '수출전문농가단지 정보' 내려받기"
+
+[[source.dataset]]
+name = "수출검역단지 (선과장)"
+origin = "공공데이터포털 농림축산검역본부 신선 농산물 수출검역단지현황"
+freq = "연"
+cadence = "해마다 7월 무렵"
+period = "fac:6"
+file = "at_data/*수출검역단지*.xlsx"
+where = "https://www.data.go.kr/data/15118469/fileData.do"
+
 [[source]]
 id = "at_farms"
 name = "aT 생산자 목록 (지도 미사용)"
@@ -92,6 +394,15 @@ remind = { months = 12, note = "필요할 때만" }
 commands = [["scripts/build_farms.py"]]
 outputs = []
 how = ["aT 식품산업통계정보 생산자 정보(https://www.atfis.or.kr/home/producer.do)에서 목록을 받아 at_data/농가리스트.xls로 넣는다. 개인·단체 주소가 시군까지만 있어 지도에는 싣지 않는다."]
+
+[[source.dataset]]
+name = "aT 생산자 목록 (화면 미사용)"
+origin = "aT 식품산업통계정보 생산자 정보"
+freq = "수시"
+cadence = "필요할 때"
+period = "static:지도에 싣지 않음"
+file = "at_data/농가리스트.xls"
+where = "https://www.atfis.or.kr/home/producer.do"
 
 [[source]]
 id = "geo"
@@ -105,6 +416,14 @@ how = [
   "미반영: 2026년 7월 인천 개편(중구·동구 → 제물포구·영종구, 서구 → 서구·검단구). 한전 자료는 7월부터 새 구로 오고 서구·검단구가 빠져 있다.",
 ]
 
+[[source.dataset]]
+name = "시군 경계"
+origin = "통계청 2013 행정경계 (southkorea-maps) → 현행 시군 규칙"
+freq = "개편 때"
+cadence = "행정구역이 바뀔 때"
+period = "static:2013 경계"
+where = "개편 때 경계 규칙을 고친다 (2026년 7월 인천 개편 미반영)"
+
 [[source]]
 id = "live"
 name = "팜맵 필지·VWorld 지도 (자세히 보기)"
@@ -112,3 +431,19 @@ page = "주요 통계 > 자세히 보기"
 method = "live"
 keys = ["DATA_PORTAL_API_KEY", "VWORLD_API_KEY (Vercel 환경변수)"]
 how = ["화면이 api/farmmap을 거쳐 실시간으로 부른다. 수집할 것은 없고, 인증키 만료(공공데이터포털 활용신청 기간)만 확인한다."]
+
+[[source.dataset]]
+name = "팜맵 필지·주변 농경지"
+origin = "농림수산식품교육문화정보원 팜맵 OpenAPI (공공데이터포털)"
+freq = "실시간"
+cadence = "화면이 그때그때 조회"
+period = "static:실시간"
+where = "수집 없음 · 인증키 활용기간만 확인"
+
+[[source.dataset]]
+name = "위성·일반 지도, 주소 검색"
+origin = "국토교통부 VWorld"
+freq = "실시간"
+cadence = "화면이 그때그때 조회"
+period = "static:실시간"
+where = "수집 없음 · 인증키 확인"

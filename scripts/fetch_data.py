@@ -187,11 +187,8 @@ def periods_of(block):
 
 
 # ---------- 지표별 수집 ----------
-def main():
-    out = {"updated": date.today().isoformat(), "sources": {}, "periods": {}, "v": {}}
-    v = out["v"]
-
-    print("농가·농가인구")
+def sec_farm(out, v):
+    """농가·농가인구 (농림어업조사, 연)"""
     b, _ = fetch("101", "DT_1EA1011", "Y", 10, ["농가", "농가인구"])
     yrs = periods_of(b)
     out["periods"]["farm"] = yrs
@@ -199,7 +196,9 @@ def main():
     v["population"] = series(b["농가인구"], yrs)
     out["sources"]["farm"] = "통계청 농림어업조사 (KOSIS DT_1EA1011)"
 
-    print("고령인구 비율")
+
+def sec_aging(out, v):
+    """고령 농가인구·경영주 연령 (농림어업총조사, 5년)"""
     b, rows = fetch("101", "DT_1AG25202", "F", 1, None or [], region_ids=True)
     dims = meta("101", "DT_1AG25202")
     rmap = region_map(dims[region_dim(dims)])
@@ -218,11 +217,12 @@ def main():
     out["periods"]["aging"] = rows[0]["PRD_DE"]
     out["sources"]["aging"] = "통계청 2025 농림어업총조사 (KOSIS DT_1AG25202)"
 
-    print("경영주 연령")
     v["operatorAge"] = operator_age()
     out["sources"]["operatorAge"] = "통계청 2025 농림어업총조사 경영주 연령구간별 농가 (KOSIS DT_1AG25101)"
 
-    print("귀농·귀촌")
+
+def sec_returning(out, v):
+    """귀농·귀촌 (연)"""
     b1, _ = fetch("101", "DT_1A02008", "Y", 5, ["가구수"])
     b2, _ = fetch("101", "DT_1A02015", "Y", 5, ["귀촌인수"])
     yrs = sorted(set(periods_of(b1)) | set(periods_of(b2)))
@@ -231,7 +231,9 @@ def main():
     v["returnRural"] = series(b2["귀촌인수"], yrs)
     out["sources"]["returning"] = "통계청 귀농어·귀촌인통계 (KOSIS DT_1A02008, DT_1A02015)"
 
-    print("경지면적")
+
+def sec_land(out, v):
+    """경지면적 (농업면적조사, 연)"""
     b, _ = fetch("101", "DT_1EB002", "Y", 10, ["경지면적: 계", "논", "밭"])
     yrs = periods_of(b)
     out["periods"]["land"] = yrs
@@ -240,7 +242,9 @@ def main():
     v["field"] = series(b["밭"], yrs, 1)
     out["sources"]["land"] = "통계청 농업면적조사 (KOSIS DT_1EB002) · 인천 옹진군은 인천시부에 포함"
 
-    print("가축")
+
+def sec_livestock(out, v):
+    """한육우·젖소·닭 (가축동향조사, 분기)"""
     b, rows = fetch("101", "DT_1EO251", "Q", 1, ["한육우:농장수", "한육우:마리수", "젖소:농장수", "젖소:마리수"])
     q = rows[0]["PRD_DE"]
     pair = lambda a, c: {k: [a.get(k), c.get(k)] for k in set(a) | set(c)}
@@ -248,15 +252,22 @@ def main():
     v["dairy"] = pair(latest(b["젖소:농장수"]), latest(b["젖소:마리수"]))
     b, _ = fetch("101", "DT_1EO100", "Q", 1, ["합계:가구수", "합계:마리수"])
     v["chicken"] = pair(latest(b["합계:가구수"]), latest(b["합계:마리수"]))
+    out["periods"]["livestock"] = f"{q[:4]}년 {int(q[4:])}/4분기"
+    out["sources"]["livestock"] = "통계청 가축동향조사 (DT_1EO251, DT_1EO100) · 2025 농림어업총조사 (DT_1AG25505, DT_1AG25508)"
+
+
+def sec_livestock_census(out, v):
+    """돼지·오리 (농림어업총조사, 5년)"""
+    pair = lambda a, c: {k: [a.get(k), c.get(k)] for k in set(a) | set(c)}
     b, _ = fetch("101", "DT_1AG25505", "F", 1, ["돼지 사육 규모별 농가:계", "총 마릿수"], region_ids=True)
     v["pig"] = pair(latest(b["돼지 사육 규모별 농가:계"]), latest(b["총 마릿수"]))
     b, _ = fetch("101", "DT_1AG25508", "F", 1, ["오리 사육 규모별 농가:계", "총 마릿수"], region_ids=True)
     v["duck"] = pair(latest(b["오리 사육 규모별 농가:계"]), latest(b["총 마릿수"]))
-    out["periods"]["livestock"] = f"{q[:4]}년 {int(q[4:])}/4분기"
     out["periods"]["census"] = "2025"
-    out["sources"]["livestock"] = "통계청 가축동향조사 (DT_1EO251, DT_1EO100) · 2025 농림어업총조사 (DT_1AG25505, DT_1AG25508)"
 
-    print("논벼")
+
+def sec_rice(out, v):
+    """논벼 재배면적·생산량 (농작물생산조사, 연)"""
     b, rows = fetch("101", "DT_1ET0294", "Y", 10, ["논벼:재배면적(ha)", "논벼:생산량(톤)"])
     a, p = latest(b["논벼:재배면적(ha)"]), latest(b["논벼:생산량(톤)"])
     v["rice"] = {k: [a.get(k), p.get(k)] for k in set(a) | set(p)}
@@ -266,7 +277,9 @@ def main():
     out["periods"]["riceYears"] = yrs
     out["sources"]["rice"] = "통계청 농작물생산조사 (KOSIS DT_1ET0294)"
 
-    print("채소·특용작물 (2015·2020·2025 총조사)")
+
+def sec_crops(out, v):
+    """채소·특용작물 재배면적 (농림어업총조사 2015·2020·2025)"""
     census = [("2015", "DT_1AG15403"), ("2020", "DT_1AG20403"), ("2025", "DT_1AG25403")]
     crops = defaultdict(lambda: defaultdict(lambda: [None] * len(census)))
     for i, (year, tbl) in enumerate(census):
@@ -277,11 +290,15 @@ def main():
     out["periods"]["cropYears"] = [y for y, _ in census]
     out["sources"]["crops"] = "통계청 농림어업총조사 2015·2020·2025 (KOSIS DT_1AG15403, DT_1AG20403, DT_1AG25403)"
 
-    print("지역내총생산")
+
+def sec_grdp(out, v):
+    """지역내총생산 (연)"""
     v["grdpAgri"], v["grdpTotal"] = grdp()
     out["sources"]["grdp"] = "통계청 시도별 지역내총생산 (DT_1C91) · 각 시도 시군별 지역내총생산 · 명목"
 
-    print("농가경제")
+
+def sec_economy(out, v):
+    """농가경제 (농가경제조사, 연)"""
     dims = meta("101", "DT_1EA1201")
     cmap = {it["id"]: ("00" if it["name"] == "평균" else sido_code(it["name"]))
             for it in dims["C"]["items"] if it["name"] == "평균" or (it["id"].startswith("A") and sido_code(it["name"]))}
@@ -317,7 +334,9 @@ def main():
     out["units"] = {"economy": "천원", "grdp": "백만원"}
     out["sources"]["economy"] = "통계청 농가경제조사 (KOSIS DT_1EA1201) · 도 단위"
 
-    print("농업·농촌 예산")
+
+def sec_budget(out, v):
+    """농업·농촌 예산 (지방재정365, 회계연도)"""
     years = [str(y) for y in range(date.today().year - 9, date.today().year + 1)]  # 최근 10개 회계연도
     agri, total = {}, {}
     for i, y in enumerate(years):
@@ -328,12 +347,9 @@ def main():
     out["periods"]["budget"] = years
     out["sources"]["budget"] = "지방재정365 구조별 기능별 세출예산 (AIDFA) · 101 농업ㆍ농촌 부문, 순계 · 회계연도별"
 
-    for m in ["households", "population", "land", "paddy", "field", "returnFarm", "returnRural", "aging",
-              "cattle", "dairy", "chicken", "pig", "duck", "rice", "riceSeries", "grdpAgri", "grdpTotal"]:
-        # 부산 시군 GRDP 표는 전국 표와 작성 기준이 달라 시도 값은 전국 표를 그대로 쓴다
-        reconcile(v[m], {"21"} if m.startswith("grdp") else set())
 
-    # GRDP 최신값: 지역마다 농림어업·총생산이 모두 있는 가장 최근 연도 (부산 시군은 2022년)
+def grdp_latest(v, out):
+    """GRDP 최신값: 지역마다 농림어업·총생산이 모두 있는 가장 최근 연도 (부산 시군은 2022년)"""
     v["grdp"], by_sido = {}, {}
     for key, agri_s in v["grdpAgri"].items():
         tot_s = v["grdpTotal"].get(key, [])
@@ -344,6 +360,52 @@ def main():
                 s = key.split("|")[0]
                 by_sido[s] = max(by_sido.get(s, ""), GRDP_YEARS[idx])
     out["periods"]["grdp"] = {"years": GRDP_YEARS, "bySido": by_sido}
+
+
+# 지표 묶음: 이름 → (함수, 시도·시군 합을 맞출 값). scripts/update_plan.toml이 이름으로 골라 부른다
+SECTIONS = {
+    "farm": (sec_farm, ['households', 'population']),
+    "aging": (sec_aging, ['aging']),
+    "returning": (sec_returning, ['returnFarm', 'returnRural']),
+    "land": (sec_land, ['land', 'paddy', 'field']),
+    "livestock": (sec_livestock, ['cattle', 'dairy', 'chicken']),
+    "livestock_census": (sec_livestock_census, ['pig', 'duck']),
+    "rice": (sec_rice, ['rice', 'riceSeries']),
+    "crops": (sec_crops, []),
+    "grdp": (sec_grdp, ['grdpAgri', 'grdpTotal']),
+    "economy": (sec_economy, []),
+    "budget": (sec_budget, []),
+}
+
+
+def main():
+    """python scripts/fetch_data.py [--only 묶음,…] — 묶음을 주면 그것만 다시 받아 data/data.js의 나머지는 그대로 둔다."""
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only", help=f"쉼표로 구분: {', '.join(SECTIONS)}")
+    args = ap.parse_args()
+    path = os.path.join(ROOT, "data", "data.js")
+    names = list(SECTIONS) if not args.only else [n.strip() for n in args.only.split(",")]
+    bad = [n for n in names if n not in SECTIONS]
+    if bad:
+        raise SystemExit(f"없는 묶음: {bad} (있는 것: {', '.join(SECTIONS)})")
+    if args.only:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        out = json.loads(text[text.index("= ") + 2:text.rstrip().rindex(";")])
+    else:
+        out = {"updated": None, "sources": {}, "periods": {}, "v": {}}
+    out["updated"] = date.today().isoformat()
+    v = out["v"]
+    for n in names:
+        print(n)
+        fn, mets = SECTIONS[n]
+        fn(out, v)
+        for m in mets:
+            # 부산 시군 GRDP 표는 전국 표와 작성 기준이 달라 시도 값은 전국 표를 그대로 쓴다
+            reconcile(v[m], {"21"} if m.startswith("grdp") else set())
+    if "grdp" in names:
+        grdp_latest(v, out)
 
     path = os.path.join(ROOT, "data", "data.js")
     with open(path, "w", encoding="utf-8") as f:

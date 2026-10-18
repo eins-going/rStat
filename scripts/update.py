@@ -22,6 +22,8 @@ import shutil
 import subprocess
 import sys
 import tomllib
+import unicodedata
+from fnmatch import fnmatch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLAN = os.path.join(ROOT, "scripts", "update_plan.toml")
@@ -149,6 +151,8 @@ CHECKS = {"kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", che
 
 def period_of(src):
     """status에 보일 자료 시점."""
+    if src["id"].startswith("kosis_") and src.get("dataset"):
+        return dataset_period(src["dataset"][0])
     try:
         if src["id"] == "kosis":
             p = read_js("data/data.js")["periods"]
@@ -172,8 +176,17 @@ def period_of(src):
 
 
 # ---------------------------------------------------------------- 때가 되었나
+def match_files(pattern):
+    """glob과 같되 파일 이름의 한글 정규화(NFD·NFC)를 가리지 않는다 (맥에서 받은 파일은 NFD로 저장된다)."""
+    nfc = lambda t: unicodedata.normalize("NFC", t)  # noqa: E731
+    d, pat = os.path.split(os.path.join(ROOT, pattern))
+    if not os.path.isdir(d):
+        return []
+    return sorted(os.path.join(d, f) for f in os.listdir(d) if fnmatch(nfc(f), nfc(pat)))
+
+
 def input_sig(src):
-    files = sorted({f for g in src.get("inputs", []) for f in glob.glob(os.path.join(ROOT, g))})
+    files = sorted({f for g in src.get("inputs", []) for f in match_files(g)})
     h = hashlib.sha1()
     for f in files:
         st = os.stat(f)
@@ -193,10 +206,26 @@ def due_date(src, today):
     raise ValueError(s)
 
 
+def next_due(src, today):
+    """오늘 뒤에 오는 첫 기준일."""
+    s = src["schedule"]
+    if s["kind"] == "monthly":
+        d = today.replace(day=min(s["day"], 28))
+        return d if d > today else (d.replace(day=1) + dt.timedelta(days=32)).replace(day=min(s["day"], 28))
+    cands = [dt.date(y, m, s.get("day", 1)) for y in (today.year, today.year + 1) for m in s["months"]]
+    return min(c for c in cands if c > today)
+
+
 def is_due(src, st, today):
     if src["method"] == "auto":
         last = st.get("last_ok")
-        return not last or dt.date.fromisoformat(last[:10]) < due_date(src, today)
+        d = due_date(src, today)
+        if not last or dt.date.fromisoformat(last[:10]) < d:
+            return True
+        # 공표 대기: 정한 날에 새 자료가 없었으면 retry_days 동안 1주마다 다시 본다
+        return bool(src.get("retry_days") and st.get("waiting") == str(d)
+                    and today <= d + dt.timedelta(days=src["retry_days"])
+                    and dt.date.fromisoformat(last[:10]) <= today - dt.timedelta(days=7))
     if src["method"] == "manual":
         sig, n = input_sig(src)
         return n > 0 and st.get("input_sig") not in (None, sig)
@@ -268,8 +297,12 @@ def run_source(src, st, push=True):
             with open(os.path.join(ROOT, p), "wb") as fh:
                 fh.write(before[p])
     if not changed:
-        st.update(status="변경 없음", message="; ".join(changes) or "새 자료 없음")
+        if src.get("retry_days") and src["method"] == "auto":
+            st.update(status="공표 대기", message="아직 새 자료가 없어 1주 뒤 다시 확인", waiting=str(due_date(src, dt.date.today())))
+        else:
+            st.update(status="변경 없음", message="; ".join(changes) or "새 자료 없음")
         return True
+    st.pop("waiting", None)
 
     summary = "; ".join(changes) or "자료 갱신"
     st.update(status="갱신", message=summary, last_change=now())
@@ -304,12 +337,7 @@ def write_doc(plan, state):
              "| 자료 | 화면 | 방식 | 자료 시점 | 마지막 성공 | 상태 | 다음 |", "|---|---|---|---|---|---|---|"]
     for src in plan:
         st = state.get(src["id"], {})
-        if src["method"] == "auto":
-            nxt = "지금 (때가 됨)" if is_due(src, st, today) else f"{due_date(src, today + dt.timedelta(days=31 if src['schedule']['kind'] == 'monthly' else 366))} 무렵"
-        elif src["method"] == "manual":
-            nxt = "새 파일 반영 대기" if is_due(src, st, today) else ("새 자료 확인 필요" if remind_due(src, st, today) else f"확인 주기 {src.get('remind', {}).get('months', '–')}개월")
-        else:
-            nxt = "–"
+        nxt = next_text(src, st, today) or "–"
         lines.append(f"| {src['name']} | {src.get('page', '')} | {METHOD[src['method']]} | {period_of(src)} | {st.get('last_ok', '–')} | {st.get('status', '–')} | {nxt} |")
     lines += ["", "## 자동으로 받지 못하는 자료와 갱신 방법", ""]
     for src in plan:
@@ -340,15 +368,61 @@ def write_doc(plan, state):
 
 def next_text(src, st, today):
     if src["method"] == "auto":
+        if st.get("waiting") and is_due(src, st, today):
+            return "곧 다시 확인"
+        if st.get("waiting") == str(due_date(src, today)):
+            nxt = dt.date.fromisoformat(st["last_ok"][:10]) + dt.timedelta(days=7)
+            end = due_date(src, today) + dt.timedelta(days=src.get("retry_days", 0))
+            if nxt <= end:
+                return f"공표 대기 · {nxt} 다시 확인"
         if is_due(src, st, today):
             return "곧 실행"
-        d = due_date(src, today + dt.timedelta(days=31 if src["schedule"]["kind"] == "monthly" else 366))
-        return f"{d} 이후"
+        return f"{next_due(src, today)} 이후"
     if src["method"] == "manual":
         if is_due(src, st, today):
             return "새 파일 반영 대기"
         return "새 자료 확인 필요" if remind_due(src, st, today) else f"{src.get('remind', {}).get('months', '–')}개월마다 확인"
     return ""
+
+
+def dataset_period(ds):
+    """지표의 자료 시점 (update_plan.toml의 period)."""
+    kind, _, arg = ds.get("period", "").partition(":")
+    try:
+        if kind == "kosis":
+            v = read_js("data/data.js")["periods"][arg]
+            if arg == "grdp":
+                last = latest(v["years"])
+                lag = sorted({y for y in v["bySido"].values() if y < last})
+                return f"{last}년" + (f" (일부 시도 {lag[0]}년)" if lag else "")
+            v = latest(v)
+            return f"{v}년" if v.isdigit() else v
+        if kind == "kepco":
+            y, m = read_js("data/power.js")["months"][-1].split("-")
+            return f"{y}년 {int(m)}월"
+        if kind == "agrix":
+            import duckdb
+            c = duckdb.connect(os.path.join(ROOT, "db", "agrix.duckdb"), read_only=True)
+            return f"{c.sql('SELECT max(year) FROM corp_sgg').fetchone()[0]}년"
+        if kind == "logistics":
+            return f"{read_js('data/logistics.js')['years'][-1]}년 1~11월"
+        if kind == "fac":
+            d = read_js("data/facilities.js")
+            return f"{sum(1 for r in d['rows'] if r[0] == int(arg)):,}곳"
+        if kind == "static":
+            return arg
+    except Exception as e:
+        return f"(읽지 못함: {type(e).__name__})"
+    return ""
+
+
+def dataset_files(ds):
+    out = []
+    for f in match_files(ds["file"]) if ds.get("file") else []:
+        st = os.stat(f)
+        out.append({"name": unicodedata.normalize("NFC", os.path.basename(f)), "dir": os.path.dirname(os.path.relpath(f, ROOT)),
+                    "size": st.st_size, "date": dt.date.fromtimestamp(st.st_mtime).isoformat()})
+    return out
 
 
 def write_status_js(plan, state):
@@ -359,9 +433,9 @@ def write_status_js(plan, state):
         st = state.get(src["id"], {})
         files = []
         for g in src.get("inputs", []):
-            for f in sorted(glob.glob(os.path.join(ROOT, g))):
+            for f in match_files(g):
                 stt = os.stat(f)
-                files.append({"name": os.path.basename(f), "dir": os.path.dirname(os.path.relpath(f, ROOT)),
+                files.append({"name": unicodedata.normalize("NFC", os.path.basename(f)), "dir": os.path.dirname(os.path.relpath(f, ROOT)),
                               "size": stt.st_size, "date": dt.date.fromtimestamp(stt.st_mtime).isoformat()})
         rows.append({
             "id": src["id"], "name": src["name"], "page": src.get("page", ""), "method": src["method"],
@@ -370,9 +444,31 @@ def write_status_js(plan, state):
             "lastMark": st.get("last_mark"), "status": st.get("status"), "message": st.get("message"),
             "next": next_text(src, st, today), "schedule": src.get("schedule"), "remind": src.get("remind"),
             "how": src.get("how", []), "note": src.get("note", ""), "files": files,
-            "commands": [c[0] for c in src.get("commands", [])],
         })
-    data = {"generated": now(), "sources": rows}
+    # 지표별 표: 지표마다 수집 방식·주기·자료 시점·수집일·상태
+    items = []
+    for src in plan:
+        st = state.get(src["id"], {})
+        for ds in src.get("dataset", []):
+            files = dataset_files(ds)
+            manual = src["method"] == "manual" and not ds.get("auto")
+            method = "자동" if (src["method"] == "auto" or ds.get("auto")) else METHOD[src["method"]]
+            if src["method"] in ("event", "live"):
+                collected, status = None, METHOD[src["method"]]
+            elif manual:
+                collected = max((f["date"] for f in files), default=None)
+                status = "파일 없음" if not files else ("실패" if "실패" in (st.get("status") or "") else "반영됨")
+            else:
+                collected = (st.get("last_ok") or "")[:10] or None
+                status = st.get("status") or "–"
+            items.append({
+                "name": ds["name"], "page": src.get("page", ""), "origin": ds.get("origin", ""), "method": method,
+                "manual": manual, "freq": ds.get("freq", ""), "cadence": ds.get("cadence", ""), "period": dataset_period(ds),
+                "collected": collected, "status": status, "where": ds.get("where", ""), "files": files,
+                "next": next_text(src, st, today) if src["method"] in ("auto", "manual") else "",
+                "source": src["id"],
+            })
+    data = {"generated": now(), "items": items, "sources": rows}
     with open(STATUS_JS, "w", encoding="utf-8") as fh:
         fh.write("// 자료 수집 현황 (scripts/update.py) — status.html이 읽는다\n")
         fh.write("window.AGRI_STATUS = ")
