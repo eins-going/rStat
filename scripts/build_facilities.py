@@ -1,9 +1,10 @@
-"""농산물 유통시설 세 가지에 좌표를 붙여 data/facilities.js로 저장한다.
+"""농산물 유통시설 네 가지에 좌표를 붙여 data/facilities.js로 저장한다.
 
 원자료 (at_data/, git 제외):
 - 전국미곡처리장표준데이터-YYYYMMDD.xls       미곡처리장 (공공데이터포털 표준데이터; 대부분 도정업, 정미소 포함)
 - 전국농산물산지유통센터_APC_표준데이터-YYYYMMDD.xls  산지유통센터(APC), 일부는 위경도 포함
 - 국비지원+로컬푸드+직매장+운영현황(`21년기준).xlsx  로컬푸드 직매장 (2021년 기준)
+- 농림축산식품부_6차산업 인증 사업자 현황_YYYYMMDD.csv  6차산업 인증 경영체 (CP949, 대표자 이름은 싣지 않는다)
 
 좌표는 VWorld로 구한다 (scripts/build_farms.py의 주소 해석·지오코딩을 같이 쓴다).
 1) 도로명주소 → 2) 지번주소 → 3) 시설 이름 장소검색(결과가 주소의 시군·읍면과 맞을 때만)
@@ -52,7 +53,7 @@ def read_std(path):
 
 
 # 원자료 주소 오타 (VWorld로 확인한 바른 표기)
-TYPOS = {"탄현명 ": "탄현면 ", "홍전읍": "홍천읍", "늘픔로": "늘품로", "충남 세종시": "세종특별자치시", "모현동 2가": "모현동2가"}
+TYPOS = {"탄현명 ": "탄현면 ", "월곶명 ": "월곶면 ", "홍전읍": "홍천읍", "늘픔로": "늘품로", "충남 세종시": "세종특별자치시", "모현동 2가": "모현동2가"}
 
 
 def fix_typos(addr):
@@ -133,6 +134,44 @@ def load_localfood():
     return out
 
 
+# 6차산업 소재지: 행정구역 개편(군위군 → 대구 2023, 청원군 → 청주 2014)과 오타·붙여 쓴 주소 (VWorld로 확인)
+SIX_FIX = [
+    (r"^(경상북도|경북) 군위군", "대구광역시 군위군"),
+    (r"^충청북도 (청원군 )?(청주시 )?(청원군 )?(미원면|문의면)", r"충청북도 청주시 상당구 \4"),
+    (r"^충청북도 청주시 청원군 오창읍", "충청북도 청주시 청원구 오창읍"),
+    (r"^제주특별(자치)?시 ", "제주특별자치도 "),
+    (r"\s*\((경북|경상북도) 군위군 [^)]*\)", ""),
+    (r"창년군", "창녕군"), (r"서신시 고북면", "서산시 고북면"), (r"경기도 인천시 신둔면", "경기도 이천시 신둔면"),
+    (r"화순군이서면규봉로984", "화순군 이서면 규봉로 984"), (r"경산시압량면 강서리185-16", "경산시 압량면 강서리 185-16"),
+    (r"한티로2206-37", "한티로 2206-37"), (r"한밤8길11", "한밤8길 11"),
+    (r" 신우목장내 신우에프티$", ""), (r"^경기 연천 군남 옥계 ", "경기도 연천군 군남면 옥계리 "),
+    (r", \(신화1길 22\)$", ""),
+]
+
+
+def load_six():
+    """6차산업 인증 사업자. 소재지에 시도·시군이 빠진 곳(남양주시 진건읍…, 고흥군…)은 지역·시군 열로 채운다.
+    소재지가 도로명인지 지번인지 섞여 있어 두 방식 모두 시도한다."""
+    path = find("농림축산식품부_6차산업 인증 사업자 현황")
+    with open(path, encoding="cp949", newline="") as fh:
+        recs = list(csv.DictReader(fh))
+    out = []
+    for r in recs:
+        r = {clean(k): clean(v) for k, v in r.items()}
+        if not r.get("경영체명"):
+            continue
+        addr = r["소재지"]
+        for a, b in SIX_FIX:
+            addr = re.sub(a, b, addr)
+        addr = lf_address("대구" if "군위" in r["시군"] else r["지역"], r["시군"], addr)
+        out.append({
+            "kind": "six", "name": r["경영체명"], "road": addr, "jibun": addr,
+            "raw": r["소재지"], "sido": r["지역"], "sgg": r["시군"], "tel": "",
+            "info": {"인증번호": r["인증번호"], "인증연도": r["인증번호"][:4] + "년", "기준": "2020년 자료"},
+        })
+    return out
+
+
 # ---------------------------------------------------------------- 좌표
 
 def fix_sigungu(vw, p, sgg):
@@ -164,7 +203,7 @@ def locate(vw, f):
     """(lon, lat, 정밀도, 기준) — 정밀도: 도로명·지번·상호·리·읍면동·시군구·시도."""
     f = dict(f, road=fix_typos(f["road"]), jibun=fix_typos(f["jibun"]))
     p = parse_addr(f["road"]) or parse_addr(f["jibun"])
-    if f["kind"] == "lf":
+    if f["kind"] in ("lf", "six"):
         p = fix_sigungu(vw, p, f["sgg"])
     for addr, kind in ((f["road"], "road"), (f["jibun"], "parcel")):
         if not addr:
@@ -187,8 +226,8 @@ def locate(vw, f):
 
 def main():
     vw = VWorld(load_env()["VWORLD_API_KEY"])
-    facs = load_rpc() + load_apc() + load_localfood()
-    print({k: sum(f["kind"] == k for f in facs) for k in ("rpc", "apc", "lf")}, file=sys.stderr)
+    facs = load_rpc() + load_apc() + load_localfood() + load_six()
+    print({k: sum(f["kind"] == k for f in facs) for k in ("rpc", "apc", "lf", "six")}, file=sys.stderr)
     try:
         with cf.ThreadPoolExecutor(8) as pool:
             locs = list(pool.map(lambda f: locate(vw, f), facs))
@@ -219,9 +258,9 @@ def main():
         w.writerows(sorted(checks, key=lambda c: -c["km"]))
 
     precs = ["도로명", "지번", "좌표", "상호", "리", "읍면동", "시군구", "시도"]
-    kinds = {"rpc": "미곡처리장(도정업체)", "apc": "산지유통센터(APC)", "lf": "로컬푸드 직매장"}
-    # 표준데이터는 자료를 낸 지자체 것만 담는다 → 몇 곳의 자료인지 함께 싣는다 (직매장은 국비지원 전체 목록)
-    providers = [len({f["provider"] for f in facs if f["kind"] == k}) if k != "lf" else None for k in kinds]
+    kinds = {"rpc": "미곡처리장(도정업체)", "apc": "산지유통센터(APC)", "lf": "로컬푸드 직매장", "six": "6차산업 인증 사업자"}
+    # 표준데이터는 자료를 낸 지자체 것만 담는다 → 몇 곳의 자료인지 함께 싣는다 (직매장·6차산업은 전국 목록)
+    providers = [len({f["provider"] for f in facs if f["kind"] == k}) if k in ("rpc", "apc") else None for k in kinds]
     rows = []
     for f in facs:
         info = {k: v for k, v in f["info"].items() if v}
@@ -229,10 +268,10 @@ def main():
                      round(f["lon"], 6) if f["lon"] is not None else None,
                      round(f["lat"], 6) if f["lat"] is not None else None,
                      precs.index(f["prec"]) if f["prec"] in precs else -1,
-                     f["name"], f["road"] if f["kind"] != "lf" else f["raw"], f["jibun"], f["tel"], info])
+                     f["name"], f.get("raw", f["road"]), "" if f["kind"] == "six" else f["jibun"], f["tel"], info])
     data = {"built": time.strftime("%Y-%m-%d"), "kinds": list(kinds.values()), "providers": providers, "precs": precs, "rows": rows}
     with open(os.path.join(ROOT, "data", "facilities.js"), "w", encoding="utf-8") as fh:
-        fh.write("// 미곡종합처리장·산지유통센터(공공데이터 표준데이터)·로컬푸드 직매장 + VWorld 좌표 (scripts/build_facilities.py)\n")
+        fh.write("// 미곡종합처리장·산지유통센터(공공데이터 표준데이터)·로컬푸드 직매장·6차산업 인증 사업자 + VWorld 좌표 (scripts/build_facilities.py)\n")
         fh.write("window.AGRI_FACILITIES = ")
         json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
         fh.write(";\n")
