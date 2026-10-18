@@ -220,7 +220,69 @@
     const reset = $("#reset");
     reset.hidden = state.key === NATION;
     reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체 보기` : "전국 보기";
+    $("#farm-open").hidden = level(state.key) !== 2;
+    if (level(state.key) === 2) warmFarm();
   }
+
+  // ---------- 농경지 위성지도 (시군에서만, 처음 누를 때 Leaflet과 함께 불러온다) ----------
+  const FARM_CSS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css", "assets/farm.css"];
+  const FARM_JS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js", "assets/farm.js"];
+  let farmWarm = false;
+  let farmReady = null;
+
+  // 시군을 처음 고르면 브라우저가 쉴 때 미리 받아 두고 서버 함수도 깨워 둔다 (누르면 바로 열리게)
+  function warmFarm() {
+    if (farmWarm) return;
+    farmWarm = true;
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1500));
+    idle(() => {
+      const link = (rel, href, as) => {
+        const l = document.createElement("link");
+        l.rel = rel;
+        l.href = href;
+        if (as) l.as = as;
+        document.head.append(l);
+      };
+      link("preconnect", "https://api.vworld.kr");
+      FARM_CSS.forEach((h) => link("prefetch", h, "style"));
+      FARM_JS.forEach((h) => link("prefetch", h, "script"));
+      fetch("/api/farmmap?op=config").catch(() => {});
+    });
+  }
+
+  function loadFarm() {
+    if (farmReady) return farmReady;
+    const load = (tag, attrs) => new Promise((ok, fail) => {
+      const el = Object.assign(document.createElement(tag), attrs, { onload: ok, onerror: fail });
+      document.head.append(el);
+    });
+    // 스크립트는 함께 받되 순서대로 실행한다 (Leaflet → farm.js)
+    farmReady = Promise.all([
+      ...FARM_CSS.map((href) => load("link", { rel: "stylesheet", href })),
+      ...FARM_JS.map((src) => load("script", { src, async: false })),
+    ]).catch((e) => { farmReady = null; throw e; });
+    return farmReady;
+  }
+
+  $("#farm-open").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const k = state.key;
+    if (level(k) !== 2 || btn.classList.contains("loading")) return;
+    btn.classList.add("loading");
+    try {
+      await loadFarm();
+      window.FarmView.open({
+        title: `${T.sidos[sidoOf(k)].short} ${label(k)}`,
+        geometry: unitFeatures.find((f) => f.properties.key === k).geometry,
+        opener: btn,
+      });
+      btn.querySelector("span").textContent = "위성지도로 농경지 보기";
+    } catch {
+      btn.querySelector("span").textContent = "불러오지 못했습니다 · 다시 누르기";
+    } finally {
+      btn.classList.remove("loading");
+    }
+  });
 
   function toHash(k) {
     if (k === NATION) return "";
