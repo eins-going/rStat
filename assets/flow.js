@@ -592,7 +592,7 @@
   // ---------- 왼쪽: 흐름의 성격 ----------
   function setKpi(key, value, fmt, d, dfmt) {
     $(`[data-v="${key}"]`).textContent = ok(value) ? fmt(value) : "–";
-    $(`[data-d="${key}"]`).innerHTML = ok(d) ? `${diffHTML(d, dfmt)} <span>전년 대비</span>` : "";
+    $(`[data-d="${key}"]`).innerHTML = ok(d) ? `${diffHTML(d, dfmt)} <span>전년대비</span>` : "";
   }
   function renderKpi() {
     const b = base;
@@ -656,7 +656,7 @@
         <span class="track mark-track"><span class="fill" style="width:${Math.min(100, d.c || 0)}%;background:${d.color}"></span>${ok(d.nat) && !all() ? `<span class="nat-mark" style="left:${Math.min(100, d.nat)}%"></span>` : ""}</span>
         <span class="val">${pct(d.c)}</span><span class="natv">${all() ? "" : pct(d.nat)}</span><span class="chg ${cls}">${txt}</span></button>`;
     }).join("") : '<p class="note">자료가 없습니다.</p>';
-    if (items.length && key === "dt") el.insertAdjacentHTML("afterbegin", `<div class="mix-head"><span></span><span></span><span>${all() ? "비중" : "이 흐름"}</span><span>${all() ? "" : "전국"}</span><span>전년 대비</span></div>`);
+    if (items.length && key === "dt") el.insertAdjacentHTML("afterbegin", `<div class="mix-head"><span></span><span></span><span>${all() ? "비중" : "이 흐름"}</span><span>${all() ? "" : "전국"}</span><span>전년대비</span></div>`);
     $$(`[data-${key}]`, el).forEach((b) => b.addEventListener("click", () => { const v = +b.dataset[key]; state[key] = state[key] === v ? -1 : v; render(); }));
   }
 
@@ -711,7 +711,7 @@
       </button>`;
     }).join("") : '<p class="note">자료가 없습니다.</p>';
     $$("[data-c]", el).forEach((b) => b.addEventListener("click", () => { state.crop = state.crop === +b.dataset.c ? -1 : +b.dataset.c; render(); }));
-    $("#crop-note").textContent = `증감은 전년 대비 %p · 특화는 흐름 안 비중 ÷ 전국 비중${all() ? "(지역을 고르면 계산)" : ""} · 누르면 그 품목만${cropName() ? " (표는 품목 조건을 빼고 계산)" : ""}`;
+    $("#crop-note").textContent = `증감은 전년대비 %p · 특화는 흐름 안 비중 ÷ 전국 비중${all() ? "(지역을 고르면 계산)" : ""} · 누르면 그 품목만${cropName() ? " (표는 품목 조건을 빼고 계산)" : ""}`;
   }
 
   // 품목 × 상대 지역: 행마다 합 100%

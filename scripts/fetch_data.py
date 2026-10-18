@@ -28,6 +28,7 @@ def load_key(*names):
     raise SystemExit(f"{' 또는 '.join(names)}이(가) .env에 없습니다.")
 
 
+T_SIDO_NAME = {"29": "세종특별자치시"}
 KEY = load_key("KOSIS_API_KEY")
 LOFIN_KEY = load_key("lofin365_open_api_key", "lofin_api_key")
 
@@ -194,7 +195,7 @@ def sec_farm(out, v):
     out["periods"]["farm"] = yrs
     v["households"] = series(b["농가"], yrs)
     v["population"] = series(b["농가인구"], yrs)
-    out["sources"]["farm"] = "통계청 농림어업조사 (KOSIS DT_1EA1011)"
+    out["sources"]["farm"] = "국가데이터처 농림어업조사"
 
 
 def sec_aging(out, v):
@@ -215,10 +216,10 @@ def sec_aging(out, v):
             aging[key] = [round(t), round(o)]
     v["aging"] = fill_single_units(aging)
     out["periods"]["aging"] = rows[0]["PRD_DE"]
-    out["sources"]["aging"] = "통계청 2025 농림어업총조사 (KOSIS DT_1AG25202)"
+    out["sources"]["aging"] = "국가데이터처 2025 농림어업총조사"
 
     v["operatorAge"] = operator_age()
-    out["sources"]["operatorAge"] = "통계청 2025 농림어업총조사 경영주 연령구간별 농가 (KOSIS DT_1AG25101)"
+    out["sources"]["operatorAge"] = "국가데이터처 2025 농림어업총조사 경영주 연령구간별 농가"
 
 
 def sec_returning(out, v):
@@ -229,7 +230,7 @@ def sec_returning(out, v):
     out["periods"]["returning"] = yrs
     v["returnFarm"] = series(b1["가구수"], yrs)
     v["returnRural"] = series(b2["귀촌인수"], yrs)
-    out["sources"]["returning"] = "통계청 귀농어·귀촌인통계 (KOSIS DT_1A02008, DT_1A02015)"
+    out["sources"]["returning"] = "국가데이터처 귀농어·귀촌인통계"
 
 
 def sec_land(out, v):
@@ -240,7 +241,7 @@ def sec_land(out, v):
     v["land"] = series(b["경지면적: 계"], yrs, 1)
     v["paddy"] = series(b["논"], yrs, 1)
     v["field"] = series(b["밭"], yrs, 1)
-    out["sources"]["land"] = "통계청 농업면적조사 (KOSIS DT_1EB002) · 인천 옹진군은 인천시부에 포함"
+    out["sources"]["land"] = "국가데이터처 농업면적조사 · 인천 옹진군은 인천시부에 포함"
 
 
 def sec_livestock(out, v):
@@ -253,7 +254,7 @@ def sec_livestock(out, v):
     b, _ = fetch("101", "DT_1EO100", "Q", 1, ["합계:가구수", "합계:마리수"])
     v["chicken"] = pair(latest(b["합계:가구수"]), latest(b["합계:마리수"]))
     out["periods"]["livestock"] = f"{q[:4]}년 {int(q[4:])}/4분기"
-    out["sources"]["livestock"] = "통계청 가축동향조사 (DT_1EO251, DT_1EO100) · 2025 농림어업총조사 (DT_1AG25505, DT_1AG25508)"
+    out["sources"]["livestock"] = "국가데이터처 가축동향조사 · 2025 농림어업총조사"
 
 
 def sec_livestock_census(out, v):
@@ -275,7 +276,7 @@ def sec_rice(out, v):
     v["riceSeries"] = series(b["논벼:생산량(톤)"], yrs)
     out["periods"]["rice"] = yrs[-1]
     out["periods"]["riceYears"] = yrs
-    out["sources"]["rice"] = "통계청 농작물생산조사 (KOSIS DT_1ET0294)"
+    out["sources"]["rice"] = "국가데이터처 농작물생산조사"
 
 
 def sec_crops(out, v):
@@ -288,13 +289,13 @@ def sec_crops(out, v):
                 crops[key][crop][i] = val
     v["crops"] = {k: dict(c) for k, c in crops.items()}
     out["periods"]["cropYears"] = [y for y, _ in census]
-    out["sources"]["crops"] = "통계청 농림어업총조사 2015·2020·2025 (KOSIS DT_1AG15403, DT_1AG20403, DT_1AG25403)"
+    out["sources"]["crops"] = "국가데이터처 농림어업총조사 2015·2020·2025"
 
 
 def sec_grdp(out, v):
     """지역내총생산 (연)"""
     v["grdpAgri"], v["grdpTotal"] = grdp()
-    out["sources"]["grdp"] = "통계청 시도별 지역내총생산 (DT_1C91) · 각 시도 시군별 지역내총생산 · 명목"
+    out["sources"]["grdp"] = "국가데이터처 시도별 지역내총생산 · 각 시도 시군별 지역내총생산 · 명목"
 
 
 def sec_economy(out, v):
@@ -332,7 +333,7 @@ def sec_economy(out, v):
             breakdown[gname].append({"name": label.replace(" - ", "~").replace("-", "~"), **vals[cid]})
     v["economyBreakdown"] = breakdown
     out["units"] = {"economy": "천원", "grdp": "백만원"}
-    out["sources"]["economy"] = "통계청 농가경제조사 (KOSIS DT_1EA1201) · 도 단위"
+    out["sources"]["economy"] = "국가데이터처 농가경제조사 · 도 단위"
 
 
 def sec_budget(out, v):
@@ -345,7 +346,46 @@ def sec_budget(out, v):
             total.setdefault(key, [None] * len(years))[i] = t
     v["budgetAgri"], v["budgetTotal"] = agri, total
     out["periods"]["budget"] = years
-    out["sources"]["budget"] = "지방재정365 구조별 기능별 세출예산 (AIDFA) · 101 농업ㆍ농촌 부문, 순계 · 회계연도별"
+    out["sources"]["budget"] = "지방재정365 구조별 기능별 세출예산 · 101 농업ㆍ농촌 부문, 순계 · 회계연도별"
+
+
+def sec_area(out, v):
+    """행정구역 면적 (국토교통부 지적통계 '행정구역별·지목별 국토이용현황_시군구', 연) — 경지율의 분모.
+    표에 시도·시군구 분류가 따로 있어 fetch()를 쓰지 않는다. 일반시는 'X시(계)' 행을 쓰고 'X시Y구' 행은 뺀다.
+    광역시 구는 시부로 더한다. 값은 ㎡ → ha."""
+    tbl = "DT_MLTM_2300"
+    dims = meta("116", tbl)
+    order = [k for k in dims if k != "ITEM"]
+    total = next(i["id"] for i in dims[order[2]]["items"] if i["name"] == "계")
+    item = next(i["id"] for i in dims["ITEM"]["items"] if i["name"] == "면적")
+    rows = call("Param/statisticsParameterData.do", {"method": "getList", "orgId": "116", "tblId": tbl, "itmId": item,
+                                                     "objL1": "ALL", "objL2": "ALL", "objL3": total, "prdSe": "Y", "newEstPrdCnt": 1})
+    area = defaultdict(float)
+    for r in rows:
+        sido_nm, nm, val = r["C1_NM"].strip(), r["C2_NM"].strip(), num(r["DT"])
+        if val is None:
+            continue
+        ha = val / 10000
+        if sido_nm == "전국":
+            area["00"] = ha
+            continue
+        s = "24" if sido_nm == "광주" else sido_code(sido_nm)  # 이 표는 광주광역시를 '광주'로만 적는다
+        if not s or nm == "합계":
+            continue
+        if nm == sido_nm or sido_code(nm) == s and nm in (sido_nm, T_SIDO_NAME.get(s)):
+            area[s] = ha  # 시도 합계 행
+            continue
+        if re.search(r"시.+구$", nm) and "(계)" not in nm:
+            continue  # 일반시의 구 (시 합계 'X시(계)'를 쓴다)
+        u = unit_of(s, nm.replace("(계)", ""))
+        if u and u[0] in UNIT_KEYS:
+            area[u[0]] += ha
+    # 세종은 시도이자 시군 하나다
+    if "29" in area:
+        area["29|세종시"] = area["29"]
+    v["area"] = {k: round(x) for k, x in area.items()}
+    out["periods"]["area"] = rows[0]["PRD_DE"]
+    out["sources"]["area"] = "국토교통부 지적통계 행정구역별·지목별 국토이용현황_시군구"
 
 
 def grdp_latest(v, out):
@@ -375,6 +415,7 @@ SECTIONS = {
     "grdp": (sec_grdp, ['grdpAgri', 'grdpTotal']),
     "economy": (sec_economy, []),
     "budget": (sec_budget, []),
+    "area": (sec_area, []),
 }
 
 

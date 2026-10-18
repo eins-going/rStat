@@ -25,7 +25,7 @@ note = "매년 4월 하순 공표. 공표가 늦으면 60일 동안 1주마다 �
 
 [[source.dataset]]
 name = "농가·농가인구"
-origin = "통계청 농림어업조사 (KOSIS DT_1EA1011)"
+origin = "국가데이터처 농림어업조사"
 freq = "연"
 cadence = "매년 4월 하순 공표"
 period = "kosis:farm"
@@ -45,7 +45,7 @@ note = "매년 6월 하순 공표. 공표가 늦으면 60일 동안 1주마다 �
 
 [[source.dataset]]
 name = "귀농·귀촌"
-origin = "통계청 귀농어·귀촌인통계 (KOSIS DT_1A02008, DT_1A02015)"
+origin = "국가데이터처 귀농어·귀촌인통계"
 freq = "연"
 cadence = "매년 6월 하순 공표"
 period = "kosis:returning"
@@ -65,7 +65,7 @@ note = "매년 2월 공표. 공표가 늦으면 60일 동안 1주마다 다시 �
 
 [[source.dataset]]
 name = "경지면적 (논·밭)"
-origin = "통계청 농업면적조사 (KOSIS DT_1EB002)"
+origin = "국가데이터처 농업면적조사"
 freq = "연"
 cadence = "매년 2월 공표"
 period = "kosis:land"
@@ -85,7 +85,7 @@ note = "분기 끝나고 약 1.5개월 뒤 공표. 공표가 늦으면 60일 동
 
 [[source.dataset]]
 name = "가축 사육 (한우·젖소·닭)"
-origin = "통계청 가축동향조사 (KOSIS DT_1EO251, DT_1EO100)"
+origin = "국가데이터처 가축동향조사"
 freq = "분기"
 cadence = "분기 끝나고 약 1.5개월 뒤 공표"
 period = "kosis:livestock"
@@ -105,7 +105,7 @@ note = "매년 11월 중순 공표. 공표가 늦으면 60일 동안 1주마다 
 
 [[source.dataset]]
 name = "쌀 생산량·논벼 재배면적"
-origin = "통계청 농작물생산조사 (KOSIS DT_1ET0294)"
+origin = "국가데이터처 농작물생산조사"
 freq = "연"
 cadence = "매년 11월 중순 공표"
 period = "kosis:rice"
@@ -125,7 +125,7 @@ note = "매년 5월 공표. 공표가 늦으면 60일 동안 1주마다 다시 �
 
 [[source.dataset]]
 name = "농가경제 (소득·자산·부채)"
-origin = "통계청 농가경제조사 (KOSIS DT_1EA1201)"
+origin = "국가데이터처 농가경제조사"
 freq = "연"
 cadence = "매년 5월 공표"
 period = "kosis:economy"
@@ -145,7 +145,7 @@ note = "시도 12월, 시군은 시도마다 늦게 공표. 공표가 늦으면 
 
 [[source.dataset]]
 name = "지역소득 (GRDP)"
-origin = "통계청·시도 지역내총생산 (KOSIS DT_1C91 등)"
+origin = "국가데이터처·시도 지역내총생산"
 freq = "연"
 cadence = "시도 12월, 시군은 시도마다 늦게 공표"
 period = "kosis:grdp"
@@ -185,7 +185,7 @@ note = "총조사(5년마다), 해마다 7월에 새 결과가 있는지 확인.
 
 [[source.dataset]]
 name = "경영주 연령·고령 농가인구"
-origin = "통계청 농림어업총조사 (KOSIS DT_1AG25202, DT_1AG25101)"
+origin = "국가데이터처 농림어업총조사"
 freq = "5년"
 cadence = "총조사(5년마다), 해마다 7월에 새 결과가 있는지 확인"
 period = "kosis:aging"
@@ -205,7 +205,7 @@ note = "총조사(5년마다). 공표가 늦으면 60일 동안 1주마다 다�
 
 [[source.dataset]]
 name = "가축 사육 (돼지·오리)"
-origin = "통계청 농림어업총조사 (KOSIS DT_1AG25505, DT_1AG25508)"
+origin = "국가데이터처 농림어업총조사"
 freq = "5년"
 cadence = "총조사(5년마다)"
 period = "kosis:census"
@@ -225,10 +225,30 @@ note = "총조사(5년마다), 새 총조사 표는 직접 추가해야 한다. 
 
 [[source.dataset]]
 name = "채소·특용작물 재배면적"
-origin = "통계청 농림어업총조사 (KOSIS DT_1AG25403 등)"
+origin = "국가데이터처 농림어업총조사"
 freq = "5년"
 cadence = "총조사(5년마다), 새 총조사 표는 직접 추가해야 한다"
 period = "kosis:cropYears"
+
+[[source]]
+id = "kosis_area"
+name = "행정구역 면적 (경지율 분모)"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [6], day = 1 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "area"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "지적통계는 해마다 상반기에 전년 말 기준으로 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+
+[[source.dataset]]
+name = "행정구역 면적 (경지율)"
+origin = "국토교통부 지적통계 행정구역별·지목별 국토이용현황"
+freq = "연"
+cadence = "해마다 상반기 공표"
+period = "kosis:area"
 
 [[source]]
 id = "kepco"
@@ -386,7 +406,7 @@ where = "https://www.data.go.kr/data/15118469/fileData.do"
 
 [[source]]
 id = "geo"
-name = "지도 경계 (통계청 2013 행정경계 → 현행 시군)"
+name = "지도 경계 (국가데이터처 2013 행정경계 → 현행 시군)"
 page = "모든 지도"
 method = "event"
 commands = [["scripts/build_geo.py"]]
@@ -398,7 +418,7 @@ how = [
 
 [[source.dataset]]
 name = "시군 경계"
-origin = "통계청 2013 행정경계 (southkorea-maps) → 현행 시군 규칙"
+origin = "국가데이터처 2013 행정경계 (southkorea-maps) → 현행 시군 규칙"
 freq = "개편 때"
 cadence = "행정구역이 바뀔 때"
 period = "static:2013 경계"

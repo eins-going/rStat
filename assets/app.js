@@ -78,14 +78,14 @@
     return ((cur - prev) / prev) * 100;
   }
 
-  // stack: 두 칸 수치처럼 폭이 좁으면 '전년 대비'를 증감 위에 작게 얹는다
-  function deltaHTML(cur, prev, labelText = "전년 대비", stack = false) {
+  // stack: 두 칸 수치처럼 폭이 좁으면 '전년대비'를 증감 위에 작게 얹는다
+  function deltaHTML(cur, prev, labelText = "전년대비", stack = false) {
     const r = change(cur, prev);
     if (r == null) return "";
     const cls = r > 0 ? "up" : r < 0 ? "down" : "";
     const arrow = r > 0 ? "▲" : r < 0 ? "▼" : "–";
     if (stack) return `<span class="d-lab">${labelText}</span><span class="${cls}">${arrow}${nf1.format(Math.abs(r))}%</span>`;
-    return `${labelText ? `${labelText} ` : ""}<span class="${cls}" title="전년 대비">${arrow}${labelText ? " " : ""}${nf1.format(Math.abs(r))}%</span>`;
+    return `${labelText ? `${labelText} ` : ""}<span class="${cls}" title="전년대비">${arrow}${labelText ? " " : ""}${nf1.format(Math.abs(r))}%</span>`;
   }
 
   function countTo(el, target, format) {
@@ -151,6 +151,8 @@
   const pairAt = (obj, i) => (k) => obj[k]?.[i] ?? null;
   const wonOf = (obj, i) => (k) => { const v = obj[k]?.[i]; return v == null ? null : v * 1e6; };
   const farmChange = (k) => { const { value, prev } = lastOf(V.households[k]); return change(value, prev); };
+  // 경지율: 경지면적 ÷ 행정구역 면적(지적통계)
+  const landRatio = (k) => { const l = lastOf(V.land[k]).value, a = V.area?.[k]; return l != null && a ? (l / a) * 100 : null; };
   const paddyShare = (k) => { const t = lastOf(V.land[k]); const p = V.paddy[k]?.[t.i]; return t.value && p != null ? (p / t.value) * 100 : null; };
   const riceYield = (k) => { const r = V.rice[k]; return r && r[0] ? (r[1] / r[0]) * 100 : null; };
   const cropArea = (k) => {
@@ -175,7 +177,7 @@
   const METRICS = [
     { key: "households", label: "농가수", unit: "가구", year: fy(P.farm.at(-1)), get: latestOf(V.households), fmt: int },
     { key: "population", label: "농가인구", unit: "명", year: fy(P.farm.at(-1)), get: latestOf(V.population), fmt: int },
-    { key: "farmChange", label: "농가수 증감률", unit: "%", year: `${P.farm.at(-1)}년 전년 대비`, get: farmChange, fmt: pct },
+    { key: "farmChange", label: "농가수 증감률", unit: "%", year: `${P.farm.at(-1)}년 전년대비`, get: farmChange, fmt: pct },
     { key: "young", label: "40세 미만 경영주 농가 비율", unit: "%", year: fy(P.aging), get: youngOperator, fmt: pct },
     { key: "oldOperator", label: "65세 이상 경영주 농가 비율", unit: "%", year: fy(P.aging), get: oldOperator, fmt: pct },
     { key: "aging", label: "65세 이상 농가인구 비율", unit: "%", year: fy(P.aging), get: agingRatio, fmt: pct },
@@ -184,6 +186,7 @@
     { key: "land", label: "경지면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.land), fmt: int },
     { key: "paddy", label: "논 면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.paddy), fmt: int },
     { key: "field", label: "밭 면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.field), fmt: int },
+    { key: "landRatio", label: "경지율", unit: "%", year: fy(P.land.at(-1)), get: landRatio, fmt: pct },
     { key: "paddyShare", label: "논 비중", unit: "%", year: fy(P.land.at(-1)), get: paddyShare, fmt: pct },
     { key: "rice", label: "쌀 생산량", unit: "톤", year: fy(P.rice), get: pairAt(V.rice, 1), fmt: int },
     { key: "riceArea", label: "논벼 재배면적", unit: "ha", year: fy(P.rice), get: pairAt(V.rice, 0), fmt: int },
@@ -341,8 +344,8 @@
     setYear("p-farm", `${P.farm[hh.i] ?? P.farm.at(-1)}년`);
     setV("households", hh.value);
     setV("population", pop.value);
-    setD("households", deltaHTML(hh.value, hh.prev, "전년 대비", true));
-    setD("population", deltaHTML(pop.value, pop.prev, "전년 대비", true));
+    setD("households", deltaHTML(hh.value, hh.prev, "전년대비", true));
+    setD("population", deltaHTML(pop.value, pop.prev, "전년대비", true));
 
     const y = youngOperator(k), py = p ? youngOperator(p) : null;
     const o = oldOperator(k), po = p ? oldOperator(p) : null;
@@ -363,8 +366,8 @@
     setYear("p-return", `${P.returning.at(-1)}년`);
     setV("returnFarm", f.value);
     setV("returnRural", r.value);
-    setD("returnFarm", deltaHTML(f.value, f.prev, "전년 대비", true));
-    setD("returnRural", deltaHTML(r.value, r.prev, "전년 대비", true));
+    setD("returnFarm", deltaHTML(f.value, f.prev, "전년대비", true));
+    setD("returnRural", deltaHTML(r.value, r.prev, "전년대비", true));
     barChart("#spark-farm", P.returning, V.returnFarm[k], int, "귀농가구");
     barChart("#spark-rural", P.returning, V.returnRural[k], int, "귀촌인");
     setNote("return", f.value == null && r.value == null ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다." : "");
@@ -380,6 +383,12 @@
     setD("land", deltaHTML(t.value, t.prev));
     setRank("land", rankText(k, (x) => lastOf(V.land[x]).value));
     const pp = t.value ? (paddy / t.value) * 100 : 0;
+    const lr = landRatio(k), p = parentOf(k), plr = p ? landRatio(p) : null;
+    countTo($('[data-v="landRatio"]'), lr, pct);
+    donut("#donut-land", lr, plr);
+    const note = `경지율 = 경지면적 ÷ 행정구역 면적(지적통계 ${P.area || ""}년)${p ? ` · 흰 선은 ${label(p)} ${pct(plr)}` : ""}`;
+    setNote("land", note);
+    $("#donut-land").title = note;
     $("#split-land").innerHTML = t.value ? `
       <div class="split-bar" role="img" aria-label="논 ${nf1.format(pp)}%, 밭 ${nf1.format(100 - pp)}%">
         <span style="flex-basis:${pp}%;background:var(--accent)"></span>
@@ -1028,6 +1037,7 @@
     { label: "농가 증감", get: farmChange, fmt: sgnPct, signed: true },
     { label: "귀농가구 증감", get: (k) => chg(V.returnFarm[k]), fmt: sgnPct, signed: true },
     { label: "귀촌인 증감", get: (k) => chg(V.returnRural[k]), fmt: sgnPct, signed: true },
+    { label: "경지율", get: landRatio, fmt: pct },
     { label: "논 비중", get: paddyShare, fmt: pct },
     { label: "10a당 쌀 생산", get: riceYield, fmt: (v) => (v == null ? "–" : `${int(v)}kg`) },
     { label: "채소·특용작물 면적 증감(5년)", get: (k) => cropChange(k), fmt: sgnPct, signed: true },

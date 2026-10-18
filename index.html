@@ -34,7 +34,7 @@
       </div>
     </header>
 
-    <div class="ticker" aria-label="전년 대비 증감">
+    <div class="ticker" aria-label="전년대비 증감">
       <div class="ticker-track" id="ticker"></div>
     </div>
 
@@ -106,12 +106,21 @@
             <h2>경지면적</h2>
             <span class="chip" data-year></span>
           </header>
-          <div class="stat inline">
-            <span class="stat-value"><b data-v="land"></b><small>ha</small></span>
-            <span class="delta" data-d="land"></span>
-            <span class="rank-badge" data-rank="land"></span>
+          <div class="duo">
+            <div class="duo-main">
+              <div class="stat inline">
+                <span class="stat-value"><b data-v="land"></b><small>ha</small></span>
+                <span class="delta" data-d="land"></span>
+                <span class="rank-badge" data-rank="land"></span>
+              </div>
+              <div class="split" id="split-land"></div>
+            </div>
+            <figure class="donut" id="donut-land">
+              <svg viewBox="0 0 100 100" role="img" aria-label="행정구역 면적 대비 경지면적 비율"></svg>
+              <figcaption><b data-v="landRatio"></b><span>경지율</span></figcaption>
+            </figure>
           </div>
-          <div class="split" id="split-land"></div>
+          <p class="note" data-note="land"></p>
           <footer class="src" data-src="land"></footer>
         </article>
 
@@ -249,7 +258,7 @@
     </main>
 
     <footer class="foot">
-      <p>자료: 통계청·각 시도(KOSIS 국가통계포털). 지표마다 기준 시점이 다르며 각 카드에 표시했습니다. 광역시의 구 지역은 '시부'로 묶었습니다. 지도: 통계청 행정경계(2013)를 현행 시군으로 묶음.</p>
+      <p>자료: 국가데이터처·각 시도(KOSIS 국가통계포털). 지표마다 기준 시점이 다르며 각 카드에 표시했습니다. 광역시의 구 지역은 '시부'로 묶었습니다. 지도: 국가데이터처 행정경계(2013)를 현행 시군으로 묶음.</p>
       <p id="updated"></p>
           <p class="foot-link"><a href="status">자료 수집 현황</a></p>
     </footer>
