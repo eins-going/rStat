@@ -82,11 +82,7 @@
       <section class="center" aria-label="지도">
         <div class="hero">
           <h1 id="title"></h1>
-        </div>
-        <div class="map-card" id="map-card">
-          <div class="fl-mapbar">
-            <span class="seg" id="equip" role="group" aria-label="물류기기"></span>
-            <span class="fl-mapbar-r">
+          <span class="fl-mapbar-r">
             <span class="seg" id="dir" role="group" aria-label="흐름 방향">
               <button type="button" data-dir="out" aria-pressed="true">보낸 흐름</button>
               <button type="button" data-dir="in" aria-pressed="false">받은 흐름</button>
@@ -95,7 +91,11 @@
               <button type="button" data-lv="sgg" aria-pressed="true">시군</button>
               <button type="button" data-lv="sido" aria-pressed="false">시도</button>
             </span>
-            </span>
+          </span>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="fl-mapbar">
+            <span class="seg" id="equip" role="group" aria-label="물류기기"></span>
           </div>
           <div class="map-wrap" id="map-wrap">
             <svg id="odmap" role="img" aria-label="물류기기 흐름 지도">

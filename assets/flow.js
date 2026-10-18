@@ -220,6 +220,7 @@
   cropSel.addEventListener("change", () => { state.crop = +cropSel.value; render(); });
   eqBtns.forEach((b) => b.addEventListener("click", () => { if (+b.dataset.eq !== state.eq) setEq(+b.dataset.eq); }));
   $$("#dir button").forEach((b) => b.addEventListener("click", () => { state.dir = b.dataset.dir; applyEnds(); render(); }));
+  // 전국은 보낸 흐름과 받은 흐름이 같다. 방향은 지역을 고를 때(지도·흐름선 클릭) 쓴다
   $$("#lv button").forEach((b) => b.addEventListener("click", () => { state.lv = b.dataset.lv; render(); }));
   $("#reset").addEventListener("click", () => select(level(state.k) === 2 ? sidoOf(state.k) : NATION));
 
@@ -259,7 +260,8 @@
     yearSel.value = state.yi;
     eqBtns.forEach((b) => b.setAttribute("aria-pressed", +b.dataset.eq === state.eq));
     cropSel.value = state.crop;
-    $$("#dir button").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.dir === state.dir); b.disabled = all(); });
+    $$("#dir button").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.dir === state.dir); });
+    $("#dir").title = all() ? "전국은 보낸 흐름과 받은 흐름이 같습니다. 지역이나 흐름선을 누르면 고른 방향으로 봅니다" : "";
     $$("#lv button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.lv === state.lv));
     const reset = $("#reset");
     reset.hidden = all();
@@ -494,7 +496,7 @@
 
   // 흐름선·순위를 누르면 상대 지역으로 옮겨 간다 (보낸 흐름을 보고 있었으면 그 도착지가 받은 흐름)
   function goPartner(p) {
-    if (all()) { state.dir = "out"; select(p.o); return; }
+    if (all()) { select(state.dir === "out" ? p.o : p.d); return; }
     const other = state.dir === "out" ? p.d : p.o;
     state.dir = state.dir === "out" ? "in" : "out";
     select(other);
@@ -523,7 +525,7 @@
       ${trow("transparent", "직선거리", km(p.qd / p.q))}
       ${c != null ? trow("transparent", `주품목 ${D.crops[c]}`, pct((q / p.q) * 100)) : ""}
       ${trow(DT_COLOR[t], D.dtypes[t], pct((p.dt[t] / p.q) * 100))}
-      <span class="tip-hint">${all() ? "누르면 출발지가 보낸 흐름" : state.dir === "out" ? "누르면 이 도착지가 받은 흐름" : "누르면 이 출발지가 보낸 흐름"}</span>`;
+      <span class="tip-hint">${all() ? (state.dir === "out" ? "누르면 출발지가 보낸 흐름" : "누르면 도착지가 받은 흐름") : state.dir === "out" ? "누르면 이 도착지가 받은 흐름" : "누르면 이 출발지가 보낸 흐름"}</span>`;
   }
 
   // ---------- 제목 ----------
