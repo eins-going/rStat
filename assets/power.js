@@ -110,8 +110,9 @@
   }
   // 고객 수 튐: 해마다 3·11월 검침에 계절 고객이 함께 잡혀 앞뒤 달보다 크게 나온다(전국 +26~49%).
   // 앞뒤 달 평균보다 8% 넘게 크면 튄 달로 보고, 그림에서 빼고 비율의 분모는 직전 달 값을 쓴다
-  const spike = (k, i) => {
-    const v = at(k, "c", i), a = at(k, "c", i - 1), b = i < LAST ? at(k, "c", i + 1) : a;
+  // 계약전력도 일부 달(11월, 지역에 따라 5월)에 같은 꼴로 튄다 → f로 고른다
+  const spike = (k, i, f = "c") => {
+    const v = at(k, f, i), a = at(k, f, i - 1), b = i < LAST ? at(k, f, i + 1) : a;
     return ok(v) && ok(a) && ok(b) && v > ((a + b) / 2) * 1.08;
   };
   const custAt = (k, i) => (spike(k, i) ? at(k, "c", i - 1) : at(k, "c", i));
@@ -394,6 +395,7 @@
     drawBand();
     drawTrend();
     drawCust();
+    drawKw();
   }
 
   // 막대·선 그림 공통
@@ -471,6 +473,8 @@
   const drawTrend = () => drawSeries("chart-trend", (k, j) => sum12(k, j), (d) => energy(d).join(""));
   // 고객 수: 원자료 시군구가 빠진 달은 뺀다
   const drawCust = () => drawSeries("chart-cust", (k, j) => (gap(k, j) || spike(k, j) ? null : at(k, "c", j)), (d) => (Math.abs(d) >= 1e5 ? `${nf0.format(d / 1e4)}만` : int(d)), false);
+  // 계약전력: 2013년부터 있다
+  const drawKw = () => drawSeries("chart-kw", (k, j) => (gap(k, j) || spike(k, j, "w") ? null : at(k, "w", j)), (d) => power(d).join(""), false);
 
   // ---------- 오른쪽: 계절 유형 ----------
   function renderSeason() {
@@ -586,7 +590,7 @@
     paintMap();
   }).observe($("#map-wrap"));
   // 그림 칸은 패널이 자리를 잡은 뒤에야 크기가 정해진다 → 크기가 바뀌면 그 그림만 다시 그린다
-  const redraw = { "chart-band": drawBand, "chart-trend": drawTrend, "chart-cust": drawCust, "chart-season": renderSeason, "chart-invest": renderInvest };
+  const redraw = { "chart-band": drawBand, "chart-trend": drawTrend, "chart-cust": drawCust, "chart-kw": drawKw, "chart-season": renderSeason, "chart-invest": renderInvest };
   const sizes = new Map();
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
