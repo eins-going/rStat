@@ -119,8 +119,10 @@ def main():
         seasons[key] = [t, round(amp * 100), *[round(x * 100) for x in prof]]
 
     built = time.strftime("%Y-%m-%d")
+    # 지역 순서를 고정해 같은 자료면 같은 파일이 나오게 한다 (DB의 묶음 순서는 실행마다 다르다)
     data = {"built": built, "months": months, "types": TYPES, "seasonYears": [int(years[0]), int(years[-1])],
-            "flatAmp": FLAT_AMP, "v": v, "season": seasons, "gap": gaps}
+            "flatAmp": FLAT_AMP, "v": dict(sorted(v.items())), "season": dict(sorted(seasons.items())),
+            "gap": dict(sorted(gaps.items()))}
     with open(OUT, "w", encoding="utf-8") as fh:
         fh.write("// 한전 전력데이터 개방포털 농사용 전력·농업 고객 증감 (scripts/fetch_kepco.py → scripts/build_power.py)\n")
         fh.write("window.AGRI_POWER = ")

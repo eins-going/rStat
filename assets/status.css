@@ -1,0 +1,50 @@
+/* 자료 수집 현황 (status.html) — 한 화면 맞춤이 아닌 아래로 이어지는 문서형 화면 */
+html:has(body.st), body.st { height: auto; overflow: visible; }
+.st .app { height: auto; display: block; padding-bottom: 32px; }
+.st-main { max-width: 1100px; margin: 0 auto; }
+.st-hero { display: flex; align-items: baseline; gap: 14px; margin: 18px 0 10px; }
+.st-hero h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+.st-hero p { margin: 0; color: var(--faint); font-size: 13px; }
+.st-summary { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.st-summary li { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-size: 13px; color: var(--muted); }
+.st-summary li b { color: var(--text); font-size: 16px; margin-right: 2px; font-variant-numeric: tabular-nums; }
+.st-summary li.hot b { color: var(--accent); }
+.st-summary li.bad b { color: var(--up); }
+.st-h2 { margin: 22px 0 8px; font-size: 16px; }
+.st-h2 span { margin-left: 8px; font-size: 12.5px; font-weight: 400; color: var(--faint); }
+.st-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
+.st-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.st-card.is-manual { border-color: rgba(245, 165, 36, 0.35); }
+.st-card-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.st-card-head h3 { margin: 0 6px 0 0; font-size: 14.5px; }
+.st-badge { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 8px; }
+.m-auto { background: rgba(95, 179, 124, 0.18); color: #8fd6a8; }
+.m-manual { background: var(--accent-soft); color: var(--accent); }
+.m-event, .m-live { background: var(--panel-2); color: var(--muted); }
+.t-ok { background: rgba(95, 179, 255, 0.16); color: #9fd1ff; }
+.t-same { background: var(--panel-2); color: var(--muted); }
+.t-bad { background: rgba(255, 107, 94, 0.18); color: #ff9a90; }
+.st-facts { margin: 0; display: grid; gap: 3px; font-size: 12.5px; }
+.st-facts div { display: grid; grid-template-columns: 76px 1fr; gap: 8px; }
+.st-facts dt { color: var(--faint); }
+.st-facts dd { margin: 0; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.st-facts dd.st-hot { color: var(--accent); font-weight: 600; }
+.st-ago { color: var(--faint); margin-left: 4px; font-size: 11.5px; }
+.st-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.st-warn { margin: 10px 0 4px; font-size: 12.5px; color: var(--accent); font-weight: 600; }
+.st-how { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+.st-how a { color: #9fd1ff; overflow-wrap: anywhere; }
+.st-files-h { margin: 12px 0 4px; font-size: 12.5px; }
+.st-files-h span { font-weight: 400; color: var(--faint); margin-left: 6px; }
+.st-files { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.st-files th { text-align: left; color: var(--faint); font-weight: 500; padding: 0 8px 4px 0; }
+.st-files td { padding: 3px 8px 3px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.st-files td:nth-child(2), .st-files td:nth-child(3), .st-files th:nth-child(2), .st-files th:nth-child(3) { white-space: nowrap; text-align: right; }
+.st-dir { color: var(--faint); }
+.st-cmd { margin: 10px 0 0; font-size: 11.5px; color: var(--faint); }
+.st-cmd code { font-size: 11px; color: var(--muted); background: var(--panel-2); border-radius: 4px; padding: 0 4px; }
+.st .foot { margin-top: 24px; }
+@media (max-width: 760px) {
+  .st-list { grid-template-columns: 1fr; }
+  .st .app { padding: 0 16px 24px; }
+}

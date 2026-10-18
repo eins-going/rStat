@@ -17,16 +17,19 @@ from datetime import date
 from regions import METRO, ROOT, SIDOS, UNIT_KEYS, sido_code, unit_of  # noqa: F401 (지역 규칙 공용)
 
 
-def load_key(name):
+def load_key(*names):
+    """.env에서 키를 읽는다. 이름을 여럿 주면 먼저 있는 것을 쓴다 (예전 이름 호환)."""
     with open(os.path.join(ROOT, ".env"), encoding="utf-8") as f:
-        for line in f:
+        lines = f.read().splitlines()
+    for name in names:
+        for line in lines:
             if line.startswith(f"{name}="):
                 return line.split("=", 1)[1].strip().strip("\"'")
-    raise SystemExit(f"{name}이(가) .env에 없습니다.")
+    raise SystemExit(f"{' 또는 '.join(names)}이(가) .env에 없습니다.")
 
 
 KEY = load_key("KOSIS_API_KEY")
-LOFIN_KEY = load_key("lofin365_open_api_key")
+LOFIN_KEY = load_key("lofin365_open_api_key", "lofin_api_key")
 
 
 # ---------- KOSIS 호출 ----------

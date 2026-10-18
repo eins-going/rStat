@@ -1,0 +1,10 @@
+[Unit]
+Description=rStat 자료 수집 매일 07:30 (꺼져 있던 날은 켜진 뒤 따라잡기)
+
+[Timer]
+OnCalendar=*-*-* 07:30
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target

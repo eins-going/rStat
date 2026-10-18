@@ -1,0 +1,12 @@
+[Unit]
+Description=rStat 자료 수집·배포 (scripts/update.py run)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/eins/project/rStat
+ExecStart=/home/eins/project/rStat/.venv/bin/python /home/eins/project/rStat/scripts/update.py run
+# 한전 수집은 호출 제한 때문에 길어질 수 있다
+TimeoutStartSec=5h
+Nice=10

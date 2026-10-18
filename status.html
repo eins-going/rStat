@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>자료 수집 현황</title>
+  <meta name="description" content="한눈에 보는 지역농업 통계에 쓰는 자료별 수집일, 수집 상태, 자료 시점과 다음 수집 계획. 자동으로 받지 못해 손으로 내려받아야 하는 자료와 지금 들어 있는 파일도 적었습니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/status.css">
+</head>
+<body class="st">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="st-main">
+      <div class="st-hero">
+        <h1>자료 수집 현황</h1>
+        <p id="generated"></p>
+      </div>
+      <ul class="st-summary" id="summary"></ul>
+
+      <h2 class="st-h2">자동 수집 <span>이 PC가 정해진 때에 받아 검사한 뒤 배포합니다</span></h2>
+      <div class="st-list" id="auto"></div>
+
+      <h2 class="st-h2">수동 다운로드 <span>자동으로 받을 수 없어 원자료 파일을 손으로 내려받아 넣어야 합니다</span></h2>
+      <div class="st-list" id="manual"></div>
+
+      <h2 class="st-h2">기타 <span>수집하지 않거나 행정구역 개편 때만 손보는 자료</span></h2>
+      <div class="st-list" id="other"></div>
+    </main>
+
+    <footer class="foot">
+      <p>계획: scripts/update_plan.toml · 실행: scripts/update.py (이 PC의 systemd 사용자 타이머 rstat-update.timer, 매일) · 기록: docs/data_sources.md</p>
+    </footer>
+  </div>
+  <script src="data/status.js"></script>
+  <script src="assets/status.js"></script>
+</body>
+</html>
