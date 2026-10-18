@@ -156,7 +156,7 @@
       note: `${P.seasonYears[0]}~${P.seasonYears[1]}년 월별 사용량 모양(검침월 기준)` },
   ];
 
-  const DEFAULT_METRIC = METRICS.find((m) => m.key === "yoy"); // 처음 화면은 변화(전년동기 대비)
+  const DEFAULT_METRIC = METRICS.find((m) => m.key === "use"); // 처음 화면은 사용량 (최근 12개월 합계)
   const state = { key: NATION, i: LAST, metric: DEFAULT_METRIC };
 
   // ---------- 선택 ----------
