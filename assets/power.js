@@ -449,15 +449,17 @@
     $("#band-key").innerHTML = `<span><i class="cur"></i>${y0}년</span><span><i class="prev"></i>${y0 - 1}년</span><span><i class="band"></i>${y0 - 5}~${y0 - 1}년 범위</span>`;
   }
 
-  // 월별 장기 그래프 (2010~), 누르면 그 달로. zero=false면 세로축을 0이 아닌 최솟값 근처에서 시작한다
+  // 월별 장기 그래프: 최근 10년(120개월), 누르면 그 달로. zero=false면 세로축을 0이 아닌 최솟값 근처에서 시작한다
+  const SPAN = 120;
   function drawSeries(id, get, fmt, zero = true) {
     const k = state.key, i = state.i;
     const el = $(`#${id}`);
     const { svg, w, h } = frame(el, 90);
-    const pts = M.map((_, j) => [j, get(k, j)]).filter(([, v]) => ok(v));
+    const start = Math.max(0, LAST - SPAN + 1);
+    const pts = M.map((_, j) => [j, j >= start ? get(k, j) : null]).filter(([, v]) => ok(v));
     if (!pts.length) { svg.append("text").attr("x", 8).attr("y", 20).attr("class", "pw-empty").text("자료 없음"); return; }
     const m = { l: 44, r: 8, t: 6, b: 16 };
-    const x = d3.scaleLinear().domain([0, LAST]).range([m.l, w - m.r]);
+    const x = d3.scaleLinear().domain([start, LAST]).range([m.l, w - m.r]);
     const lo = d3.min(pts, (d) => d[1]), hi = d3.max(pts, (d) => d[1]);
     const y = d3.scaleLinear().domain(zero ? [0, hi * 1.05] : [lo - (hi - lo) * 0.15, hi + (hi - lo) * 0.1 || hi + 1]).nice(3).range([h - m.b, m.t]);
     const nt = h < 110 ? 2 : 3;
@@ -465,16 +467,19 @@
       g.append("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", (d) => y(d)).attr("y2", (d) => y(d));
       g.append("text").attr("x", m.l - 6).attr("y", (d) => y(d) + 4).attr("text-anchor", "end").text((d) => (d || !zero ? fmt(d) : "0"));
     });
-    const years = [...new Set(M.map((s) => s.slice(0, 4)))].filter((yy, j) => j % 4 === 0 || yy === M[LAST].slice(0, 4));
+    // 해마다 1월에 연도 눈금 (2년 간격)
+    const years = M.map((s, j) => [s, j]).filter(([s, j]) => j >= start && s.endsWith("-01") && (+s.slice(0, 4) - +M[LAST].slice(0, 4)) % 2 === 0);
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(years).join("text")
-      .attr("x", (yy) => x(M.indexOf(`${yy}-01`) < 0 ? 0 : M.indexOf(`${yy}-01`))).attr("y", h - 3).attr("text-anchor", "middle").text((yy) => `'${yy.slice(2)}`);
+      .attr("x", ([, j]) => x(j)).attr("y", h - 3).attr("text-anchor", "middle").text(([s]) => `'${s.slice(2, 4)}`);
     svg.append("path").attr("class", "pw-trendarea").attr("d", d3.area().x((d) => x(d[0])).y0(h - m.b).y1((d) => y(d[1]))(pts));
     svg.append("path").attr("class", "pw-cur").attr("d", d3.line().x((d) => x(d[0])).y((d) => y(d[1]))(pts));
     const v = get(k, i);
-    svg.append("line").attr("class", "pw-mark").attr("x1", x(i)).attr("x2", x(i)).attr("y1", m.t).attr("y2", h - m.b);
-    if (ok(v)) svg.append("circle").attr("class", "pw-dot").attr("cx", x(i)).attr("cy", y(v)).attr("r", 3.5);
+    if (i >= start) {
+      svg.append("line").attr("class", "pw-mark").attr("x1", x(i)).attr("x2", x(i)).attr("y1", m.t).attr("y2", h - m.b);
+      if (ok(v)) svg.append("circle").attr("class", "pw-dot").attr("cx", x(i)).attr("cy", y(v)).attr("r", 3.5);
+    }
     svg.append("rect").attr("x", m.l).attr("y", 0).attr("width", w - m.l - m.r).attr("height", h).attr("fill", "transparent").style("cursor", "pointer")
-      .on("click", (e) => setMonth(Math.max(0, Math.min(LAST, Math.round(x.invert(d3.pointer(e)[0]))))))
+      .on("click", (e) => setMonth(Math.max(start, Math.min(LAST, Math.round(x.invert(d3.pointer(e)[0]))))))
       .append("title").text("누르면 그 달로");
   }
   // 장기 추이: 최근 12개월 사용량 합계
