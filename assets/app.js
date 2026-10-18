@@ -381,8 +381,8 @@
     setV("returnRural", r.value);
     setD("returnFarm", deltaHTML(f.value, f.prev, "전년대비", true));
     setD("returnRural", deltaHTML(r.value, r.prev, "전년대비", true));
-    barChart("#spark-farm", P.returning, V.returnFarm[k], int, "귀농가구");
-    barChart("#spark-rural", P.returning, V.returnRural[k], int, "귀촌인");
+    barChart("#spark-farm", P.returning, V.returnFarm[k], int, "귀농가구", "가구");
+    barChart("#spark-rural", P.returning, V.returnRural[k], int, "귀촌인", "명");
     setNote("return", f.value == null && r.value == null ? "읍·면이 없는 지역은 귀농·귀촌 집계 대상이 아닙니다." : "");
   }
 
@@ -695,8 +695,6 @@
       const y = d3.scaleLinear().domain([0, max]).range([h - bottom, top]);
       const cell = d3.select(this);
       const r = change(s.at(-1), s.at(-2));
-      cell.selectAll("title").data([0]).join("title")
-        .text(`${name}: ${s.map((x, i) => `${yrs[i]}년 ${x == null ? "–" : `${nf0.format(x)}ha`}`).join(" · ")}`);
       cell.selectAll("rect.bg").data([0]).join("rect").attr("class", "bg")
         .attr("x", 0).attr("y", 0).attr("width", band.bandwidth()).attr("height", h).attr("fill", "transparent");
       cell.selectAll("line.base").data([0]).join("line").attr("class", "base")
@@ -704,7 +702,10 @@
       cell.selectAll("rect.bar").data(s.map((v, i) => ({ v, i }))).join("rect").attr("class", "bar")
         .attr("x", (d) => inner(yrs[d.i])).attr("width", inner.bandwidth()).attr("rx", 1.5)
         .attr("fill", (d) => fills[d.i] || fills.at(-1))
-        .attr("y", (d) => (d.v == null ? h - bottom : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - bottom - y(d.v)));
+        .attr("y", (d) => (d.v == null ? h - bottom : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - bottom - y(d.v)))
+        .on("mousemove", (e, d) => chartTip(e, `<b>${yrs[d.i]}년</b>${name} ${d.v == null ? "자료 없음" : `${nf0.format(d.v)}ha`}`))
+        .on("mouseenter", function () { d3.select(this).attr("opacity", 0.75); })
+        .on("mouseleave", function () { d3.select(this).attr("opacity", 1); chartTip(null); });
       cell.selectAll("text.v").data([0]).join("text").attr("class", "v")
         .attr("x", band.bandwidth() / 2).attr("y", 10).attr("text-anchor", "middle").attr("font-size", 10.5)
         .html(`<tspan fill="#eef0f3" font-weight="600">${int(s.at(-1))}</tspan><tspan fill="${r == null ? "#9aa1ad" : r > 0 ? "#ff6b5e" : r < 0 ? "#4ea1ff" : "#9aa1ad"}" dx="3">${r == null ? "" : `${r > 0 ? "▲" : r < 0 ? "▼" : ""}${nf0.format(Math.abs(r))}%`}</tspan>`);
@@ -715,7 +716,7 @@
   }
 
   // 연도별 막대: 해마다 새로 생기는 양(귀농·귀촌 수, 회계연도 예산)에 쓴다. 0에서 시작, 마지막 해 강조
-  function barChart(sel, years, values, fmt = int, name = "") {
+  function barChart(sel, years, values, fmt = int, name = "", unit = "") {
     const el = $(sel);
     const w = el.clientWidth;
     const h = el.clientHeight;
@@ -738,6 +739,10 @@
     svg.selectAll("rect").data(pts).join("rect")
       .attr("x", (d) => x(d.y)).attr("width", x.bandwidth()).attr("rx", 1.5)
       .attr("fill", (d, i) => (i === lastIdx ? "#f5a524" : "#5a606b"))
+      // 마우스를 올리면 그해 값
+      .on("mousemove", (e, d) => { if (d.v != null) chartTip(e, `<b>${d.y}년</b>${name ? `${name} ` : ""}${fmt(d.v)}${unit}`); })
+      .on("mouseenter", function () { d3.select(this).attr("opacity", 0.75); })
+      .on("mouseleave", function () { d3.select(this).attr("opacity", 1); chartTip(null); })
       .transition().duration(reduceMotion || first ? 0 : 500)
       .attr("y", (d) => (d.v == null ? h - bottom : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - bottom - y(d.v)));
     // 처음·마지막 해 값
@@ -1251,8 +1256,8 @@
     });
     if (!changed) return;
     lineChart("#chart-farm", P.farm, V.households[state.key], int, "농가수", "가구");
-    barChart("#spark-farm", P.returning, V.returnFarm[state.key], int, "귀농가구");
-    barChart("#spark-rural", P.returning, V.returnRural[state.key], int, "귀촌인");
+    barChart("#spark-farm", P.returning, V.returnFarm[state.key], int, "귀농가구", "가구");
+    barChart("#spark-rural", P.returning, V.returnRural[state.key], int, "귀촌인", "명");
     drawBudget(state.key);
     lineChart("#chart-rice", P.riceYears, V.riceSeries[state.key], int, "쌀 생산량", "톤");
     lineChart("#chart-grdp", P.grdp.years, grdpWon(state.key), won, "농림어업 GRDP");
