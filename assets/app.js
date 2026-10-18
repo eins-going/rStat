@@ -464,7 +464,7 @@
       const parts = groups.map((g, i) => ({ g, v: (mix[i] / tot) * 100, c: GRDP_COLORS[i] }));
       donutMix("#donut-grdp", parts);
       $("#donut-grdp svg").setAttribute("aria-label", `지역 총생산의 산업별 구성: ${parts.map((p) => `${p.g} ${pct(p.v)}`).join(", ")}`);
-      $("#grdp-legend").innerHTML = parts.map((p, i) => `<span class="${i === 0 ? "agri" : ""}"><i style="background:${p.c}"></i>${p.g} <b>${pct(p.v)}</b></span>`).join("");
+      $("#grdp-legend").innerHTML = parts.map((p, i) => `<span class="${i === 0 ? "agri" : ""}"><i style="background:${p.c}"></i><em>${p.g}</em><b>${pct(p.v)}</b></span>`).join("");
     } else {
       donutMix("#donut-grdp", []);
       $("#grdp-legend").innerHTML = "";

@@ -197,20 +197,18 @@
             <h2>지역소득(GRDP)</h2>
             <span class="chip" data-year></span>
           </header>
-          <div class="duo">
-            <div class="duo-main">
-              <div class="stat inline">
-                <span class="stat-label">농림어업 GRDP</span>
-                <span class="stat-value"><b data-v="grdp"></b></span>
-              </div>
-              <div class="spark tall" id="chart-grdp" aria-label="농림어업 GRDP 연도별 추이"></div>
-            </div>
+          <div class="stat inline">
+            <span class="stat-label">농림어업 GRDP</span>
+            <span class="stat-value"><b data-v="grdp"></b></span>
+          </div>
+          <div class="spark tall" id="chart-grdp" aria-label="농림어업 GRDP 연도별 추이"></div>
+          <div class="grdp-mixrow">
             <figure class="donut" id="donut-grdp">
               <svg viewBox="0 0 100 100" role="img" aria-label="지역 총생산의 산업별 구성"></svg>
               <figcaption><b data-v="grdpShare"></b><span>농림어업</span></figcaption>
             </figure>
+            <div class="grdp-legend" id="grdp-legend"></div>
           </div>
-          <div class="grdp-legend" id="grdp-legend"></div>
           <p class="note" data-note="grdp"></p>
           <footer class="src" data-src="grdp"></footer>
         </article>
