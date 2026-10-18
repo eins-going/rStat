@@ -206,19 +206,6 @@
     for (const v of arr) h += (v / s) ** 2;
     return 1 / h;
   };
-  let trendSig = null, trend = null;
-  function getTrend() {
-    const sig = `${state.eq}|${state.k}|${state.dir}|${state.crop}|${state.dt}|${state.sh}`;
-    if (sig !== trendSig) {
-      trend = Y.map((_, i) => {
-        const r = compute(i, true);
-        return { share: r.U ? (r.S / r.U) * 100 : null, cross: r.S ? (r.X / r.S) * 100 : null };
-      });
-      trendSig = sig;
-    }
-    return trend;
-  }
-
   // ---------- 선택 상자 ----------
   const sidoSel = $("#sido"), sggSel = $("#sgg"), yearSel = $("#year"), eqSel = $("#equip"), cropSel = $("#crop");
   eqSel.innerHTML = EQ.map((e, i) => `<option value="${i}">${esc(e.name)}</option>`).join("");
@@ -321,47 +308,6 @@
   }
   const hideCtip = () => { ctip.hidden = true; };
   const trow = (color, name, val) => `<span class="trow"><i style="background:${color}"></i><span>${esc(name)}</span><em>${val}</em></span>`;
-
-  // ---------- 선 그래프: 연도별, 고른 해 강조, 누르면 그 해로 ----------
-  function lineChart(sel, series, fmt, axisFmt = fmt) {
-    const el = $(sel);
-    const w = el.clientWidth, h = el.clientHeight || 100;
-    if (!w) return;
-    const m = { l: 36, r: 12, t: 8, b: 16 };
-    const x = d3.scaleLinear([Y[0], Y[LAST]], [m.l, w - m.r]);
-    const vals = series.flatMap((s) => s.values).filter(ok);
-    const y = d3.scaleLinear([0, (d3.max(vals) || 1) * 1.08], [h - m.b, m.t]).nice(h < 90 ? 2 : 3);
-    const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
-    const nt = h < 90 ? 2 : 3; // 그림이 낮으면 눈금을 줄인다
-    svg.selectAll("g.grid").data([0]).join("g").attr("class", "grid")
-      .selectAll("line").data(y.ticks(nt)).join("line")
-      .attr("x1", m.l).attr("x2", w - m.r).attr("y1", (v) => y(v)).attr("y2", (v) => y(v)).attr("stroke", "#2a2e35");
-    svg.selectAll("g.ya").data([0]).join("g").attr("class", "axis ya")
-      .selectAll("text").data(y.ticks(nt)).join("text")
-      .attr("x", m.l - 6).attr("y", (v) => y(v) + 3.5).attr("text-anchor", "end").text(axisFmt);
-    svg.selectAll("g.xa").data([0]).join("g").attr("class", "axis xa")
-      .selectAll("text").data(Y.filter((yy) => yy % 5 === 0)).join("text")
-      .attr("x", (v) => x(v)).attr("y", h - 3).attr("text-anchor", "middle").text((v) => v);
-    const line = d3.line().defined((v) => ok(v)).x((_, i) => x(Y[i])).y((v) => y(v));
-    svg.selectAll("path.ln").data(series, (s) => s.name).join("path").attr("class", "ln")
-      .attr("fill", "none").attr("stroke", (s) => s.color).attr("stroke-width", 2).attr("stroke-linejoin", "round")
-      .attr("d", (s) => line(s.values));
-    svg.selectAll("circle.cur").data(series.filter((s) => ok(s.values[state.yi])), (s) => s.name).join("circle").attr("class", "cur")
-      .attr("cx", x(Y[state.yi])).attr("cy", (s) => y(s.values[state.yi])).attr("r", 4)
-      .attr("fill", (s) => s.color).attr("stroke", "#1d2026").attr("stroke-width", 2);
-    const cross = svg.selectAll("line.cross").data([0]).join("line").attr("class", "cross")
-      .attr("y1", m.t).attr("y2", h - m.b).attr("stroke", "#666d79").attr("stroke-dasharray", "2 3").style("opacity", 0);
-    svg.selectAll("rect.hit").data([0]).join("rect").attr("class", "hit")
-      .attr("x", m.l - 6).attr("y", 0).attr("width", w - m.l - m.r + 12).attr("height", h).attr("fill", "transparent").style("cursor", "pointer")
-      .on("mousemove", (e) => {
-        const [px] = d3.pointer(e);
-        const i = Math.max(0, Math.min(LAST, Math.round(x.invert(px)) - Y[0]));
-        cross.attr("x1", x(Y[i])).attr("x2", x(Y[i])).style("opacity", 1);
-        showCtip(e, `<b>${Y[i]}년</b>${series.map((s) => trow(s.color, s.name, fmt(s.values[i]))).join("")}`);
-      })
-      .on("mouseleave", () => { cross.style("opacity", 0); hideCtip(); })
-      .on("click", (e) => { const [px] = d3.pointer(e); setYear(Math.round(x.invert(px)) - Y[0]); });
-  }
 
   // ---------- 지도 ----------
   const mapSvg = d3.select("#odmap");
@@ -615,9 +561,6 @@
     else setKpi("cross", cr, pct, ok(cr) && ok(crB) ? cr - crB : null, pp);
     $("#kpi-eff-label").textContent = side === "o" ? "실질 출발지 수" : "실질 도착지 수";
     setKpi("eff", eff, (v) => `${nf1.format(v)}곳`, ok(eff) && ok(effB) ? eff - effB : null, (v) => nf1.format(v));
-    const tr = getTrend();
-    $("#share-head").firstChild.textContent = A ? "다른 시도행 비중 추이 " : "전국 대비 비중 추이 ";
-    lineChart("#chart-share", [{ name: A ? "다른 시도행" : "비중", color: ACC, values: tr.map((t) => (A ? t.cross : t.share)) }], pctS, (v) => `${v < 10 && v % 1 ? nf1.format(v) : nf0.format(v)}%`);
   }
 
   // 판로(dt)·출하 주체(sh) 구성. 행을 누르면 그 값으로 거르고, 다시 누르면 푼다
@@ -839,7 +782,7 @@
   if (state.eq) loadEq(state.eq).then(render, () => { state.eq = 0; render(); });
   else render();
   // 그림 칸은 패널이 자리를 잡은 뒤에야 크기가 정해진다 → 크기가 바뀌면 그 그림만 다시 그린다
-  const redraw = { "chart-share": () => renderKpi(), matrix: () => renderMatrix(), "chart-season": () => renderSeason() };
+  const redraw = { matrix: () => renderMatrix(), "chart-season": () => renderSeason() };
   const sizes = new Map();
   const ro = new ResizeObserver((entries) => {
     if (!cur) return;
