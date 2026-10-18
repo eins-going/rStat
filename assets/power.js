@@ -448,19 +448,18 @@
     });
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(months).join("text")
       .attr("x", (d) => x(d)).attr("y", h - 4).attr("text-anchor", "middle").text((d) => d);
-    // 범위 띠·전년·선택 연도 선을 한 묶음으로 잘라 두고, 자르는 상자를 왼쪽에서 오른쪽으로 넓힌다
+    // 선택 연도 선만 잘라 두고, 자르는 상자를 왼쪽에서 오른쪽으로 넓힌다 (범위 띠·전년 선은 바로 보인다)
     // 한 번 지나가는 짧은 드러냄이라 '움직임 줄이기' 설정과 상관없이 보인다 (한국은행 스냅샷처럼)
     const sweep = done < 1;
     const ease = d3.easeSinInOut;
     const x0 = m.l + (w - m.l) * ease(done);
     const clip = svg.append("defs").append("clipPath").attr("id", "pw-band-clip")
       .append("rect").attr("x", 0).attr("y", 0).attr("height", h).attr("width", sweep ? x0 : w);
-    const plot = svg.append("g").attr("clip-path", "url(#pw-band-clip)");
     const area = d3.area().defined((d) => d).x((d, j) => x(months[j])).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveMonotoneX);
-    plot.append("path").attr("class", "pw-bandarea").attr("d", area(band));
+    svg.append("path").attr("class", "pw-bandarea").attr("d", area(band));
     const line = d3.line().defined(ok).x((d, j) => x(months[j])).y((d) => y(d)).curve(d3.curveMonotoneX);
-    plot.append("path").attr("class", "pw-prev").attr("d", line(prev));
-    plot.append("path").attr("class", "pw-cur").attr("d", line(cur));
+    svg.append("path").attr("class", "pw-prev").attr("d", line(prev));
+    svg.append("path").attr("class", "pw-cur").attr("d", line(cur)).attr("clip-path", "url(#pw-band-clip)");
     // 남은 구간도 같은 곡선을 따라가게 시간 t를 done→1로 돌린다
     if (sweep) clip.transition().duration(SWEEP * (1 - done)).ease(d3.easeLinear)
       .attrTween("width", () => (t) => m.l + (w - m.l) * ease(done + (1 - done) * t));
