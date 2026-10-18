@@ -498,20 +498,47 @@
     setYear("p-budget", `${years[a.i] ?? years.at(-1)}년`);
     countTo($('[data-v="budget"]'), a.value == null ? null : a.value * 1e6, won);
     setD("budget", deltaHTML(a.value, a.prev));
-    barChart("#chart-budget", years, budgetWon(k), won, "농업·농촌 예산");
+    drawBudget(k);
     const s = budgetShare(k);
     const ps = p ? budgetShare(p) : null;
     countTo($('[data-v="budgetShare"]'), s, pct);
-    meter("budget", s, ps, Math.max(20, Math.ceil(Math.max(s || 0, ps || 0) / 10) * 10));
+    donut("#donut-budget", s, ps);
     const rk = rankText(k, (x) => budgetShare(x));
     const total = V.budgetTotal[k]?.at(-1);
     let note;
     if (a.value == null) note = sidoOf(k) === "39" ? "제주시·서귀포시는 행정시라 별도 예산이 없습니다. 제주특별자치도 전체를 보세요." : "예산 자료가 없습니다.";
     else if (level(k) === 0) note = `전국 지방자치단체 세출 ${won(total * 1e6)} 가운데 농업ㆍ농촌 부문`;
-    else if (level(k) === 1) note = `본청과 시군구 예산의 단순 합계(이전재원 중복 포함) · 흰 선은 전국 ${pct(ps)}${rk ? ` · ${rk}` : ""}`;
-    else if (label(k).endsWith("시부")) note = `구 예산 합계 (광역시 본청 예산 제외) · 흰 선은 ${label(p)} ${pct(ps)}`;
-    else note = `흰 선은 ${label(p)} ${pct(ps)}${rk ? ` · 비중 ${rk}` : ""}`;
+    else if (level(k) === 1) note = `본청과 시군구 예산의 단순 합계(이전재원 중복 포함) · 흰 눈금은 전국 ${pct(ps)}${rk ? ` · ${rk}` : ""}`;
+    else if (label(k).endsWith("시부")) note = `구 예산 합계 (광역시 본청 예산 제외) · 흰 눈금은 ${label(p)} ${pct(ps)}`;
+    else note = `흰 눈금은 ${label(p)} ${pct(ps)}${rk ? ` · 비중 ${rk}` : ""}`;
     setNote("budget", note);
+    $("#donut-budget").title = note;
+  }
+
+  // 예산 막대는 원그래프 옆 좁은 칸에 들어가므로 최근 몇 해만 보여준다
+  const BUDGET_YEARS = 6;
+  const drawBudget = (k) => barChart("#chart-budget", P.budget.slice(-BUDGET_YEARS), budgetWon(k).slice(-BUDGET_YEARS), won, "농업·농촌 예산");
+
+  // 전체(100%) 가운데 몫을 원그래프로. mark는 비교 지역 값으로, 고리 위에 흰 눈금으로 표시한다
+  function donut(sel, value, mark) {
+    const svg = d3.select(sel).select("svg");
+    const R = 50, r = 37;
+    const arc = d3.arc().innerRadius(r).outerRadius(R).cornerRadius(2);
+    const turn = (v) => (Math.min(100, Math.max(0, v || 0)) / 100) * 2 * Math.PI;
+    const g = svg.selectAll("g").data([0]).join("g").attr("transform", `translate(${R},${R})`);
+    g.selectAll("path.track").data([0]).join("path").attr("class", "track")
+      .attr("d", arc({ startAngle: 0, endAngle: 2 * Math.PI })).attr("fill", "#252931");
+    const fill = g.selectAll("path.fill").data([0]).join("path").attr("class", "fill").attr("fill", "#f5a524");
+    const from = fill.node()._end ?? 0;
+    const to = turn(value);
+    fill.node()._end = to;
+    fill.transition().duration(reduceMotion ? 0 : 600).ease(d3.easeCubicOut)
+      .attrTween("d", () => { const i = d3.interpolate(from, to); return (t) => arc({ startAngle: 0, endAngle: i(t) }); });
+    const a = turn(mark) - Math.PI / 2;
+    g.selectAll("line.mark").data(mark == null ? [] : [a]).join("line").attr("class", "mark")
+      .attr("stroke", "#eef0f3").attr("stroke-width", 2).attr("stroke-linecap", "round")
+      .attr("x1", (d) => Math.cos(d) * (r - 4)).attr("y1", (d) => Math.sin(d) * (r - 4))
+      .attr("x2", (d) => Math.cos(d) * (R + 1)).attr("y2", (d) => Math.sin(d) * (R + 1));
   }
 
   function meter(key, value, mark, max = 100) {
@@ -1120,7 +1147,7 @@
     lineChart("#chart-farm", P.farm, V.households[state.key], int, "농가수");
     barChart("#spark-farm", P.returning, V.returnFarm[state.key], int, "귀농가구");
     barChart("#spark-rural", P.returning, V.returnRural[state.key], int, "귀촌인");
-    barChart("#chart-budget", P.budget, budgetWon(state.key), won, "농업·농촌 예산");
+    drawBudget(state.key);
     lineChart("#chart-rice", P.riceYears, V.riceSeries[state.key], int, "쌀 생산량");
     lineChart("#chart-grdp", P.grdp.years, grdpWon(state.key), won, "농림어업 GRDP");
     drawCrops(state.key);

@@ -203,19 +203,20 @@
             <h2>농업·농촌 예산</h2>
             <span class="chip" data-year></span>
           </header>
-          <div class="stat inline">
-            <span class="stat-value"><b data-v="budget"></b></span>
-            <span class="delta" data-d="budget"></span>
-          </div>
-          <div class="spark tall" id="chart-budget" aria-label="농업·농촌 예산 연도별 추이"></div>
-          <div class="meter-row">
-            <div class="meter-text">
-              <span>전체 세출 대비 비중</span>
-              <b data-v="budgetShare"></b>
+          <div class="duo">
+            <div class="duo-main">
+              <div class="stat inline">
+                <span class="stat-value"><b data-v="budget"></b></span>
+                <span class="delta" data-d="budget"></span>
+              </div>
+              <div class="spark tall" id="chart-budget" aria-label="농업·농촌 예산 연도별 추이"></div>
             </div>
-            <div class="meter"><span class="meter-fill" data-meter="budget"></span><span class="meter-mark" data-mark="budget"></span></div>
-            <p class="note" data-note="budget"></p>
+            <figure class="donut" id="donut-budget">
+              <svg viewBox="0 0 100 100" role="img" aria-label="전체 세출 대비 농업·농촌 예산 비중"></svg>
+              <figcaption><b data-v="budgetShare"></b><span>세출 대비</span></figcaption>
+            </figure>
           </div>
+          <p class="note" data-note="budget"></p>
           <footer class="src" data-src="budget"></footer>
         </article>
 
