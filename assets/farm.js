@@ -342,7 +342,7 @@
   }
 
   // ---------- 유통시설 ----------
-  // 유통시설 지도(facilities.html)와 같은 자료. 시군 경계 안의 시설만 고른다.
+  // data/facilities.js(scripts/build_facilities.py). 시군 경계 안의 시설만 고른다.
   // 주소가 읍면·시군까지만 있어 그 중심에 놓인 곳은 확대한 지도에서 오해를 사므로 목록에만 싣는다.
   const FD = window.AGRI_FACILITIES;
   const F_EXACT = new Set(["도로명", "지번", "좌표", "상호"]);
@@ -440,7 +440,7 @@
 
   function renderFacs() {
     if (!FD) { ui.facs.innerHTML = ""; return; }
-    const head = `<div class="fv-sec-head"><h3>유통시설 <span class="fv-sub">${nf.format(fst.here.length)}곳</span></h3><a class="fv-link" href="facilities" target="_blank" rel="noopener">전국 지도</a></div>`;
+    const head = `<div class="fv-sec-head"><h3>유통시설 <span class="fv-sub">${nf.format(fst.here.length)}곳</span></h3></div>`;
     if (!fst.here.length) {
       ui.facs.innerHTML = `${head}<p class="fv-empty">이 시군 안에 표시할 시설이 없습니다.</p>`;
       return;

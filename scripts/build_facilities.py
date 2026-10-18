@@ -36,7 +36,7 @@ from build_farms import (AT, ROOT, SIDO_FULL, VWorld, district_point, geocode, l
 EXACT = ("도로명", "지번", "상호", "좌표")
 KINDS = {"rpc": "미곡처리장(도정업체)", "apc": "산지유통센터(APC)", "lf": "로컬푸드 직매장", "six": "6차산업 인증 사업자",
          "fruit": "과수 생산단지", "exp": "수출전문농가단지", "quar": "수출검역단지(선과장)"}
-# 점 색 (유통시설 지도와 통계 페이지의 '자세히 보기'가 같이 쓴다)
+# 점 색 (통계 페이지 '자세히 보기'의 시설 점)
 COLORS = {"rpc": "#f5a524", "apc": "#5fb37c", "lf": "#ff7ab6", "six": "#6cb8ff",
           "fruit": "#ff5d5d", "exp": "#c6e05a", "quar": "#b28dff"}
 
