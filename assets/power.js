@@ -418,8 +418,8 @@
   }
 
   // 월별 사용량: 선택 연도 · 전년 · 직전 5년 범위
-  // animate: 지역·기준월을 바꿨을 때 선이 왼쪽에서 오른쪽으로 그려지게 (창 크기만 바뀌면 그냥 그린다)
-  const SWEEP = 1100;
+  // animate: 처음 열 때와 지역·기준월을 바꿨을 때 선이 왼쪽에서 오른쪽으로 그려지게 (창 크기만 바뀌면 그냥 그린다)
+  const SWEEP = 1400;
   function drawBand(animate = true) {
     const k = state.key, i = state.i;
     const el = $("#chart-band");
@@ -445,7 +445,8 @@
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(months).join("text")
       .attr("x", (d) => x(d)).attr("y", h - 4).attr("text-anchor", "middle").text((d) => d);
     // 범위 띠·전년·선택 연도 선을 한 묶음으로 잘라 두고, 자르는 상자를 왼쪽에서 오른쪽으로 넓힌다
-    const sweep = animate && !reduceMotion;
+    // 한 번 지나가는 짧은 드러냄이라 '움직임 줄이기' 설정과 상관없이 보인다 (한국은행 스냅샷처럼)
+    const sweep = animate;
     const clip = svg.append("defs").append("clipPath").attr("id", "pw-band-clip")
       .append("rect").attr("x", 0).attr("y", 0).attr("height", h).attr("width", sweep ? m.l : w);
     const plot = svg.append("g").attr("clip-path", "url(#pw-band-clip)");
