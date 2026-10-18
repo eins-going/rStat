@@ -193,6 +193,7 @@ def sec_farm(out, v):
     b, _ = fetch("101", "DT_1EA1011", "Y", 10, ["농가", "농가인구"])
     yrs = periods_of(b)
     out["periods"]["farm"] = yrs
+    out["periods"].pop("farmCensus", None)  # 조사 표를 새로 받았다 → 총조사 값은 merge_census_farm이 다시 붙인다
     v["households"] = series(b["농가"], yrs)
     v["population"] = series(b["농가인구"], yrs)
     out["sources"]["farm"] = "국가데이터처 농림어업조사"
@@ -390,6 +391,37 @@ def sec_area(out, v):
     out["sources"]["area"] = "국토교통부 지적통계 행정구역별·지목별 국토이용현황_시군구"
 
 
+def merge_census_farm(out):
+    """총조사 연도(2025)의 농가·농가인구를 농림어업조사 시계열 끝에 붙인다.
+    농림어업조사 표(DT_1EA1011)는 총조사 연도 값을 나중에 채우므로, 그 전까지는 총조사 결과
+    (경영주 연령구간별 농가 '계', 연령 구간별 농가 인구 '계')를 쓰고 periods.farmCensus에 그 해를 적는다.
+    2025년 총조사는 2024년 조사보다 전국 농가가 27% 많다 → 화면은 직전 총조사(2020) 대비로 비교한다."""
+    v, per = out["v"], out["periods"]
+    year = str(per.get("aging", ""))
+    farm = per.get("farm", [])
+    if not year.isdigit() or not farm:
+        return
+    if per.get("farmCensus") == year and farm[-1] == year:
+        replace = True  # 이미 붙인 총조사 값을 새로 받은 총조사 값으로 바꾼다
+    elif year > farm[-1]:
+        replace = False
+    else:
+        return  # 조사 표가 그해 값을 냈다 (sec_farm이 farmCensus를 지웠다)
+    for name, src in (("households", v.get("operatorAge", {})), ("population", v.get("aging", {}))):
+        for key, arr in v[name].items():
+            val = src.get(key, [None])[0]
+            if replace:
+                arr[-1] = val
+            else:
+                arr.append(val)
+        for key, val in src.items():  # 조사 표에 없던 지역
+            if key not in v[name] and val and val[0] is not None:
+                v[name][key] = [None] * (len(farm) - (1 if replace else 0)) + [val[0]]
+    if not replace:
+        per["farm"] = farm + [year]
+    per["farmCensus"] = year
+
+
 def grdp_latest(v, out):
     """GRDP 최신값: 지역마다 농림어업·총생산이 모두 있는 가장 최근 연도 (부산 시군은 2022년)"""
     v["grdp"], by_sido = {}, {}
@@ -449,6 +481,7 @@ def main():
             reconcile(v[m], {"21"} if m.startswith("grdp") else set())
     if "grdp" in names:
         grdp_latest(v, out)
+    merge_census_farm(out)
 
     path = os.path.join(ROOT, "data", "data.js")
     with open(path, "w", encoding="utf-8") as f:

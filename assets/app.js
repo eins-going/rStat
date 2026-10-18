@@ -150,7 +150,17 @@
   const latestOf = (series) => (k) => lastOf(series[k]).value;
   const pairAt = (obj, i) => (k) => obj[k]?.[i] ?? null;
   const wonOf = (obj, i) => (k) => { const v = obj[k]?.[i]; return v == null ? null : v * 1e6; };
-  const farmChange = (k) => { const { value, prev } = lastOf(V.households[k]); return change(value, prev); };
+  // 농가·농가인구 증감: 마지막 해가 총조사 값(periods.farmCensus)이면 기준이 달라 전년이 아니라 직전 총조사(5년 전)와 견준다
+  function farmDelta(arr) {
+    const t = lastOf(arr);
+    const year = P.farm[t.i];
+    if (P.farmCensus && year === P.farmCensus) {
+      const j = P.farm.indexOf(String(+year - 5));
+      return { ...t, prev: j >= 0 ? arr?.[j] ?? null : null, label: `${+year - 5} 총조사 대비` };
+    }
+    return { ...t, label: "전년대비" };
+  }
+  const farmChange = (k) => { const { value, prev } = farmDelta(V.households[k]); return change(value, prev); };
   // 경지율: 경지면적 ÷ 행정구역 면적(지적통계)
   const landRatio = (k) => { const l = lastOf(V.land[k]).value, a = V.area?.[k]; return l != null && a ? (l / a) * 100 : null; };
   const paddyShare = (k) => { const t = lastOf(V.land[k]); const p = V.paddy[k]?.[t.i]; return t.value && p != null ? (p / t.value) * 100 : null; };
@@ -177,7 +187,7 @@
   const METRICS = [
     { key: "households", label: "농가수", unit: "가구", year: fy(P.farm.at(-1)), get: latestOf(V.households), fmt: int },
     { key: "population", label: "농가인구", unit: "명", year: fy(P.farm.at(-1)), get: latestOf(V.population), fmt: int },
-    { key: "farmChange", label: "농가수 증감률", unit: "%", year: `${P.farm.at(-1)}년 전년대비`, get: farmChange, fmt: pct },
+    { key: "farmChange", label: "농가수 증감률", unit: "%", year: P.farmCensus === P.farm.at(-1) ? `${P.farmCensus}년 총조사, ${+P.farmCensus - 5} 총조사 대비` : `${P.farm.at(-1)}년 전년대비`, get: farmChange, fmt: pct },
     { key: "young", label: "40세 미만 경영주 농가 비율", unit: "%", year: fy(P.aging), get: youngOperator, fmt: pct },
     { key: "oldOperator", label: "65세 이상 경영주 농가 비율", unit: "%", year: fy(P.aging), get: oldOperator, fmt: pct },
     { key: "aging", label: "65세 이상 농가인구 비율", unit: "%", year: fy(P.aging), get: agingRatio, fmt: pct },
@@ -339,13 +349,14 @@
   function renderFarm() {
     const k = state.key;
     const p = parentOf(k);
-    const hh = lastOf(V.households[k]);
-    const pop = lastOf(V.population[k]);
-    setYear("p-farm", `${P.farm[hh.i] ?? P.farm.at(-1)}년`);
+    const hh = farmDelta(V.households[k]);
+    const pop = farmDelta(V.population[k]);
+    const census = P.farmCensus && P.farm[hh.i] === P.farmCensus;
+    setYear("p-farm", `${P.farm[hh.i] ?? P.farm.at(-1)}년${census ? " 총조사" : ""}`);
     setV("households", hh.value);
     setV("population", pop.value);
-    setD("households", deltaHTML(hh.value, hh.prev, "전년대비", true));
-    setD("population", deltaHTML(pop.value, pop.prev, "전년대비", true));
+    setD("households", deltaHTML(hh.value, hh.prev, hh.label, true));
+    setD("population", deltaHTML(pop.value, pop.prev, pop.label, true));
 
     const y = youngOperator(k), py = p ? youngOperator(p) : null;
     const o = oldOperator(k), po = p ? oldOperator(p) : null;
@@ -353,7 +364,9 @@
     countTo($('[data-v="aging"]'), o, pct);
     meter("young", y, py, Math.max(5, Math.ceil(Math.max(y || 0, py || 0) / 5) * 5));
     meter("aging", o, po);
-    setNote("aging", p ? `전체 농가 중 비율 · 흰 선은 ${label(p)} · ${P.aging} 총조사` : `전체 농가 중 경영주 연령별 비율 · ${P.aging} 농림어업총조사`);
+    setNote("aging", census
+      ? `${P.farmCensus}년은 농림어업총조사 값이라 그 전 해(농림어업조사)와 기준이 달라 직전 총조사와 비교`
+      : p ? `전체 농가 중 비율 · 흰 선은 ${label(p)} · ${P.aging} 총조사` : `전체 농가 중 경영주 연령별 비율 · ${P.aging} 농림어업총조사`);
     $('[data-meter="young"]').parentElement.title = p ? `${label(p)} ${pct(py)}` : "";
     $('[data-meter="aging"]').parentElement.title = p ? `${label(p)} ${pct(po)}` : "";
     lineChart("#chart-farm", P.farm, V.households[k], int, "농가수");
@@ -449,11 +462,11 @@
     if (mix) {
       const tot = mix.slice(0, groups.length).reduce((a, b) => a + (b || 0), 0) || 1;
       const parts = groups.map((g, i) => ({ g, v: (mix[i] / tot) * 100, c: GRDP_COLORS[i] }));
-      $("#grdp-mix").innerHTML = parts.map((p) => `<span style="flex-basis:${p.v}%;background:${p.c}" title="${p.g} ${pct(p.v)}"></span>`).join("");
-      $("#grdp-mix").setAttribute("aria-label", parts.map((p) => `${p.g} ${pct(p.v)}`).join(", "));
+      donutMix("#donut-grdp", parts);
+      $("#donut-grdp svg").setAttribute("aria-label", `지역 총생산의 산업별 구성: ${parts.map((p) => `${p.g} ${pct(p.v)}`).join(", ")}`);
       $("#grdp-legend").innerHTML = parts.map((p, i) => `<span class="${i === 0 ? "agri" : ""}"><i style="background:${p.c}"></i>${p.g} <b>${pct(p.v)}</b></span>`).join("");
     } else {
-      $("#grdp-mix").innerHTML = "";
+      donutMix("#donut-grdp", []);
       $("#grdp-legend").innerHTML = "";
     }
     const rk = rankText(k, grdpShare);
@@ -529,6 +542,18 @@
   const drawBudget = (k) => barChart("#chart-budget", P.budget.slice(-BUDGET_YEARS), budgetWon(k).slice(-BUDGET_YEARS), won, "농업·농촌 예산");
 
   // 전체(100%) 가운데 몫을 원그래프로. mark는 비교 지역 값으로, 고리 위에 흰 눈금으로 표시한다
+  // 여러 몫으로 나눈 원그래프 (지역소득 산업별 구성). 첫 몫(농림어업)은 조금 두껍게 강조한다
+  function donutMix(sel, parts) {
+    const svg = d3.select(sel).select("svg");
+    const R = 50, r = 37;
+    const g = svg.selectAll("g").data([0]).join("g").attr("transform", `translate(${R},${R})`);
+    const arcs = d3.pie().sort(null).value((p) => p.v)(parts);
+    const arc = (d, i) => d3.arc().innerRadius(i === 0 ? r - 3 : r).outerRadius(i === 0 ? R + 2 : R).padAngle(0.012)(d);
+    g.selectAll("path.seg").data(arcs).join("path").attr("class", "seg")
+      .attr("d", (d, i) => arc(d, i)).attr("fill", (d) => d.data.c)
+      .selectAll("title").data((d) => [d]).join("title").text((d) => `${d.data.g} ${pct(d.data.v)}`);
+  }
+
   function donut(sel, value, mark) {
     const svg = d3.select(sel).select("svg");
     const R = 50, r = 37;
@@ -1050,7 +1075,7 @@
     { label: "40세 미만 경영주", get: youngOperator, fmt: pct },
     { label: "65세 이상 경영주", get: oldOperator, fmt: pct },
     { label: "65세 이상 농가인구", get: agingRatio, fmt: pct },
-    { label: "농가 증감", get: farmChange, fmt: sgnPct, signed: true },
+    { label: P.farmCensus === P.farm.at(-1) ? `농가 증감(${+P.farmCensus - 5}→${P.farmCensus} 총조사)` : "농가 증감", get: farmChange, fmt: sgnPct, signed: true },
     { label: "귀농가구 증감", get: (k) => chg(V.returnFarm[k]), fmt: sgnPct, signed: true },
     { label: "귀촌인 증감", get: (k) => chg(V.returnRural[k]), fmt: sgnPct, signed: true },
     { label: "경지율", get: landRatio, fmt: pct },
