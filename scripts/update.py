@@ -420,7 +420,8 @@ def dataset_files(ds):
     out = []
     for f in match_files(ds["file"]) if ds.get("file") else []:
         st = os.stat(f)
-        out.append({"name": unicodedata.normalize("NFC", os.path.basename(f)), "dir": os.path.dirname(os.path.relpath(f, ROOT)),
+        # 화면에는 파일 이름·날짜·크기만 (폴더 경로는 싣지 않는다)
+        out.append({"name": unicodedata.normalize("NFC", os.path.basename(f)),
                     "size": st.st_size, "date": dt.date.fromtimestamp(st.st_mtime).isoformat()})
     return out
 
@@ -468,7 +469,7 @@ def write_status_js(plan, state):
                 "next": next_text(src, st, today) if src["method"] in ("auto", "manual") else "",
                 "source": src["id"],
             })
-    data = {"generated": now(), "items": items, "sources": rows}
+    data = {"generated": now(), "items": items}  # 자료별 상세(경로가 든 수집 방법)는 docs/data_sources.md에만
     with open(STATUS_JS, "w", encoding="utf-8") as fh:
         fh.write("// 자료 수집 현황 (scripts/update.py) — status.html이 읽는다\n")
         fh.write("window.AGRI_STATUS = ")
