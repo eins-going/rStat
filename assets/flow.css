@@ -1,0 +1,129 @@
+/* 물류동향 (flow.html, assets/flow.js) — 바탕은 style.css(한 화면 맞춤 포함), 흐름·품목 표현은 기종점 분석(od.css)과 같은 꼴 */
+
+.hint {
+  display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--faint); color: var(--muted); font-size: 9.5px; cursor: help; vertical-align: 1px;
+}
+.ctip {
+  position: fixed; z-index: 50; pointer-events: none; background: rgba(13, 14, 18, 0.96); border: 1px solid var(--line);
+  border-radius: 9px; padding: 7px 10px; font-size: 12px; line-height: 1.45; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-width: 260px; color: var(--muted);
+}
+.ctip b { display: block; color: var(--text); font-size: 12.5px; margin-bottom: 2px; }
+.ctip .trow { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 6px; }
+.ctip .trow i { width: 8px; height: 8px; border-radius: 2px; }
+.ctip .trow em, .ctip .num { font-style: normal; color: var(--text); font-variant-numeric: tabular-nums; }
+.tip-hint { display: block; margin-top: 3px; color: var(--faint); font-size: 11px; }
+
+/* 제목 */
+.fl .hero h1 { margin: 0; font-size: clamp(22px, 2vw, 30px); }
+.fl .hero h1 .o { color: var(--accent); }
+.fl .hero h1 .d { color: #5fb3ff; }
+.fl .hero h1 .arrow { color: var(--faint); margin: 0 0.3em; font-weight: 500; }
+.fl .hero h1 .tag { font-size: 13px; font-weight: 600; color: var(--muted); background: var(--panel-2); border-radius: 999px; padding: 2px 10px; vertical-align: 5px; letter-spacing: 0; }
+
+/* 핵심 수치 */
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.kpi { display: flex; flex-direction: column; min-width: 0; }
+.kpi b { font-size: 21px; font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.kpi .delta:empty { display: none; }
+.kpi .delta .up { color: var(--up); }
+.kpi .delta .down { color: var(--down); }
+.fl-line { height: 100px; }
+.fl .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.fl .axis text { fill: var(--faint); font-size: 10px; font-variant-numeric: tabular-nums; }
+.fl .sub-head.fl-first { margin-top: 0; }
+
+/* 거리 구간 */
+.dist-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 11px; color: var(--muted); }
+.dist-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+.dist-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.dist-row { display: grid; grid-template-columns: 46px 1fr; align-items: center; gap: 8px; font-size: 12px; }
+.dist-row .name { color: var(--muted); }
+.dist-track { display: flex; gap: 2px; height: 18px; border-radius: 5px; overflow: hidden; background: var(--panel-2); }
+.dist-track .seg-b { display: grid; place-items: center; min-width: 0; transition: flex-basis 0.5s cubic-bezier(.2, .8, .2, 1); }
+.dist-track .seg-b:hover { filter: brightness(1.2); }
+.dist-track em { font-style: normal; font-size: 10.5px; color: #14161b; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* 판로·출하 주체 막대 (전국 비중 표시선) */
+.fl .bars { gap: 2px; }
+.fl .bar-row.share-row { grid-template-columns: 92px 1fr 44px 50px; width: 100%; font: inherit; font-size: 12px; color: var(--text); background: none; border: 0; border-radius: 6px; padding: 1px 4px; cursor: pointer; text-align: left; }
+.fl .bar-row.share-row:hover { background: var(--panel-2); }
+.share-row .name .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.mark-track { position: relative; overflow: visible !important; }
+.mark-track .fill { border-radius: 999px; }
+.nat-mark { position: absolute; top: -3px; width: 2px; height: 12px; margin-left: -1px; background: var(--text); border-radius: 1px; opacity: 0.85; }
+button.bar-row.sel, .crop-row2.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 1px rgba(245, 165, 36, 0.5); }
+
+/* 지도 */
+.fl-mapbar { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.fl-mapbar .seg button { font-size: 12px; padding: 2px 12px; }
+#odmap { display: block; width: 100%; }
+#odmap path { vector-effect: non-scaling-stroke; }
+.unit-od { fill: #262a31; stroke: #1b1d22; stroke-width: 0.5; cursor: pointer; transition: fill 0.3s; outline: none; }
+.unit-od:hover, .unit-od:focus-visible { fill: #323741; }
+.unit-od.no-data { fill: #202328; }
+.unit-od.is-o { fill: rgba(245, 165, 36, 0.32); }
+.unit-od.is-d { fill: rgba(95, 179, 255, 0.3); }
+.fl .mesh-sido { stroke: rgba(255, 255, 255, 0.22); }
+.flows path.arc { cursor: pointer; }
+.flows path.arc:hover { stroke-opacity: 1 !important; }
+.flows circle.loop, .hubs circle.hub { cursor: pointer; }
+.hubs circle.hub:hover { fill-opacity: 0.35; }
+.od-name { font-size: 11px; font-weight: 700; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: rgba(10, 11, 14, 0.9); stroke-width: 3px; }
+.od-name.d { fill: #9fd1ff; }
+.od-name.o { fill: #ffd28a; }
+.legend .sw.line { height: 3px; }
+.legend .sw.ring { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid; background: transparent; }
+.legend .sw.ring.dash { border-style: dashed; }
+
+/* 지도 아래 상대 지역 순위 */
+.fl-pair { display: grid; grid-template-columns: 18px minmax(0, 1fr) 70px 46px 44px; gap: 6px; align-items: center; width: 100%; font: inherit; font-size: 12px; color: var(--text); background: none; border: 0; border-radius: 6px; padding: 2px 4px; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+.fl-pair:hover { background: var(--panel-2); }
+.fl-pair .no { color: var(--faint); }
+.fl-pair .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-pair .nm .o { color: #ffd28a; }
+.fl-pair .nm .d { color: #9fd1ff; }
+.fl-pair .nm .ar { color: var(--faint); margin: 0 3px; }
+.fl-pair .track { height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.fl-pair .fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.fl-pair .val { text-align: right; }
+.fl-pair .km { text-align: right; color: var(--muted); font-size: 11px; }
+.fl-pair.top .no { color: var(--accent); font-weight: 700; }
+
+/* 품목 목록 */
+.crop-head, .crop-row2 { display: grid; grid-template-columns: 64px 1fr 42px 40px 32px 44px; gap: 5px; align-items: center; }
+.crop-head { font-size: 10.5px; color: var(--faint); padding: 0 4px 3px; }
+.crop-head span:nth-child(n+3) { text-align: right; }
+.crop-list { display: flex; flex-direction: column; gap: 1px; }
+.crop-row2 { width: 100%; font: inherit; font-size: 12px; color: var(--text); background: none; border: 0; border-radius: 6px; padding: 2px 4px; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+.crop-row2:hover { background: var(--panel-2); }
+.crop-row2 .name { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crop-row2.sel .name { color: var(--accent); font-weight: 700; }
+.crop-row2 .track { height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.crop-row2 .fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.crop-row2 .val, .crop-row2 .chg, .crop-row2 .lq, .crop-row2 .km { text-align: right; }
+.crop-row2 .chg, .crop-row2 .km, .crop-row2 .lq { font-size: 11px; color: var(--muted); }
+.crop-row2 .chg.up { color: var(--up); }
+.crop-row2 .chg.down { color: var(--down); }
+.crop-row2 .lq.hi { color: var(--accent); font-weight: 700; }
+.crop-row2 .lq.lo { color: var(--faint); }
+
+.matrix svg { display: block; width: 100%; }
+.matrix .cell:hover { stroke: #fff; stroke-width: 1; }
+.fl-season { height: 96px; }
+.fl .pw-key { display: flex; gap: 10px; font-size: 11px; color: var(--muted); }
+
+/* 한 화면 맞춤(style.css와 같은 기준): 세 구역의 위아래 끝을 맞추고, 남는 높이는 그림·목록이 나눠 쓴다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .fl .col { overflow: hidden; }
+  .fl .col > .panel { flex: 0 0 auto; min-height: 0; }
+  .fl #p-kpi { flex: 1 1 0; }
+  .fl #p-kpi .fl-line { flex: 1 1 60px; min-height: 56px; max-height: 160px; height: auto; }
+  .fl #p-crop { flex: 1 1 0; overflow: hidden; }
+  .fl #p-crop .crop-list { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .fl #odmap { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .fl .fl-pairs { grid-template-columns: 1fr 1fr; }
+  .fl .kpi b { font-size: 19px; }
+  .fl .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
