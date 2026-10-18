@@ -330,13 +330,14 @@
     const m = { l: 36, r: 12, t: 8, b: 16 };
     const x = d3.scaleLinear([Y[0], Y[LAST]], [m.l, w - m.r]);
     const vals = series.flatMap((s) => s.values).filter(ok);
-    const y = d3.scaleLinear([0, (d3.max(vals) || 1) * 1.08], [h - m.b, m.t]).nice(3);
+    const y = d3.scaleLinear([0, (d3.max(vals) || 1) * 1.08], [h - m.b, m.t]).nice(h < 90 ? 2 : 3);
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
+    const nt = h < 90 ? 2 : 3; // 그림이 낮으면 눈금을 줄인다
     svg.selectAll("g.grid").data([0]).join("g").attr("class", "grid")
-      .selectAll("line").data(y.ticks(3)).join("line")
+      .selectAll("line").data(y.ticks(nt)).join("line")
       .attr("x1", m.l).attr("x2", w - m.r).attr("y1", (v) => y(v)).attr("y2", (v) => y(v)).attr("stroke", "#2a2e35");
     svg.selectAll("g.ya").data([0]).join("g").attr("class", "axis ya")
-      .selectAll("text").data(y.ticks(3)).join("text")
+      .selectAll("text").data(y.ticks(nt)).join("text")
       .attr("x", m.l - 6).attr("y", (v) => y(v) + 3.5).attr("text-anchor", "end").text(axisFmt);
     svg.selectAll("g.xa").data([0]).join("g").attr("class", "axis xa")
       .selectAll("text").data(Y.filter((yy) => yy % 5 === 0)).join("text")
@@ -653,8 +654,9 @@
       return `<button type="button" class="bar-row share-row${state[key] === d.t ? " sel" : ""}" data-${key}="${d.t}" title="${esc(`${d.name} · ${pct(d.c)}${ok(d.nat) ? ` (전국 ${pct(d.nat)})` : ""}`)}">
         <span class="name"><i class="sw" style="background:${d.color}"></i>${esc(d.name)}</span>
         <span class="track mark-track"><span class="fill" style="width:${Math.min(100, d.c || 0)}%;background:${d.color}"></span>${ok(d.nat) && !all() ? `<span class="nat-mark" style="left:${Math.min(100, d.nat)}%"></span>` : ""}</span>
-        <span class="val">${pct(d.c)}</span><span class="chg ${cls}">${txt}</span></button>`;
+        <span class="val">${pct(d.c)}</span><span class="natv">${all() ? "" : pct(d.nat)}</span><span class="chg ${cls}">${txt}</span></button>`;
     }).join("") : '<p class="note">자료가 없습니다.</p>';
+    if (items.length && key === "dt") el.insertAdjacentHTML("afterbegin", `<div class="mix-head"><span></span><span></span><span>${all() ? "비중" : "이 흐름"}</span><span>${all() ? "" : "전국"}</span><span>전년 대비</span></div>`);
     $$(`[data-${key}]`, el).forEach((b) => b.addEventListener("click", () => { const v = +b.dataset[key]; state[key] = state[key] === v ? -1 : v; render(); }));
   }
 
