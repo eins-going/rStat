@@ -57,6 +57,7 @@
   const energyText = (mwh) => energy(mwh).join("");
   function power(kw) {
     if (!ok(kw)) return ["–", ""];
+    if (Math.abs(kw) >= 1e6) return [nf1.format(kw / 1e6), "GW"];
     if (Math.abs(kw) >= 1e5) return [nf0.format(kw / 1e3), "MW"];
     if (Math.abs(kw) >= 1e3) return [nf1.format(kw / 1e3), "MW"];
     return [nf0.format(kw), "kW"];
@@ -132,16 +133,22 @@
   ];
   // 지표: label은 범례·순위·툴팁에 쓰는 온전한 이름, chip은 묶음(group) 안에서 쓰는 짧은 이름
   const METRICS = [
-    { key: "yoy", group: "사용량", chip: "전년 같은 달", label: "사용량 전년 같은 달 대비", kind: "div", get: (k, i) => yoy(k, i), fmt: pctS,
-      note: "기준월 사용량을 전년 같은 달과 비교" },
+    { key: "use", group: "사용량", chip: "12개월 합계", label: "사용량 (최근 12개월 합계)", kind: "seq", get: (k, i) => sum12(k, i), fmt: (v) => (ok(v) ? energyText(v) : "–"),
+      note: "기준월까지 12개월 사용량 합계. 계절에 흔들리지 않게 1년치로 시군 규모를 비교" },
+    { key: "yoy", group: "사용량", chip: "전년동기", label: "사용량 전년동기 대비", kind: "div", get: (k, i) => yoy(k, i), fmt: pctS,
+      note: "기준월 사용량을 전년동기와 비교" },
     { key: "norm", group: "사용량", chip: "평년", label: "사용량 평년 대비", kind: "div", get: (k, i) => norm(k, i)?.dev ?? null, fmt: pctS,
       note: "기준월 사용량을 직전 5년 같은 달 평균과 비교" },
-    { key: "yoy12", group: "사용량", chip: "최근 12개월", label: "사용량 최근 12개월 증감", kind: "div", get: (k, i) => yoy12(k, i), fmt: pctS,
+    { key: "yoy12", group: "사용량", chip: "12개월 증감", label: "사용량 최근 12개월 증감", kind: "div", get: (k, i) => yoy12(k, i), fmt: pctS,
       note: "기준월까지 12개월 합계를 그 전 12개월과 비교. 날씨 영향을 덜 받는 추세" },
+    { key: "cust", group: "고객·설비", chip: "고객 수", label: "농사용 고객 수", kind: "seq", get: (k, i) => (gap(k, i) ? null : custAt(k, i)), fmt: (v) => (ok(v) ? `${int(v)}호` : "–"),
+      note: "기준월 농사용 고객호수 (3·11월처럼 계절 고객이 함께 잡히는 달은 직전 달 값)" },
+    { key: "kwLv", group: "고객·설비", chip: "계약전력", label: "계약전력", kind: "seq", get: (k, i) => (gap(k, i) ? null : spike(k, i, "w") ? at(k, "w", i - 1) : at(k, "w", i)), fmt: (v) => (ok(v) ? power(v).join("") : "–"),
+      note: "기준월 계약전력 합계(설비 규모). 2013년부터" },
     { key: "per", group: "고객·설비", chip: "1호당 사용량", label: "고객 1호당 연간 사용량", kind: "seq", get: (k, i) => perCust(k, i), fmt: (v) => (ok(v) ? `${int(v)}kWh` : "–"),
       note: "최근 12개월 사용량 ÷ 고객호수. 시설·축산처럼 전기를 많이 쓰는 농업이 클수록 높다" },
-    { key: "kw", group: "고객·설비", chip: "계약전력", label: "계약전력 전년 같은 달 대비", kind: "div", get: (k, i) => yoy(k, i, "w"), fmt: pctS,
-      note: "계약전력(설비 규모)을 전년 같은 달과 비교. 시설 투자나 철거를 반영" },
+    { key: "kw", group: "고객·설비", chip: "계약전력 증감", label: "계약전력 전년동기 대비", kind: "div", get: (k, i) => yoy(k, i, "w"), fmt: pctS,
+      note: "계약전력(설비 규모)을 전년동기와 비교. 시설 투자나 철거를 반영" },
     { key: "inv", group: "고객·설비", chip: "신설·증설", label: "고객 1천 호당 신설·증설", kind: "seq", get: (k, i) => { const v = invest(k, i), c = custAt(k, i); return v && c ? (v.grow / c) * 1000 : null; },
       fmt: (v) => (ok(v) ? `${nf0.format(v)}건` : "–"),
       note: "최근 12개월 신설+증설 건수 ÷ 농사용 고객 1천 호 (한전 산업분류 농업·임업·어업). 한전 집계 건수라 고객 수 증감과는 다르다" },
@@ -149,7 +156,8 @@
       note: `${P.seasonYears[0]}~${P.seasonYears[1]}년 월별 사용량 모양(검침월 기준)` },
   ];
 
-  const state = { key: NATION, i: LAST, metric: METRICS[0] };
+  const DEFAULT_METRIC = METRICS.find((m) => m.key === "yoy"); // 처음 화면은 변화(전년동기 대비)
+  const state = { key: NATION, i: LAST, metric: DEFAULT_METRIC };
 
   // ---------- 선택 ----------
   const selSido = $("#sido"), selSgg = $("#sgg"), selMonth = $("#month");
@@ -174,7 +182,7 @@
     const path = k === NATION ? "" : level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}`;
     const q = new URLSearchParams();
     if (state.i !== LAST) q.set("ym", M[state.i]);
-    if (state.metric !== METRICS[0]) q.set("m", state.metric.key);
+    if (state.metric !== DEFAULT_METRIC) q.set("m", state.metric.key);
     const url = `${location.pathname}${q.toString() ? `?${q}` : ""}${path ? `#${encodeURIComponent(path)}` : ""}`;
     if (url !== location.pathname + location.search + location.hash) history.replaceState(null, "", url);
   }
@@ -185,7 +193,7 @@
     const q = new URLSearchParams(location.search);
     const i = M.indexOf(q.get("ym"));
     state.i = i >= 0 ? i : LAST;
-    state.metric = METRICS.find((m) => m.key === q.get("m")) || METRICS[0];
+    state.metric = METRICS.find((m) => m.key === q.get("m")) || DEFAULT_METRIC;
   }
 
   // ---------- 지도 ----------
@@ -314,7 +322,7 @@
     const n = norm(k, i);
     const [ev, eu] = energy(at(k, "k", i));
     tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${m.label} <b style="display:inline">${m.fmt(m.get(k, i))}</b><br>`
-      + `${monthText(i)} ${ev}${eu} · 전년 같은 달 ${pctS(yoy(k, i))}`
+      + `${monthText(i)} ${ev}${eu} · 전년동기 ${pctS(yoy(k, i))}`
       + (n ? `<br>평년 ${pctS(n.dev)}${n.out ? " · <span style=\"color:var(--accent)\">범위 밖</span>" : ""}` : "")
       + (gap(k, i) ? `<br><span style="color:var(--accent)">이 달은 원자료에서 일부 시군구가 빠짐</span>` : "");
     const r = $("#map-wrap").getBoundingClientRect();
@@ -380,13 +388,13 @@
     const k = state.key, i = state.i;
     $("#now-scope").textContent = `(${fullLabel(k)})`;
     $$("[data-month]").forEach((el) => { el.textContent = monthText(i); });
-    setStat("kwh", energy(at(k, "k", i)), yoy(k, i), "전년 같은 달");
+    setStat("kwh", energy(at(k, "k", i)), yoy(k, i), "전년동기");
     const n = norm(k, i);
     setStat("norm", [n ? pctS(n.dev) : "–", ""], null);
     $('[data-d="norm"]').innerHTML = n ? `<span class="d-lab">직전 ${n.n}년 범위</span>${n.out ? '<span class="pw-flag">벗어남</span>' : "<span>안</span>"}` : "";
     const cust = at(k, "c", i);
-    setStat("cust", count(cust, "호"), yoy(k, i, "c"), "전년 같은 달");
-    setStat("kw", power(at(k, "w", i)), yoy(k, i, "w"), "전년 같은 달");
+    setStat("cust", count(cust, "호"), yoy(k, i, "c"), "전년동기");
+    setStat("kw", power(at(k, "w", i)), yoy(k, i, "w"), "전년동기");
     const notes = [];
     if (gap(k, i)) notes.push("이 달은 원자료에서 이 지역의 일부 시군구가 빠져 있어 증감을 계산하지 않았습니다.");
     if (!ok(at(k, "w", i))) notes.push("이 달은 계약전력 자료가 없습니다.");
