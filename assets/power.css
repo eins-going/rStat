@@ -1,0 +1,95 @@
+/* 농사용 전력 모니터 (power.html, assets/power.js) — 바탕 꾸밈은 style.css를 그대로 쓴다 */
+
+.hint {
+  display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--faint); color: var(--muted); font-size: 9.5px; cursor: help; vertical-align: 1px;
+}
+.stats.two { row-gap: 14px; }
+.stats.two .stat-label small { font-size: 9.5px; }
+.facts .up { color: var(--up); }
+.facts .down { color: var(--down); }
+
+/* 지도: 고른 시도 밖의 시군은 흐리게 */
+.pw #map .unit.pw-ctx { opacity: 0.22; }
+.pw-mnote { margin: 4px 0 0; font-size: 11.5px; color: var(--faint); }
+
+/* 그림 */
+.pw-band { height: 150px; margin-top: 4px; }
+.pw-trend { height: 90px; margin-top: 4px; }
+.pw-prof { height: 120px; margin-top: 6px; }
+.pw-inv { height: 110px; margin-top: 8px; }
+.pw-axis line { stroke: var(--line); stroke-width: 1; }
+.pw-axis line.pw-100 { stroke: #4a4f59; stroke-dasharray: 3 3; }
+.pw-axis text { fill: var(--faint); font-size: 10px; font-variant-numeric: tabular-nums; }
+.pw-bandarea { fill: rgba(154, 161, 173, 0.18); }
+.pw-trendarea { fill: rgba(245, 165, 36, 0.10); }
+.pw-cur { fill: none; stroke: var(--accent); stroke-width: 2; }
+.pw-prev { fill: none; stroke: #9aa1ad; stroke-width: 1.4; stroke-dasharray: 4 3; }
+.pw-dot { fill: var(--accent); stroke: #14161b; stroke-width: 2; }
+.pw-mark { stroke: rgba(245, 165, 36, 0.5); stroke-width: 1; stroke-dasharray: 2 2; }
+.pw-empty { fill: var(--faint); font-size: 12px; }
+.pw-n { fill: #5fb37c; }
+.pw-e { fill: var(--accent); }
+.pw-x { fill: var(--down); opacity: 0.8; }
+
+.pw-key { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.pw-key span { display: inline-flex; align-items: center; gap: 5px; }
+.pw-key i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.pw-key i.cur { background: var(--accent); }
+.pw-key i.prev { background: repeating-linear-gradient(90deg, #9aa1ad 0 4px, transparent 4px 7px); }
+.pw-key i.band { height: 9px; background: rgba(154, 161, 173, 0.3); }
+.pw-key i.n { height: 9px; background: #5fb37c; }
+.pw-key i.e { height: 9px; background: var(--accent); }
+.pw-key i.x { height: 9px; background: var(--down); }
+
+/* 계절 유형 */
+.pw-type { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 12.5px; color: var(--muted); }
+.pw-type b { color: var(--text); }
+.pw-badge { font-size: 13px; font-weight: 700; color: #14161b; background: var(--c); border-radius: 6px; padding: 1px 9px; }
+
+/* 순위 */
+.pw-rank-h { font-size: 11px; color: var(--faint); margin: 2px 0 2px 4px; }
+.rank-row .fill.neg { background: var(--down); }
+.pw-cat { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 0; border-top: 1px solid var(--line); font-size: 12px; }
+.pw-cat:first-of-type { border-top: 0; }
+.pw-cat-h { display: inline-flex; align-items: center; gap: 5px; min-width: 76px; color: var(--muted); }
+.pw-cat-h i { width: 10px; height: 10px; border-radius: 2px; }
+.pw-cat-h b { color: var(--text); font-variant-numeric: tabular-nums; }
+.pw-tag { font: inherit; font-size: 11.5px; color: var(--text); background: var(--panel-2); border: 1px solid transparent; border-radius: 6px; padding: 0 6px; cursor: pointer; }
+.pw-tag:hover { border-color: var(--accent); }
+.pw-tag.sel { border-color: var(--accent); color: var(--accent); }
+.pw-more { font-size: 11px; color: var(--faint); }
+
+/* 이상 신호 */
+.pw-alert-note { margin: 0 0 6px; color: var(--muted); }
+.pw-alert-note b { color: var(--accent); }
+.pw-flag { color: var(--accent); }
+.pw-alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pw-alerts button {
+  width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; align-items: baseline;
+  font: inherit; text-align: left; color: var(--text); background: none; border: 0; border-radius: 6px; padding: 3px 6px; cursor: pointer;
+}
+.pw-alerts button:hover, .pw-alerts button.sel { background: var(--panel-2); }
+.pw-alerts .nm { font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-alerts .v { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pw-alerts .v.up { color: var(--up); }
+.pw-alerts .v.down { color: var(--down); }
+.pw-alerts .rg { grid-column: 1 / -1; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.pw-alerts .pw-more { padding: 2px 6px; }
+
+/* 한 화면 맞춤(style.css와 같은 기준): 좌우 열이 화면 높이를 넘지 않게 그림과 목록이 남는 높이를 나눠 쓴다 */
+.pw .note { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (min-width: 1281px) and (min-height: 720px) {
+  .pw .col { overflow: hidden; }
+  .pw .col > .panel { flex: 0 0 auto; min-height: 0; }
+  .pw #p-now { flex: 1 1 0; }
+  .pw #p-now .pw-band { flex: 1 1 100px; min-height: 90px; max-height: 220px; height: auto; }
+  .pw #p-now .pw-trend { flex: 0 1 80px; min-height: 60px; height: auto; }
+  .pw .pw-prof { height: 92px; }
+  .pw .pw-inv { height: 86px; }
+  .pw #p-alert { flex: 1 1 0; overflow: hidden; }
+  .pw #p-alert .pw-alerts { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .pw .stats.two { row-gap: 8px; }
+  .pw .sub-head { margin: 8px 0 3px; }
+  .pw .stat-value b { font-size: 19px; }
+}

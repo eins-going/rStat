@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>농사용 전력 모니터</title>
+  <meta name="description" content="한전 농사용 전력 사용량을 시군·월 단위로 보며 지역 농업활동을 살핍니다. 전년 같은 달 대비 증감, 평년 범위를 벗어난 지역, 계절 유형, 시설 투자(신설·증설·해지)를 봅니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/power.css">
+</head>
+<body class="pw">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">지역 통계</a>
+          <a href="power" aria-current="page">농사용 전력</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+        <label class="select">
+          <span>기준월</span>
+          <select id="month"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="사용량">
+        <article class="panel" id="p-now">
+          <header class="panel-head">
+            <h2>농사용 전력 <span class="h2-scope" id="now-scope"></span></h2>
+            <span class="chip" data-month></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">사용량</span>
+              <span class="stat-value"><b data-v="kwh"></b><small data-u="kwh"></small></span>
+              <span class="delta" data-d="kwh"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">평년 같은 달 대비 <small class="hint" title="직전 5년 같은 달 사용량 평균과 비교. 띠는 그 5년의 최소~최대">?</small></span>
+              <span class="stat-value"><b data-v="norm"></b></span>
+              <span class="delta" data-d="norm"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">고객</span>
+              <span class="stat-value"><b data-v="cust"></b><small data-u="cust"></small></span>
+              <span class="delta" data-d="cust"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">계약전력 <small class="hint" title="고객이 한전과 계약한 최대 전력의 합. 설비 규모를 나타낸다">?</small></span>
+              <span class="stat-value"><b data-v="kw"></b><small data-u="kw"></small></span>
+              <span class="delta" data-d="kw"></span>
+            </div>
+          </div>
+          <p class="note" data-note="now"></p>
+          <h3 class="sub-head">월별 사용량 <span id="band-note">선택 연도 · 전년 · 직전 5년 범위</span></h3>
+          <div class="chart pw-band" id="chart-band" aria-label="월별 사용량과 평년 범위"></div>
+          <div class="pw-key" id="band-key"></div>
+          <h3 class="sub-head">장기 추이 <span>최근 12개월 합계 · 누르면 그 달로</span></h3>
+          <div class="chart pw-trend" id="chart-trend" aria-label="최근 12개월 사용량 합계 추이"></div>
+          <footer class="src">자료: 한국전력공사 전력데이터 개방포털 계약종별 전력사용량(농사용) · 검침월 기준</footer>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 농사용 전력</h1>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="pw-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="계절·투자·이상 신호">
+        <article class="panel" id="p-season">
+          <header class="panel-head">
+            <h2>계절 유형</h2>
+            <span class="chip" id="season-years"></span>
+          </header>
+          <p class="pw-type" id="season-type"></p>
+          <div class="chart pw-prof" id="chart-season" aria-label="월별 사용량 비중"></div>
+          <div class="pw-key" id="season-key"></div>
+          <p class="note" id="season-note"></p>
+        </article>
+
+        <article class="panel" id="p-invest">
+          <header class="panel-head">
+            <h2>설비 투자 흐름</h2>
+            <span class="chip" id="invest-range"></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">신설 + 증설</span>
+              <span class="stat-value"><b data-v="grow"></b><small data-u="grow"></small></span>
+              <span class="delta" data-d="grow"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">해지</span>
+              <span class="stat-value"><b data-v="cancel"></b><small data-u="cancel"></small></span>
+              <span class="delta" data-d="cancel"></span>
+            </div>
+          </div>
+          <p class="sub-line" id="invest-net"></p>
+          <div class="chart pw-inv" id="chart-invest" aria-label="월별 신설·증설·해지"></div>
+          <div class="pw-key" id="invest-key"></div>
+          <p class="note">한전 산업분류 농업·임업·어업의 신설·증설·해지 건수(최근 12개월). 증설은 계약전력을 늘린 경우. 한전 집계 건수라 고객 수 증감과는 다르다</p>
+        </article>
+
+        <article class="panel" id="p-alert">
+          <header class="panel-head">
+            <h2>이상 신호</h2>
+            <span class="chip" data-month></span>
+          </header>
+          <p class="note pw-alert-note" id="alert-note"></p>
+          <ol class="pw-alerts" id="alerts"></ol>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>자료: 한국전력공사 전력데이터 개방포털 OpenAPI(계약종별 전력사용량 농사용, 산업분류별 전기사용고객 증감). 월은 검침월이라 실제 사용 시기와 반 달~한 달 어긋날 수 있습니다. 농사용에는 양수·배수, 육묘·시설원예, 축산, 저온저장 등이 함께 들어 있습니다. 지도: 통계청 행정경계(2013)를 현행 시군으로 묶음.</span>
+      <span id="built"></span>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/power.js"></script>
+  <script src="assets/power.js"></script>
+</body>
+</html>
