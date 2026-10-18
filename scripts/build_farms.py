@@ -426,8 +426,14 @@ def main():
     return out
 
 
+# 지도에 싣는 조직 유형. 개인·단체는 주소가 시군까지만 있어 위치가 불명확하므로 우선 주소가 분명한 RPC만 싣는다
+# (전체 결과는 at_data/farms_geocoded.csv)
+MAP_TYPES = {"미곡종합처리센터"}
+
+
 def write_js(recs):
     """같은 좌표는 한 번만 적고, 유형·품목·정밀도는 번호로 바꿔 파일을 작게 만든다."""
+    recs = [r for r in recs if r["type"] in MAP_TYPES]
     precs = ["지번", "도로명", "상호", "리", "읍면동", "시군구", "시도"]
     types = sorted({r["type"] for r in recs})
     items = sorted({r["item"] for r in recs})
@@ -443,7 +449,7 @@ def write_js(recs):
         rows.append([li, types.index(r["type"]), r["name"], items.index(r["item"]), r["addr"], r["tel"], r["id"]])
     data = {"built": time.strftime("%Y-%m-%d"), "precs": precs, "types": types, "items": items, "locs": locs, "rows": rows}
     with open(os.path.join(ROOT, "data", "producers.js"), "w", encoding="utf-8") as f:
-        f.write("// aT 식품산업통계정보 생산자 목록 + VWorld 좌표 (scripts/build_farms.py)\n")
+        f.write("// aT 식품산업통계정보 생산자 목록 중 미곡종합처리센터 + VWorld 좌표 (scripts/build_farms.py)\n")
         f.write("window.AT_PRODUCERS = ")
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         f.write(";\n")

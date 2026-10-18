@@ -1,5 +1,6 @@
 // 생산자 지도: data/producers.js(scripts/build_farms.py)의 생산자를 같은 좌표끼리 묶어 점으로 그린다.
 // 점 크기는 묶인 생산자 수, 색은 위치 정확도. 점을 누르면 왼쪽에 그 자리의 생산자 목록이 나온다.
+// 지금은 미곡종합처리센터만 싣는다(MAP_TYPES). 유형·품목이 하나뿐이면 그 거르기 칸은 숨긴다.
 (() => {
   const D = window.AT_PRODUCERS;
   const $ = (s) => document.querySelector(s);
@@ -69,10 +70,10 @@
     return true;
   }
 
-  // 멀리서 볼 때는 점을 작게 해서 겹침을 줄인다 (줌 7: 낱개 2px, 줌 11 이상: 4.5px)
+  // 멀리서 볼 때는 점을 작게 해서 겹침을 줄인다 (줌 7: 낱개 4px, 줌 11 이상: 7px)
   function radius(n) {
     const t = Math.max(0, Math.min(1, (map.getZoom() - 7) / 4));
-    return Math.min(14 + 16 * t, 2 + 2.5 * t + Math.sqrt(n) * (0.9 + 0.7 * t));
+    return Math.min(14 + 16 * t, 3 + 2.5 * t + Math.sqrt(n) * (0.9 + 0.7 * t));
   }
   map.on("zoomend", () => dots.eachLayer((m) => m.setRadius(radius(m.options.n))));
 
@@ -96,14 +97,14 @@
         renderer, n: list.length, radius: radius(list.length), color: li === st.sel ? "#fff" : c, weight: li === st.sel ? 2.5 : 1,
         opacity: 0.95, fillColor: c, fillOpacity: list.length > 1 ? 0.45 : 0.8,
       });
-      m.bindTooltip(`<b>${esc(list.length === 1 ? list[0].name : `${nf.format(list.length)}건`)}</b><br>${esc(l.ref)}`, { direction: "top", offset: [0, -4], className: "pd-tip" });
+      m.bindTooltip(`<b>${esc(list.length === 1 ? list[0].name : `${nf.format(list.length)}곳`)}</b><br>${esc(l.ref)}`, { direction: "top", offset: [0, -4], className: "pd-tip" });
       m.on("click", () => select(li));
       m.addTo(dots);
     }
     st.byLoc = by;
     st.shown = n;
-    $("#count").innerHTML = `<b>${nf.format(n)}</b>건 <span>· ${nf.format(by.size)}곳</span>`;
-    $("#note").textContent = `전체 ${nf.format(rows.length)}건 중` + (nUnplaced ? ` · 위치를 찾지 못한 ${nf.format(nUnplaced)}건은 지도에 없음` : "");
+    $("#count").innerHTML = `<b>${nf.format(n)}</b>곳` + (by.size !== n ? ` <span>· 점 ${nf.format(by.size)}개</span>` : "");
+    $("#note").textContent = `전체 ${nf.format(rows.length)}곳 중` + (nUnplaced ? ` · 위치를 찾지 못한 ${nf.format(nUnplaced)}곳은 지도에 없음` : "");
     if (st.sel != null) renderList();
   }
 
@@ -131,8 +132,11 @@
   chips($("#precs"), st.groups, GROUPS.map((_, i) => i), (i) => GROUPS[i].label, groupCount, (i) => GROUPS[i].color);
 
   // 범례
-  $("#legend").innerHTML = GROUPS.map((g) => `<span><i style="background:${g.color}"></i>${esc(g.desc)}</span>`).join("")
-    + `<span class="sz"><i></i><i></i><i></i>생산자 수</span>`;
+  const stacked = D.locs.length < rows.length - unplaced;
+  $("#legend").innerHTML = GROUPS.filter((_, i) => groupCount[i]).map((g) => `<span><i style="background:${g.color}"></i>${esc(g.desc)}</span>`).join("")
+    + (stacked ? `<span class="sz"><i></i><i></i><i></i>같은 자리 수</span>` : "");
+  $("#types-box").hidden = D.types.length < 2;
+  $("#item-box").hidden = D.items.length < 2;
 
   // 품목
   const itemOrder = D.items.map((_, i) => i).sort((a, b) => itemCount[b] - itemCount[a]);
@@ -182,7 +186,7 @@
   function renderList() {
     const l = locs[st.sel];
     const list = st.byLoc.get(st.sel) || [];
-    $("#list-title").textContent = `${nf.format(list.length)}건`;
+    $("#list-title").textContent = list.length === 1 ? list[0].name : `${nf.format(list.length)}곳`;
     $("#list-ref").innerHTML = `<i style="background:${GROUPS[l.g].color}"></i>${esc(l.ref)} <span>(${esc(D.precs[l.prec])} 기준)</span>`;
     $("#list").innerHTML = list.slice(0, listLimit).map((r) => `
       <li>
@@ -193,7 +197,7 @@
       </li>`).join("");
     const more = $("#list-more");
     more.hidden = list.length <= listLimit;
-    more.textContent = `${nf.format(Math.min(PAGE, list.length - listLimit))}건 더 보기`;
+    more.textContent = `${nf.format(Math.min(PAGE, list.length - listLimit))}곳 더 보기`;
   }
   $("#list-more").addEventListener("click", () => { listLimit += PAGE; renderList(); });
   $("#list-close").addEventListener("click", () => { st.sel = null; $("#list-box").hidden = true; draw(); });
