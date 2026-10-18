@@ -386,9 +386,9 @@
     const lr = landRatio(k), p = parentOf(k), plr = p ? landRatio(p) : null;
     countTo($('[data-v="landRatio"]'), lr, pct);
     donut("#donut-land", lr, plr);
-    const note = `경지율 = 경지면적 ÷ 행정구역 면적(지적통계 ${P.area || ""}년)${p ? ` · 흰 선은 ${label(p)} ${pct(plr)}` : ""}`;
+    const note = `※ 경지율 = 경지면적 ÷ 행정구역 면적(지적통계 ${P.area || ""}년)`;
     setNote("land", note);
-    $("#donut-land").title = note;
+    $("#donut-land").title = `${note}${p ? `\n흰 선은 ${label(p)} ${pct(plr)}` : ""}`;
     $("#split-land").innerHTML = t.value ? `
       <div class="split-bar" role="img" aria-label="논 ${nf1.format(pp)}%, 밭 ${nf1.format(100 - pp)}%">
         <span style="flex-basis:${pp}%;background:var(--accent)"></span>

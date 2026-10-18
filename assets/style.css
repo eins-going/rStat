@@ -930,3 +930,6 @@ body {
 .grdp-legend i { width: 8px; height: 8px; border-radius: 2px; }
 .grdp-legend b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .grdp-legend .agri, .grdp-legend .agri b { color: var(--accent); }
+
+/* 경지면적 카드 아래 경지율 설명: 오른쪽 정렬 */
+.note[data-note="land"] { text-align: right; }
