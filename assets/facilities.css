@@ -1,10 +1,10 @@
-/* 생산자 지도 (producers.html · assets/producers.js) */
+/* 유통시설 지도 (facilities.html · assets/facilities.js) */
 
 .pd .app { max-width: none; padding: 0 20px 16px; }
 .pd .topbar { padding: 10px 0; gap: 8px 16px; }
 
 .pd-search { flex: 0 1 340px; min-width: 200px; display: flex; }
-.pd-search input, .pd-item input {
+.pd-search input {
   flex: 1;
   min-width: 0;
   font: inherit;
@@ -15,7 +15,7 @@
   border-radius: 8px;
   padding: 6px 10px;
 }
-.pd-search input:focus, .pd-item input:focus { outline: none; border-color: var(--accent); }
+.pd-search input:focus { outline: none; border-color: var(--accent); }
 
 .pd-main {
   display: grid;
@@ -34,50 +34,46 @@
 .pd-note, .pd-hint { margin: 2px 0 0; font-size: 11.5px; color: var(--faint); }
 .pd-hint { margin-top: 8px; }
 
-.pd-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.pd-chip {
-  display: inline-flex;
+.pd-kinds { display: flex; flex-direction: column; gap: 6px; }
+.pd-kind {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
   align-items: center;
-  gap: 5px;
   font: inherit;
-  font-size: 12px;
+  text-align: left;
   color: var(--faint);
   background: var(--panel-2);
   border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 2px 9px;
+  border-radius: 10px;
+  padding: 7px 10px;
   cursor: pointer;
 }
-.pd-chip i { width: 8px; height: 8px; border-radius: 50%; opacity: 0.35; }
-.pd-chip em { font-style: normal; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
-.pd-chip[aria-pressed="true"] { color: var(--text); border-color: var(--line); }
-.pd-chip[aria-pressed="true"] i { opacity: 1; }
-.pd-chip:hover { border-color: var(--accent); }
-.pd-chip:focus-visible, .pd-top button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.pd-item { position: relative; display: flex; }
-.pd-item button { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 16px; line-height: 1; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 2px 6px; }
-.pd-top { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.pd-top button { font: inherit; font-size: 11.5px; color: var(--muted); background: var(--panel-2); border: 0; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
-.pd-top button:hover { color: var(--text); }
-.pd-top button[aria-pressed="true"] { color: #14161b; background: var(--accent); font-weight: 700; }
+.pd-kind i { grid-row: 1 / 3; width: 11px; height: 11px; border-radius: 50%; opacity: 0.3; }
+.pd-kind .nm { font-size: 13px; font-weight: 600; }
+.pd-kind em { font-style: normal; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.pd-kind small { grid-column: 2 / 4; font-size: 11px; color: var(--faint); }
+.pd-kind[aria-pressed="true"] { color: var(--text); border-color: var(--line); }
+.pd-kind[aria-pressed="true"] i { opacity: 1; }
+.pd-kind:hover { border-color: var(--accent); }
+.pd-kind:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .pd-list-head { display: flex; align-items: center; justify-content: space-between; }
 .pd-list-head h2 { margin: 0; font-size: 15px; color: var(--text); }
 .pd-x { font-size: 18px; line-height: 1; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 0 4px; }
 .pd-x:hover { color: var(--text); }
-.pd-ref { margin: 4px 0 8px; font-size: 12px; color: var(--muted); }
-.pd-ref i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
-.pd-ref span { color: var(--faint); }
-.pd-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.pd-list li { padding: 7px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
-.pd-list a { color: var(--text); font-weight: 600; text-decoration: none; }
-.pd-list a:hover { color: var(--accent); text-decoration: underline; }
-.pd-list .t { margin-left: 6px; font-size: 11px; color: var(--faint); }
-.pd-list .m { color: var(--muted); }
-.pd-list .a { color: var(--faint); font-size: 11.5px; }
-.pd-more { width: 100%; margin-top: 6px; font: inherit; font-size: 12px; color: var(--muted); background: var(--panel-2); border: 0; border-radius: 8px; padding: 6px; cursor: pointer; }
-.pd-more:hover { color: var(--text); }
+.pd-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
+.pd-list li { padding: 8px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.pd-list li:first-child { border-top: 0; padding-top: 0; }
+.pd-list .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.pd-list .hd b { font-size: 13px; }
+.pd-list .kd { font-size: 11px; font-weight: 700; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 0 7px; }
+.pd-list dl { display: grid; grid-template-columns: 76px 1fr; gap: 3px 8px; margin: 0; }
+.pd-list dt { color: var(--faint); }
+.pd-list dd { margin: 0; color: var(--text); word-break: keep-all; overflow-wrap: anywhere; }
+.pd-list dd.pr { color: var(--muted); }
+.pd-list dd.warn { color: var(--accent); }
 
 /* 오른쪽: 지도 */
 .pd-map-wrap { position: relative; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #0b0c0f; }
@@ -104,10 +100,7 @@
 }
 .pd-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .pd-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
-.pd-legend .sz i { background: none; border: 1px solid var(--muted); }
-.pd-legend .sz i:nth-child(1) { width: 5px; height: 5px; }
-.pd-legend .sz i:nth-child(2) { width: 9px; height: 9px; }
-.pd-legend .sz i:nth-child(3) { width: 14px; height: 14px; }
+.pd-legend .ring i { background: none; border: 1.5px dashed var(--muted); }
 .pd-msg { position: absolute; top: 10px; left: 10px; z-index: 500; margin: 0; font-size: 12px; color: var(--up); background: rgba(20, 22, 27, 0.9); border-radius: 8px; padding: 5px 10px; }
 .pd-msg[hidden] { display: none; }
 
@@ -118,6 +111,7 @@
 .leaflet-bar a:hover { background: var(--panel-2); color: var(--text); }
 .pd-tip { font: inherit; font-size: 12px; color: var(--text); background: rgba(20, 22, 27, 0.95); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); }
 .pd-tip::before { display: none; }
+.pd-tip .k { font-weight: 700; }
 
 .pd-src { margin-top: 10px; font-size: 11px; color: var(--faint); }
 .pd-src a { color: var(--muted); }

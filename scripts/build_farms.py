@@ -1,4 +1,7 @@
-"""aT 농식품 생산자 목록(at_data/농가리스트.xls)에 좌표를 붙여 data/farms.js로 저장한다.
+"""aT 농식품 생산자 목록(at_data/농가리스트.xls)에 좌표를 붙여 at_data/farms_geocoded.csv로 저장한다.
+
+(지도에는 아직 싣지 않는다: 개인·단체는 주소가 시군까지만 있어 위치가 불명확하다. 주소 해석·지오코딩 함수는
+scripts/build_facilities.py가 같이 쓴다.)
 
 원자료: https://www.atfis.or.kr/home/producer.do (aT 식품산업통계정보 생산자 정보)
 - 엑셀과 사이트 목록은 행 순서가 같다. 사이트 목록(at_data/atfis_list.csv)에서 상세 id를 붙인다.
@@ -38,13 +41,13 @@ SIDO_KEYS = [
 SIDO_FULL = {
     "서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시", "인천": "인천광역시",
     "대전": "대전광역시", "울산": "울산광역시", "세종": "세종특별자치시", "경기": "경기도",
-    "강원": "강원특별자치도", "충북": "충청북도", "충남": "충청남도", "전북": "전북특별자치도",
+    "강원": "강원특별자치도", "충북": "충청북도", "충남": "충청남도", "전북": "전북특별자치도", "전남광주": "전남광주통합특별시",
     "경북": "경상북도", "경남": "경상남도", "제주": "제주특별자치도",
 }
 SIDO_NAMES = {
     "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시", "대전광역시", "울산광역시", "세종특별자치시",
     "세종특별시", "세종시", "경기도", "강원도", "강원특별자치도", "충청북도", "충청남도", "전라북도", "전북특별자치도",
-    "전라남도", "경상북도", "경상남도", "제주특별자치도", "제주도", "서울", "부산", "대구", "인천", "광주", "대전",
+    "전라남도", "전남광주통합특별시", "경상북도", "경상남도", "제주특별자치도", "제주도", "서울", "부산", "대구", "인천", "광주", "대전",
     "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
 }
 # 전화 지역번호 → 시도 묶음 (주소가 없는 행 확인용)
@@ -154,7 +157,7 @@ def parse_addr(raw):
 
 
 def addr_text(p, upto):
-    """해석한 주소를 upto 단위까지 문자열로 (시도는 VWorld가 알아듣는 현행 이름, 전남·광주는 생략)."""
+    """해석한 주소를 upto 단위까지 문자열로 (시도는 VWorld가 알아듣는 현행 이름)."""
     parts = [SIDO_FULL.get(p["sido"], ""), p["sigungu"]]
     if upto in ("읍면동", "리", "지번") or (upto == "도로명" and not p["road"]):
         parts.append(p["emd"])
@@ -274,7 +277,7 @@ def district_point(vw, p, level):
                 ys = [float(it["point"]["y"]) for it in hits]
                 return sum(xs) / len(xs), sum(ys) / len(ys), f'{hits[0]["title"].rsplit(" ", 1)[0]} (구 평균)'
     else:
-        items = vw.district(SIDO_FULL.get(p["sido"], "광주광역시"), "L1")
+        items = vw.district(SIDO_FULL[p["sido"]], "L1")
         hits = items[:1]
     if not hits:
         return None
@@ -426,36 +429,6 @@ def main():
     return out
 
 
-# 지도에 싣는 조직 유형. 개인·단체는 주소가 시군까지만 있어 위치가 불명확하므로 우선 주소가 분명한 RPC만 싣는다
-# (전체 결과는 at_data/farms_geocoded.csv)
-MAP_TYPES = {"미곡종합처리센터"}
-
-
-def write_js(recs):
-    """같은 좌표는 한 번만 적고, 유형·품목·정밀도는 번호로 바꿔 파일을 작게 만든다."""
-    recs = [r for r in recs if r["type"] in MAP_TYPES]
-    precs = ["지번", "도로명", "상호", "리", "읍면동", "시군구", "시도"]
-    types = sorted({r["type"] for r in recs})
-    items = sorted({r["item"] for r in recs})
-    locs, loc_ix, rows = [], {}, []
-    for r in recs:
-        li = -1
-        if r["lon"] is not None:
-            k = (round(r["lon"], 5), round(r["lat"], 5), r["prec"], r["ref"])
-            if k not in loc_ix:
-                loc_ix[k] = len(locs)
-                locs.append([k[0], k[1], precs.index(k[2]), k[3]])
-            li = loc_ix[k]
-        rows.append([li, types.index(r["type"]), r["name"], items.index(r["item"]), r["addr"], r["tel"], r["id"]])
-    data = {"built": time.strftime("%Y-%m-%d"), "precs": precs, "types": types, "items": items, "locs": locs, "rows": rows}
-    with open(os.path.join(ROOT, "data", "producers.js"), "w", encoding="utf-8") as f:
-        f.write("// aT 식품산업통계정보 생산자 목록 중 미곡종합처리센터 + VWorld 좌표 (scripts/build_farms.py)\n")
-        f.write("window.AT_PRODUCERS = ")
-        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-        f.write(";\n")
-    return len(locs)
-
-
 if __name__ == "__main__":
     recs = main()
     import collections
@@ -464,4 +437,3 @@ if __name__ == "__main__":
         w = csv.DictWriter(f, fieldnames=list(recs[0].keys()))
         w.writeheader()
         w.writerows(recs)
-    print("좌표", write_js(recs), "곳")

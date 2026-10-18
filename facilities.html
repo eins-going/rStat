@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>농산물 유통시설 지도</title>
+  <meta name="description" content="미곡처리장(도정업체), 농산물 산지유통센터(APC), 로컬푸드 직매장의 위치를 지도에 점으로 찍었습니다. 시설마다 처리·보관 능력, 주요 품목, 운영 주체를 함께 봅니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/facilities.css">
+  <link rel="preconnect" href="https://api.vworld.kr">
+</head>
+<body class="pd">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">지역 통계</a>
+          <a href="facilities" aria-current="page">유통시설 지도</a>
+        </nav>
+      </div>
+      <form class="pd-search" role="search" id="search-form">
+        <input type="search" id="q" placeholder="시설 이름·주소·품목 검색" aria-label="시설 이름, 주소, 품목 검색" autocomplete="off" enterkeyhint="search">
+      </form>
+    </header>
+
+    <main class="pd-main">
+      <aside class="pd-side" aria-label="시설 고르기와 정보">
+        <section class="pd-box">
+          <div class="pd-count" id="count" aria-live="polite"></div>
+          <p class="pd-note" id="note"></p>
+        </section>
+
+        <section class="pd-box">
+          <h2>시설</h2>
+          <div class="pd-kinds" id="kinds" role="group" aria-label="시설 종류"></div>
+          <p class="pd-hint">채운 점은 도로명·지번 주소로 찾은 건물 위치, 속이 빈 원은 주소가 불완전해 마을·읍면·시군 중심에 놓은 곳입니다.</p>
+          <p class="pd-hint">미곡처리장·산지유통센터는 공공데이터 표준데이터로, 자료를 낸 지자체의 시설만 들어 있어 전국 전체가 아닙니다. 미곡처리장은 RPC 외에 도정공장·정미소를 포함합니다. 로컬푸드 직매장은 2021년 국비지원 매장입니다.</p>
+        </section>
+
+        <section class="pd-box pd-list-box" id="list-box" hidden>
+          <header class="pd-list-head">
+            <h2 id="list-title"></h2>
+            <button type="button" class="pd-x" id="list-close" aria-label="정보 닫기">×</button>
+          </header>
+          <ol class="pd-list" id="list"></ol>
+        </section>
+      </aside>
+
+      <section class="pd-map-wrap" aria-label="농산물 유통시설 지도">
+        <div id="map" class="pd-map"></div>
+        <div class="pd-mapbar">
+          <span class="seg" role="group" aria-label="배경 지도">
+            <button type="button" data-base="midnight" aria-pressed="true">지도</button>
+            <button type="button" data-base="sat" aria-pressed="false">위성</button>
+          </span>
+        </div>
+        <div class="pd-legend" id="legend"></div>
+        <p class="pd-msg" id="msg" hidden></p>
+      </section>
+    </main>
+
+    <footer class="pd-src">
+      자료: 공공데이터포털 전국미곡처리장표준데이터·전국농산물산지유통센터(APC)표준데이터, 농림축산식품부 국비지원 로컬푸드 직매장 운영현황(2021년 기준) ·
+      좌표: VWorld 지오코더(도로명·지번), 주소로 찾지 못한 곳은 시설 이름 장소검색·행정구역 중심 · 배경 VWorld
+      <span id="built"></span>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="data/facilities.js"></script>
+  <script src="assets/facilities.js"></script>
+</body>
+</html>

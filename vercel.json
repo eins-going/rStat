@@ -1,4 +1,7 @@
 {
   "cleanUrls": true,
-  "regions": ["icn1"]
+  "regions": ["icn1"],
+  "redirects": [
+    { "source": "/producers", "destination": "/facilities", "permanent": false }
+  ]
 }
