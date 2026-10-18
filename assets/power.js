@@ -590,7 +590,18 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  let rt;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { renderNow(); renderSeason(); renderInvest(); }, 150); });
+  // 그림 칸은 패널이 자리를 잡은 뒤에야 크기가 정해진다 → 크기가 바뀌면 그 그림만 다시 그린다
+  const redraw = { "chart-band": drawBand, "chart-trend": drawTrend, "chart-season": renderSeason, "chart-invest": renderInvest };
+  const sizes = new Map();
+  const ro = new ResizeObserver((entries) => {
+    for (const e of entries) {
+      const { width, height } = e.contentRect;
+      const prev = sizes.get(e.target.id);
+      sizes.set(e.target.id, [width, height]);
+      if (prev && Math.abs(prev[0] - width) < 1 && Math.abs(prev[1] - height) < 1) continue;
+      redraw[e.target.id]();
+    }
+  });
+  Object.keys(redraw).forEach((id) => ro.observe($(`#${id}`)));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
 })();

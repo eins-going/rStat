@@ -48,16 +48,6 @@
           </header>
           <div class="stats two">
             <div class="stat">
-              <span class="stat-label">사용량</span>
-              <span class="stat-value"><b data-v="kwh"></b><small data-u="kwh"></small></span>
-              <span class="delta" data-d="kwh"></span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">평년 같은 달 대비 <small class="hint" title="직전 5년 같은 달 사용량 평균과 비교. 띠는 그 5년의 최소~최대">?</small></span>
-              <span class="stat-value"><b data-v="norm"></b></span>
-              <span class="delta" data-d="norm"></span>
-            </div>
-            <div class="stat">
               <span class="stat-label">고객</span>
               <span class="stat-value"><b data-v="cust"></b><small data-u="cust"></small></span>
               <span class="delta" data-d="cust"></span>
@@ -67,13 +57,23 @@
               <span class="stat-value"><b data-v="kw"></b><small data-u="kw"></small></span>
               <span class="delta" data-d="kw"></span>
             </div>
+            <div class="stat">
+              <span class="stat-label">사용량</span>
+              <span class="stat-value"><b data-v="kwh"></b><small data-u="kwh"></small></span>
+              <span class="delta" data-d="kwh"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">평년 같은 달 대비 <small class="hint" title="직전 5년 같은 달 사용량 평균과 비교. 띠는 그 5년의 최소~최대">?</small></span>
+              <span class="stat-value"><b data-v="norm"></b></span>
+              <span class="delta" data-d="norm"></span>
+            </div>
           </div>
           <p class="note" data-note="now"></p>
+          <h3 class="sub-head">장기 추이 <span>최근 12개월 합계 · 누르면 그 달로</span></h3>
+          <div class="chart pw-trend" id="chart-trend" aria-label="최근 12개월 사용량 합계 추이"></div>
           <h3 class="sub-head">월별 사용량 <span id="band-note">선택 연도 · 전년 · 직전 5년 범위</span></h3>
           <div class="chart pw-band" id="chart-band" aria-label="월별 사용량과 평년 범위"></div>
           <div class="pw-key" id="band-key"></div>
-          <h3 class="sub-head">장기 추이 <span>최근 12개월 합계 · 누르면 그 달로</span></h3>
-          <div class="chart pw-trend" id="chart-trend" aria-label="최근 12개월 사용량 합계 추이"></div>
           <footer class="src">자료: 한국전력공사 전력데이터 개방포털 계약종별 전력사용량(농사용) · 검침월 기준</footer>
         </article>
       </section>

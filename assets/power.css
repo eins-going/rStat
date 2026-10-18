@@ -83,8 +83,9 @@
   .pw .col { overflow: hidden; }
   .pw .col > .panel { flex: 0 0 auto; min-height: 0; }
   .pw #p-now { flex: 1 1 0; }
-  .pw #p-now .pw-band { flex: 1 1 100px; min-height: 90px; max-height: 220px; height: auto; }
-  .pw #p-now .pw-trend { flex: 0 1 80px; min-height: 60px; height: auto; }
+  /* 장기 추이와 월별 사용량이 남는 높이를 나눠 써서 패널 아래가 비지 않게 */
+  .pw #p-now .pw-trend { flex: 1 1 0; min-height: 70px; height: auto; }
+  .pw #p-now .pw-band { flex: 1.4 1 0; min-height: 100px; height: auto; }
   .pw .pw-prof { height: 92px; }
   .pw .pw-inv { height: 86px; }
   .pw #p-alert { flex: 1 1 0; overflow: hidden; }
