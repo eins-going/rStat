@@ -248,7 +248,7 @@
     cmpSel.value = String(state.cmp);
     const reset = $("#reset");
     reset.hidden = state.key === NATION;
-    reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체 보기` : "전국 보기";
+    reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체보기` : "전국보기";
   }
 
   function toHash(k) {

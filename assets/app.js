@@ -234,7 +234,7 @@
     sggSel.value = level(state.key) === 2 ? state.key : s || NATION;
     const reset = $("#reset");
     reset.hidden = state.key === NATION;
-    reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체 보기` : "전국 보기";
+    reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체보기` : "전국보기";
     $("#view-seg").hidden = level(state.key) !== 2;
     if (level(state.key) === 2) warmFarm();
   }

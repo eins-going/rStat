@@ -63,8 +63,11 @@ button.bar-row.sel, .crop-row2.sel { background: var(--accent-soft); box-shadow:
 .fl-mapbar { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .fl-mapbar .seg button, .fl-mapbar-r .seg button { font-size: 12px; padding: 2px 12px; }
 .fl-mapbar-r { display: flex; gap: 8px; margin-left: auto; padding-bottom: 4px; }
+.fl-mapbar { align-items: center; }
+.fl-mapbar .reset { position: static; margin-left: auto; padding: 2px 10px; border-radius: 7px; white-space: nowrap; }
+.fl-mapbar .reset[hidden] { display: none; }
 #equip { flex-wrap: wrap; }
-#equip button { padding: 2px 10px; }
+.fl-mapbar #equip button { padding: 2px 6px; letter-spacing: -0.04em; }
 #equip button:disabled { cursor: progress; }
 #odmap { display: block; width: 100%; }
 #odmap path { vector-effect: non-scaling-stroke; }

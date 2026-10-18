@@ -265,7 +265,7 @@
     $$("#lv button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.lv === state.lv));
     const reset = $("#reset");
     reset.hidden = all();
-    reset.textContent = level(state.k) === 2 ? `${T.sidos[sidoOf(state.k)].short} 전체 보기` : "전국 보기";
+    reset.textContent = level(state.k) === 2 ? `${T.sidos[sidoOf(state.k)].short} 전체보기` : "전국보기";
   }
 
   // 주소: #k=38|김해시&dir=in&e=파렛트&c=딸기&t=…&s=…&y=2024&lv=sido

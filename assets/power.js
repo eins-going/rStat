@@ -578,7 +578,7 @@
     $("#crumb").textContent = level(k) === 0 ? "" : level(k) === 1 ? "전국 ›" : `전국 › ${T.sidos[sidoOf(k)].name} ›`;
     const reset = $("#reset");
     reset.hidden = level(k) === 0;
-    reset.textContent = level(k) === 2 ? `${T.sidos[sidoOf(k)].short} 전체 보기` : "전국 보기";
+    reset.textContent = level(k) === 2 ? `${T.sidos[sidoOf(k)].short} 전체보기` : "전국보기";
   }
   $("#reset").addEventListener("click", () => select(parentOf(state.key) ?? NATION));
 
