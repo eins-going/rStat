@@ -367,12 +367,14 @@
         <span class="track"><span class="fill${v < 0 ? " neg" : ""}" style="width:${(Math.abs(v) / max) * 100}%"></span></span>
         <span class="val">${m.fmt(v)}</span><span></span>
       </button>`;
-    const top = list.slice(0, 5), bottom = list.slice(-5).reverse();
-    const hiTitle = m.kind === "div" ? "높은 곳" : "많은 곳", loTitle = m.kind === "div" ? "낮은 곳" : "적은 곳";
+    // 큰 값부터 10곳 (왼쪽 1~5위, 오른쪽 6~10위). 고른 시군이 10위 밖이면 그 순위를 한 줄 더 단다
+    const top = list.slice(0, 10);
+    const selIdx = list.findIndex(([k]) => k === state.key);
+    const extra = selIdx >= 10 ? `<div class="rank-title" style="margin:4px 0 0"><span>선택한 지역</span></div>${row(list[selIdx], selIdx + 1)}` : "";
     $("#rank").innerHTML = list.length ? `
-      <div class="rank-title"><span><b>${m.label}</b> ${s ? T.sidos[s].short : "전국"} 시군</span><span class="rank-meta">${monthText(i)} · ${list.length}곳</span></div>
-      <div><div class="pw-rank-h">${hiTitle}</div>${top.map((d, j) => row(d, j + 1)).join("")}</div>
-      <div><div class="pw-rank-h">${loTitle}</div>${bottom.map((d, j) => row(d, list.length - j)).join("")}</div>` : "";
+      <div class="rank-title"><span><b>${m.label}</b> 상위 ${s ? `${T.sidos[s].short} 시군` : "시군"}</span><span class="rank-meta">${monthText(i)} · ${list.length}곳</span></div>
+      <div>${top.slice(0, 5).map((d, j) => row(d, j + 1)).join("")}</div>
+      <div>${top.slice(5).map((d, j) => row(d, j + 6)).join("")}</div>${extra}` : "";
     $$("#rank .rank-row").forEach((b) => b.addEventListener("click", () => select(b.dataset.r)));
   }
 
