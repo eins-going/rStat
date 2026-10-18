@@ -78,10 +78,14 @@ def region_map(dim):
     items = dim["items"]
     out = {}
     sido_ids = {}
+    # 2026 전남광주통합특별시: 통합 행은 빼고, 그 아래 광주·전남을 시도로 쓴다
+    merged = {it["id"] for it in items if "통합" in it["name"]}
     for it in items:
-        if it["name"] == "전국":
+        if it["id"] in merged:
+            continue
+        if it["name"] == "전국" or (it["name"] == "계" and not it["up"]):
             out[it["id"]] = ("00", "area")
-        elif (it["up"] in (None, "00") or it["up"] not in {x["id"] for x in items}) and sido_code(it["name"]):
+        elif (it["up"] in (None, "00") or it["up"] in merged or it["up"] not in {x["id"] for x in items}) and sido_code(it["name"]):
             code = sido_code(it["name"])
             if it["name"].endswith("시") and code in ("24",) and it["up"] not in (None, "00"):
                 continue
@@ -290,7 +294,53 @@ def sec_crops(out, v):
                 crops[key][crop][i] = val
     v["crops"] = {k: dict(c) for k, c in crops.items()}
     out["periods"]["cropYears"] = [y for y, _ in census]
-    out["sources"]["crops"] = "국가데이터처 농림어업총조사 2015·2020·2025"
+    out["sources"]["crops"] = CROPS_SRC
+
+
+# 채소·특용작물 생산량 (농작물생산조사, 시도까지만 있다). 표마다 품목: 총조사 재배면적 품목과 이름을 맞춘다
+CROP_PROD = [
+    ("DT_1ET0028", ["배추", "시금치", "상추", "양배추"]),
+    ("DT_1ET0029", ["무", "당근"]),
+    ("DT_1ET0291", ["고추", "대파", "양파", "마늘"]),
+    ("DT_1ET0027", ["수박", "참외", "딸기", "오이", "호박", "토마토", "가지"]),
+    ("DT_1ET0293", ["참깨", "들깨", "땅콩"]),
+]
+
+
+CROPS_SRC = "국가데이터처 농작물생산조사(전국·시도 생산량) · 농림어업총조사 2015·2020·2025(시군 재배면적)"
+
+
+def crop_production():
+    """{지역키(전국·시도): {품목: {연도: 톤}}}"""
+    out = defaultdict(lambda: defaultdict(dict))
+    for tbl, crops in CROP_PROD:
+        dims = meta("101", tbl)
+        rdim = region_dim(dims)
+        rmap = region_map(dims[rdim])
+        names = {f"{c}:생산량": c for c in crops}
+        ids = [it["id"] for it in dims["ITEM"]["items"] if it["name"] in names]
+        rows = call("Param/statisticsParameterData.do", {
+            "method": "getList", "orgId": "101", "tblId": tbl, "itmId": "+".join(ids),
+            "objL1": "+".join(rmap), "prdSe": "Y", "newEstPrdCnt": "10"})
+        for r in rows:
+            hit, crop, val = rmap.get(r["C1"]), names.get(r["ITM_NM"].strip()), num(r["DT"])
+            if hit and crop and val is not None:
+                out[hit[0]][crop][r["PRD_DE"]] = val
+    return out
+
+
+def sec_crop_prod(out, v):
+    """채소·특용작물 생산량 (전국·시도, 연) — 2025년부터는 일부 품목만 조사해, 품목 대부분이 있는 마지막 해까지 5년"""
+    prod = crop_production()
+    n_crops = sum(len(c) for _, c in CROP_PROD)
+    nat = prod["00"]
+    years = sorted({y for s in nat.values() for y in s})
+    ref = max(y for y in years if sum(y in s for s in nat.values()) >= 0.8 * n_crops)
+    yrs = [str(int(ref) - 4 + i) for i in range(5)]
+    v["cropProd"] = {k: {c: [None if s.get(y) is None else round(s[y]) for y in yrs] for c, s in crops.items() if any(s.get(y) for y in yrs)}
+                     for k, crops in prod.items()}
+    out["periods"]["cropProdYears"] = yrs
+    out["sources"]["crops"] = CROPS_SRC
 
 
 def sec_grdp(out, v):
@@ -446,6 +496,7 @@ SECTIONS = {
     "livestock_census": (sec_livestock_census, ['pig', 'duck']),
     "rice": (sec_rice, ['rice', 'riceSeries']),
     "crops": (sec_crops, []),
+    "crop_prod": (sec_crop_prod, []),
     "grdp": (sec_grdp, ['grdpAgri', 'grdpTotal']),
     "economy": (sec_economy, []),
     "budget": (sec_budget, []),

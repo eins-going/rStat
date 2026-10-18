@@ -668,26 +668,35 @@
     el.style.top = `${top}px`;
   }
 
-  // 품목별 재배면적: 품목마다 칸 하나에 2015·2020·2025 막대 3개 (칸마다 0부터 자기 축)
+  // 품목별 막대: 품목마다 칸 하나에 연도별 막대 (칸마다 0부터 자기 축)
+  // 전국·시도는 해마다 나오는 생산량(최근 5년, 전년대비), 시군은 생산량 통계가 없어 총조사 재배면적(2015·2020·2025, 5년 대비)
+  const tons = (v) => (v >= 1e6 ? `${nf0.format(v / 1e4)}만` : v >= 1e4 ? `${nf1.format(v / 1e4)}만` : nf0.format(v));
   function drawCrops(k) {
     const box = $("#bars-crop");
     const w = box.clientWidth;
     const h = box.clientHeight;
-    const yrs = P.cropYears;
-    const crops = Object.entries(V.crops[k] || {})
+    const prod = level(k) < 2 && V.cropProd?.[k] ? V.cropProd[k] : null;
+    const yrs = prod ? P.cropProdYears : P.cropYears;
+    const unit = prod ? "톤" : "ha";
+    const fmtV = prod ? tons : int;
+    const yy = (y) => `'${String(y).slice(2)}`;
+    $("#crop-head").innerHTML = prod
+      ? `채소·특용작물 생산량 <span class="nowrap">톤 · 전년대비 <i class="lg lg1"></i>${yy(yrs[0])}~${yy(yrs.at(-2))}<i class="lg lg3"></i>${yy(yrs.at(-1))}</span>`
+      : `채소·특용작물 재배면적 <span class="nowrap">ha · 5년 대비 ${yrs.map((y, i) => `<i class="lg lg${i + 1}"></i>${yy(y)}`).join("")}</span>`;
+    const crops = Object.entries((prod || V.crops[k]) || {})
       .filter(([name, s]) => s.at(-1) > 0 && !/기타|화초/.test(name))
       .sort((a, b) => b[1].at(-1) - a[1].at(-1))
       .slice(0, w && w < 330 ? 4 : 5);
-    if (!crops.length) { box.innerHTML = '<p class="note">재배면적 자료가 없습니다.</p>'; return; }
+    if (!crops.length) { box.innerHTML = `<p class="note">${prod ? "생산량" : "재배면적"} 자료가 없습니다.</p>`; return; }
     if (!w || !h) return;
     const svg = d3.select(box).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`)
       .attr("role", "img")
-      .attr("aria-label", crops.map(([n, s]) => `${n} ${s.map((x, i) => `${yrs[i]}년 ${x == null ? "자료 없음" : `${nf0.format(x)}ha`}`).join(", ")}`).join("; "));
+      .attr("aria-label", crops.map(([n, s]) => `${n} ${s.map((x, i) => `${yrs[i]}년 ${x == null ? "자료 없음" : `${nf0.format(x)}${unit}`}`).join(", ")}`).join("; "));
     box.querySelectorAll(":scope > p").forEach((n) => n.remove());
     const top = 16, bottom = 15;
     const band = d3.scaleBand().domain(crops.map(([n]) => n)).range([0, w]).paddingInner(0.18);
     const inner = d3.scaleBand().domain(yrs).range([0, band.bandwidth()]).paddingInner(0.18).paddingOuter(0.12);
-    const fills = ["#4a505b", "#6b717c", "#f5a524"];
+    const fills = prod ? [...yrs.slice(1).map(() => "#4a505b"), "#f5a524"] : ["#4a505b", "#6b717c", "#f5a524"];
     const g = svg.selectAll("g.crop").data(crops, ([n]) => n).join("g").attr("class", "crop")
       .attr("transform", ([n]) => `translate(${band(n)},0)`);
     g.each(function ([name, s]) {
@@ -699,16 +708,16 @@
         .attr("x", 0).attr("y", 0).attr("width", band.bandwidth()).attr("height", h).attr("fill", "transparent");
       cell.selectAll("line.base").data([0]).join("line").attr("class", "base")
         .attr("x1", 0).attr("x2", band.bandwidth()).attr("y1", h - bottom + 0.5).attr("y2", h - bottom + 0.5).attr("stroke", "#2f333b");
-      cell.selectAll("rect.bar").data(s.map((v, i) => ({ v, i }))).join("rect").attr("class", "bar")
+      cell.selectAll("rect.bar").data(s.map((v, i) => ({ v, i })), (d) => d.i).join("rect").attr("class", "bar")
         .attr("x", (d) => inner(yrs[d.i])).attr("width", inner.bandwidth()).attr("rx", 1.5)
         .attr("fill", (d) => fills[d.i] || fills.at(-1))
         .attr("y", (d) => (d.v == null ? h - bottom : y(d.v))).attr("height", (d) => (d.v == null ? 0 : h - bottom - y(d.v)))
-        .on("mousemove", (e, d) => chartTip(e, `<b>${yrs[d.i]}년</b>${name} ${d.v == null ? "자료 없음" : `${nf0.format(d.v)}ha`}`))
+        .on("mousemove", (e, d) => chartTip(e, `<b>${yrs[d.i]}년</b>${name} ${d.v == null ? "자료 없음" : `${nf0.format(d.v)}${unit}`}`))
         .on("mouseenter", function () { d3.select(this).attr("opacity", 0.75); })
         .on("mouseleave", function () { d3.select(this).attr("opacity", 1); chartTip(null); });
       cell.selectAll("text.v").data([0]).join("text").attr("class", "v")
         .attr("x", band.bandwidth() / 2).attr("y", 10).attr("text-anchor", "middle").attr("font-size", 10.5)
-        .html(`<tspan fill="#eef0f3" font-weight="600">${int(s.at(-1))}</tspan><tspan fill="${r == null ? "#9aa1ad" : r > 0 ? "#ff6b5e" : r < 0 ? "#4ea1ff" : "#9aa1ad"}" dx="3">${r == null ? "" : `${r > 0 ? "▲" : r < 0 ? "▼" : ""}${nf0.format(Math.abs(r))}%`}</tspan>`);
+        .html(`<tspan fill="#eef0f3" font-weight="600">${fmtV(s.at(-1))}</tspan><tspan fill="${r == null ? "#9aa1ad" : r > 0 ? "#ff6b5e" : r < 0 ? "#4ea1ff" : "#9aa1ad"}" dx="3">${r == null ? "" : `${r > 0 ? "▲" : r < 0 ? "▼" : ""}${nf0.format(Math.abs(r))}%`}</tspan>`);
       cell.selectAll("text.n").data([0]).join("text").attr("class", "n")
         .attr("x", band.bandwidth() / 2).attr("y", h - 3).attr("text-anchor", "middle")
         .attr("fill", "#9aa1ad").attr("font-size", 11).text(name);

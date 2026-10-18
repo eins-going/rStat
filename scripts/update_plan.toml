@@ -231,6 +231,26 @@ cadence = "총조사(5년마다), 새 총조사 표는 직접 추가해야 한�
 period = "kosis:cropYears"
 
 [[source]]
+id = "kosis_crop_prod"
+name = "채소·특용작물 생산량"
+page = "주요 통계"
+method = "auto"
+schedule = { kind = "yearly", months = [3, 7, 12], day = 15 }
+retry_days = 60
+commands = [["scripts/fetch_data.py", "--only", "crop_prod"]]
+outputs = ["data/data.js"]
+check = "kosis"
+keys = ["KOSIS_API_KEY"]
+note = "품목마다 공표 시기가 달라(마늘·양파 7월, 고추 12월, 배추·무 등 이듬해 초) 1년에 세 번 확인한다. 품목 대부분이 나온 해까지 보여 준다."
+
+[[source.dataset]]
+name = "채소·특용작물 생산량 (전국·시도)"
+origin = "국가데이터처 농작물생산조사"
+freq = "연"
+cadence = "품목마다 공표 시기가 다르다 (3·7·12월 확인)"
+period = "kosis:cropProdYears"
+
+[[source]]
 id = "kosis_area"
 name = "행정구역 면적 (경지율 분모)"
 page = "주요 통계"
