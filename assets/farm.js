@@ -133,6 +133,21 @@
       inspect(e.latlng);
     });
     map.on("zoomend", () => { syncMask(); if (!drawn.size && !st.nearAt) idle(); });
+    // 시군에 맞춘 뒤에 지도 칸 크기가 바뀌면(자세히 보기로 바뀌며 아래 정보 칸이 생기는 등) 다시 맞춘다.
+    // 사용자가 직접 옮기거나 확대한 뒤에는 크기만 알려 주고 시점은 그대로 둔다.
+    map.on("movestart", () => { if (!st.fitting) st.fitted = false; });
+    new ResizeObserver(() => {
+      map.invalidateSize({ pan: false });
+      if (st.fitted) fitRegion();
+    }).observe(ui.map);
+  }
+
+  function fitRegion() {
+    if (!st.bounds) return;
+    st.fitting = true;
+    map.fitBounds(st.bounds, { padding: [16, 16], animate: false });
+    st.fitting = false;
+    st.fitted = true;
   }
 
   function setBase(b) {
@@ -177,7 +192,8 @@
       stroke: false, fillColor: "#0b0c0f", fillOpacity: 0.28, interactive: false,
     }).addTo(regionLayer);
     const outline = L.polygon(polys.map((p) => p.map(flip)), { color: "#f5a524", weight: 2, fill: false, interactive: false }).addTo(regionLayer);
-    map.fitBounds(outline.getBounds(), { padding: [16, 16], animate: false });
+    st.bounds = outline.getBounds();
+    fitRegion();
     syncMask();
     setFacilities(geometry, st.unit);
   }
