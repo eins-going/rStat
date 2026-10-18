@@ -59,10 +59,10 @@
     m.hidden = !text;
   }
 
-  // 줌 7: 4px, 줌 12 이상: 7px. 같은 자리에 여럿이면 조금 크게
+  // 줌 7 이하: 2px, 줌 13 이상: 5px. 같은 자리에 여럿이면 조금(최대 2px) 크게
   function radius(n) {
-    const t = Math.max(0, Math.min(1, (map.getZoom() - 7) / 5));
-    return 4 + 3 * t + (n > 1 ? Math.min(4, Math.sqrt(n - 1) * 1.5) : 0);
+    const t = Math.max(0, Math.min(1, (map.getZoom() - 7) / 6));
+    return 2 + 3 * t + (n > 1 ? Math.min(2, Math.sqrt(n - 1) * 0.8) : 0);
   }
   map.on("zoomend", () => dots.eachLayer((m) => m.setRadius(radius(m.options.n))));
 
@@ -87,7 +87,7 @@
       const sel = key === st.sel;
       const m = L.circleMarker([r0.lat, r0.lon], {
         renderer, n: list.length, radius: radius(list.length),
-        color: sel ? "#fff" : c, weight: sel ? 2.5 : r0.exact ? 1 : 1.8, opacity: 1,
+        color: sel ? "#fff" : c, weight: sel ? 2 : r0.exact ? 0.5 : 1.2, opacity: 1,
         fillColor: c, fillOpacity: r0.exact ? 0.85 : 0.12, dashArray: r0.exact ? null : "3 2",
       });
       const label = list.length === 1 ? r0.name : `${r0.name} 외 ${list.length - 1}곳`;
