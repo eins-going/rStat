@@ -135,25 +135,6 @@
 .fv-hint[hidden] { display: none; }
 .fv-hint.warn { color: #ffd2cd; border-color: rgba(255, 107, 94, 0.6); }
 
-.fv-legend {
-  position: absolute;
-  left: 8px;
-  bottom: 20px;
-  z-index: 1001;
-  display: flex;
-  gap: 9px;
-  margin: 0;
-  padding: 4px 9px;
-  list-style: none;
-  font-size: 11.5px;
-  color: var(--text);
-  background: rgba(13, 14, 18, 0.8);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  pointer-events: none;
-}
-.fv-legend li { display: flex; align-items: center; gap: 5px; }
-.fv-legend i { width: 12px; height: 10px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 30%, transparent); border-radius: 2px; }
 
 /* 정보 칸 */
 .fv-sec { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; }
@@ -236,7 +217,6 @@ html.fv-lock, html.fv-lock body { overflow: hidden; }
 }
 
 /* 유통시설 (자세히 보기) — 색은 data/facilities.js의 colors */
-.fv-legend .fv-lg-h { color: var(--faint); }
 .fv-sub { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 2px; }
 .fv-fchips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 .fv-fchip {

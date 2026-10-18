@@ -65,8 +65,7 @@
     H.map.innerHTML = `
       <div class="fv-map" data-ui="map"></div>
       <div class="fv-progress" aria-hidden="true"></div>
-      <p class="fv-hint" data-ui="hint" aria-live="polite" hidden></p>
-      <ul class="fv-legend" aria-label="팜맵 판독 분류"><li class="fv-lg-h">필지</li>${KINDS.map((k) => `<li><i style="--c:${KIND_COLOR[k]}"></i>${k}</li>`).join("")}</ul>`;
+      <p class="fv-hint" data-ui="hint" aria-live="polite" hidden></p>`;
     H.info.innerHTML = `
       <section class="fv-sec" data-ui="facs" aria-label="유통시설"></section>
       <section class="fv-sec" data-ui="parcel" aria-label="필지 정보"></section>
