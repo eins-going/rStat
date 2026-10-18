@@ -119,6 +119,7 @@ html.fv-open, html.fv-open body { overflow: hidden; }
 .fv-map { position: absolute; inset: 0; background: #0b0c0f; }
 .fv-map.leaflet-container { font: inherit; cursor: crosshair; }
 .fv-map .leaflet-interactive { cursor: pointer; }
+.fv-map .fv-sat { filter: brightness(1.12) contrast(1.06) saturate(1.08); } /* 겨울 항공영상이 어둡게 보이는 것을 살짝 보정 */
 .fv-map .leaflet-dragging .leaflet-grab { cursor: grabbing; }
 .fv-map .leaflet-control-zoom { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: none; }
 .fv-map .leaflet-control-zoom a { width: 32px; height: 32px; line-height: 30px; color: var(--text); background: var(--panel-2); border-color: var(--line); }

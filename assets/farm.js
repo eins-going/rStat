@@ -31,7 +31,7 @@
     return memo.get(qs);
   }
 
-  let root, map, bases, labels, regionLayer, parcelLayer, marker, circle;
+  let root, map, bases, labels, regionLayer, mask, parcelLayer, marker, circle;
   const ui = {};
   const drawn = new Map(); // 팜맵 ID → 그려 둔 필지 레이어
   const st = { base: "sat", labels: true, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, opener: null, tileErrors: 0, tileLoads: 0 };
@@ -110,7 +110,7 @@
     const wmts = (layer, ext) => `https://api.vworld.kr/req/wmts/1.0.0/${key}/${layer}/{z}/{y}/{x}.${ext}`;
     const opt = { minZoom: 7, maxZoom: 20, maxNativeZoom: 19, keepBuffer: 3 };
     bases = {
-      sat: L.tileLayer(wmts("Satellite", "jpeg"), opt),
+      sat: L.tileLayer(wmts("Satellite", "jpeg"), { ...opt, className: "fv-sat" }),
       map: L.tileLayer(wmts("Base", "png"), opt),
     };
     labels = L.tileLayer(wmts("Hybrid", "png"), opt);
@@ -138,7 +138,7 @@
       if (map.getZoom() < QUERY_ZOOM) { map.setView(e.latlng, Math.min(17, Math.max(QUERY_ZOOM + 1, map.getZoom() + 3))); return; }
       inspect(e.latlng);
     });
-    map.on("zoomend", syncHint);
+    map.on("zoomend", () => { syncMask(); syncHint(); });
   }
 
   function setBase(b) {
@@ -160,12 +160,18 @@
     regionLayer.clearLayers();
     const polys = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
     const flip = (ring) => ring.map(([x, y]) => [y, x]);
-    // 시군 밖은 어둡게 덮는다 (바깥 고리를 구멍으로)
-    L.polygon([[[30, 118], [30, 136], [44, 136], [44, 118]], ...polys.map((p) => flip(p[0]))], {
-      stroke: false, fillColor: "#0b0c0f", fillOpacity: 0.5, interactive: false,
+    // 시군 밖은 옅게 덮는다 (바깥 고리를 구멍으로)
+    mask = L.polygon([[[30, 118], [30, 136], [44, 136], [44, 118]], ...polys.map((p) => flip(p[0]))], {
+      stroke: false, fillColor: "#0b0c0f", fillOpacity: 0.28, interactive: false,
     }).addTo(regionLayer);
     const outline = L.polygon(polys.map((p) => p.map(flip)), { color: "#f5a524", weight: 2, fill: false, interactive: false }).addTo(regionLayer);
     map.fitBounds(outline.getBounds(), { padding: [24, 24], animate: false });
+    syncMask();
+  }
+
+  // 필지를 볼 만큼 확대하면 덮개를 걷는다 (2013년 경계라 실제 경계와 어긋나는 곳이 있다)
+  function syncMask() {
+    mask?.setStyle({ fillOpacity: map.getZoom() >= 14 ? 0 : 0.28 });
   }
 
   // ---------- 안내 ----------
