@@ -461,12 +461,13 @@
     const own = level(k) === 0 ? V.economy[NATION] : V.economy[s];
     const v = own || V.economy[NATION];
     setYear("p-econ", `${P.economy}년`);
+    // 농가경제조사는 시도까지만 나온다 → 제목에 어느 지역 값인지 적는다 (시군에서도 시도 값)
+    $("#econ-scope").textContent = `(${own && level(k) !== 0 ? T.sidos[s].name : "전국"})`;
     ["income", "agriIncome", "assets", "debt"].forEach((name, i) => setV(name, v?.[i] == null ? null : v[i] * 1e3, won));
     let note = "농가 1가구 평균";
     if (level(k) === 0) note += " · 전국";
     else if (!own) note = `광역시·세종은 농가경제조사 대상이 아니어서 전국 평균을 보여줍니다.`;
     else if (level(k) === 2) note = `시군 통계가 없어 ${T.sidos[s].name} 평균을 보여줍니다.`;
-    else note += ` · ${T.sidos[s].name}`;
     setNote("econ", note);
     $("#p-econ .tiles").title = note;
     renderEconBreakdown();
