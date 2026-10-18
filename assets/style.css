@@ -431,6 +431,7 @@ body {
 .sido.context:hover { fill: #2b2f36; stroke: #14161b; stroke-width: 0.6; }
 .sido.hidden, .unit.hidden { display: none; }
 .mesh-sido { fill: none; stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; pointer-events: none; }
+.inset-frame { fill: none; stroke: rgba(255, 255, 255, 0.32); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 .mesh-unit { fill: none; stroke: rgba(10, 11, 14, 0.85); stroke-width: 0.7; pointer-events: none; }
 .region-label { fill: #f5f6f8; font-size: 11px; font-weight: 600; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: rgba(10, 11, 14, 0.75); stroke-width: 3px; transition: opacity 0.3s; }
 .region-label.sido-label { font-size: 12.5px; }

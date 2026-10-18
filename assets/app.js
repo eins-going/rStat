@@ -691,13 +691,18 @@
   const sidoMesh = topojson.mesh(T, obj, (a, b) => a !== b && a.properties.sido !== b.properties.sido);
   const unitMesh = topojson.mesh(T, obj, (a, b) => a !== b && a.properties.sido === b.properties.sido && unitKeyOf(a) !== unitKeyOf(b));
 
+  // 울릉군은 동해 멀리(동경 130.8~130.9°) 있어 경북을 고르면 지도가 작아진다 → 그리는 자리만 서쪽으로 0.8° 당기고
+  // 점선 테두리로 옮겨 그린 것을 알린다. 지역 경계 자료는 그대로라 '자세히 보기'는 실제 위치에 그린다.
+  const ULLEUNG = { key: "37|울릉군", fromLon: 130.6, dx: -0.8 };
+  const drawLon = (lon) => (lon > ULLEUNG.fromLon ? lon + ULLEUNG.dx : lon);
   // 위도 36도 부근 경도 축소를 반영한 평면 투영 (폴리곤 방향과 무관)
   const K = Math.cos((36 * Math.PI) / 180);
   const BOUNDS = (() => {
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     const walk = (c) => {
       if (typeof c[0] === "number") {
-        x0 = Math.min(x0, c[0] * K); x1 = Math.max(x1, c[0] * K);
+        const x = drawLon(c[0]) * K;
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x);
         y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]);
       } else c.forEach(walk);
     };
@@ -787,7 +792,7 @@
     const s = Math.min((w - pad * 2) / bw, (h - pad * 2) / bh);
     const ox = (w - bw * s) / 2;
     const oy = (h - bh * s) / 2;
-    const project = (lon, lat) => [ox + (lon * K - BOUNDS.x0) * s, oy + (BOUNDS.y1 - lat) * s];
+    const project = (lon, lat) => [ox + (drawLon(lon) * K - BOUNDS.x0) * s, oy + (BOUNDS.y1 - lat) * s];
     path = d3.geoPath(d3.geoTransform({ point(lon, lat) { this.stream.point(...project(lon, lat)); } }));
     mapSvg.attr("viewBox", `0 0 ${w} ${h}`).attr("height", FIT.matches ? null : h);
     anchor.clear();
@@ -814,6 +819,12 @@
       .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRegionClick(d.properties.key); } });
     world.selectAll("path.mesh-unit").data([unitMesh]).join("path").attr("class", "mesh-unit").attr("d", path);
     world.selectAll("path.mesh-sido").data([sidoMesh]).join("path").attr("class", "mesh-sido").attr("d", path);
+    // 옮겨 그린 울릉군을 점선 테두리로 두른다
+    const ul = unitFeatures.find((f) => f.properties.key === ULLEUNG.key);
+    const [[ux0, uy0], [ux1, uy1]] = ul ? path.bounds(ul) : [[0, 0], [0, 0]];
+    world.selectAll("rect.inset-frame").data(ul ? [0] : []).join("rect").attr("class", "inset-frame")
+      .attr("x", ux0 - 5).attr("y", uy0 - 5).attr("width", ux1 - ux0 + 10).attr("height", uy1 - uy0 + 10).attr("rx", 3)
+      .append("title").text("울릉군: 지도에서 보기 좋게 실제보다 서쪽으로 옮겨 그림");
     mapSvg.selectAll("g.labels").data([0]).join("g").attr("class", "labels");
     zoom.translateExtent([[-w / 2, -h / 2], [w * 1.5, h * 1.5]]);
     applyView(false);
