@@ -934,3 +934,8 @@ body {
 
 /* 경지면적 카드 아래 경지율 설명: 오른쪽 정렬 */
 .note[data-note="land"] { text-align: right; }
+
+/* 선그래프 값 표시 */
+.chart-tip { position: fixed; z-index: 60; pointer-events: none; background: rgba(13, 14, 18, 0.95); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-size: 12px; color: var(--muted); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chart-tip b { color: var(--text); margin-right: 6px; }
+.chart-tip[hidden] { display: none; }

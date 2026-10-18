@@ -369,7 +369,7 @@
       : p ? `전체 농가 중 비율 · 흰 선은 ${label(p)} · ${P.aging} 총조사` : `전체 농가 중 경영주 연령별 비율 · ${P.aging} 농림어업총조사`);
     $('[data-meter="young"]').parentElement.title = p ? `${label(p)} ${pct(py)}` : "";
     $('[data-meter="aging"]').parentElement.title = p ? `${label(p)} ${pct(po)}` : "";
-    lineChart("#chart-farm", P.farm, V.households[k], int, "농가수");
+    lineChart("#chart-farm", P.farm, V.households[k], int, "농가수", "가구");
   }
 
   function renderReturn() {
@@ -438,7 +438,7 @@
     setRank("rice", rankText(k, (x) => V.rice[x]?.[1]));
     const yieldKg = rice[0] ? (rice[1] / rice[0]) * 100 : null;
     $('[data-v="riceYield"]').textContent = yieldKg ? `10a당 ${nf0.format(yieldKg)}kg` : "";
-    lineChart("#chart-rice", P.riceYears, V.riceSeries[k], int, "쌀 생산량");
+    lineChart("#chart-rice", P.riceYears, V.riceSeries[k], int, "쌀 생산량", "톤");
 
     drawCrops(k);
   }
@@ -585,7 +585,7 @@
   }
 
   // ---------- 작은 차트 ----------
-  function lineChart(sel, years, values, fmt = int, name = "") {
+  function lineChart(sel, years, values, fmt = int, name = "", unit = "") {
     const el = $(sel);
     const w = el.clientWidth;
     const h = el.clientHeight;
@@ -633,6 +633,39 @@
     svg.selectAll("g.axis").data([0]).join("g").attr("class", "axis")
       .selectAll("text").data(ticks, (d) => d.y).join("text")
       .attr("x", (d) => x(d.y)).attr("y", h - 3).attr("text-anchor", "middle").text((d) => `'${String(d.y).slice(2)}`);
+    // 마우스를 올리면 가장 가까운 해의 값을 보여준다
+    svg.selectAll("rect.hit").data([0]).join("rect").attr("class", "hit")
+      .attr("x", 0).attr("y", 0).attr("width", w).attr("height", h).attr("fill", "transparent")
+      .on("mousemove", (e) => {
+        const [mx] = d3.pointer(e);
+        const d = pts.reduce((a, b) => (Math.abs(x(b.y) - mx) < Math.abs(x(a.y) - mx) ? b : a));
+        svg.selectAll("circle.pt").attr("r", (p, i) => (p === d ? 5 : i === pts.length - 1 ? 4 : 2.5));
+        chartTip(e, `<b>${d.y}년</b>${name ? `${name} ` : ""}${fmt(d.v)}${unit}`);
+      })
+      .on("mouseleave", () => {
+        svg.selectAll("circle.pt").attr("r", (p, i) => (i === pts.length - 1 ? 4 : 2.5));
+        chartTip(null);
+      });
+  }
+
+  // 그래프 위 값 표시 (화면에 하나)
+  function chartTip(e, html) {
+    let el = document.getElementById("chart-tip");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "chart-tip";
+      el.className = "chart-tip";
+      document.body.append(el);
+    }
+    if (!e) { el.hidden = true; return; }
+    el.innerHTML = html;
+    el.hidden = false;
+    const pad = 12, w = el.offsetWidth, h = el.offsetHeight;
+    let left = e.clientX + pad, top = e.clientY - h - pad;
+    if (left + w > window.innerWidth - 8) left = e.clientX - w - pad;
+    if (top < 8) top = e.clientY + pad;
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
   }
 
   // 품목별 재배면적: 품목마다 칸 하나에 2015·2020·2025 막대 3개 (칸마다 0부터 자기 축)
@@ -1217,11 +1250,11 @@
       return true;
     });
     if (!changed) return;
-    lineChart("#chart-farm", P.farm, V.households[state.key], int, "농가수");
+    lineChart("#chart-farm", P.farm, V.households[state.key], int, "농가수", "가구");
     barChart("#spark-farm", P.returning, V.returnFarm[state.key], int, "귀농가구");
     barChart("#spark-rural", P.returning, V.returnRural[state.key], int, "귀촌인");
     drawBudget(state.key);
-    lineChart("#chart-rice", P.riceYears, V.riceSeries[state.key], int, "쌀 생산량");
+    lineChart("#chart-rice", P.riceYears, V.riceSeries[state.key], int, "쌀 생산량", "톤");
     lineChart("#chart-grdp", P.grdp.years, grdpWon(state.key), won, "농림어업 GRDP");
     drawCrops(state.key);
   });
