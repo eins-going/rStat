@@ -322,31 +322,12 @@
   }
 
   // ---------- 제목 ----------
-  const ICONS = {
-    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
-    field: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18c4-3 14-3 18 0"/><path d="M3 13c4-3 14-3 18 0"/><path d="M12 4v6"/><path d="M12 6c-2 0-3-1-3-2 2 0 3 1 3 2zm0 0c2 0 3-1 3-2-2 0-3 1-3 2z"/></svg>',
-    rice: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V9"/><path d="M12 9c0-3 2-5 5-6 0 3-2 5-5 6z"/><path d="M12 13c0-3-2-5-5-6 0 3 2 5 5 6z"/><path d="M12 17c0-2.5 1.8-4.2 4-5 0 2.5-1.8 4.2-4 5z"/></svg>',
-    people: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/></svg>',
-  };
-
   function renderHero() {
     const k = state.key;
     $("#title-region").textContent = label(k);
     const trail = [];
     for (let p = parentOf(k); p; p = parentOf(p)) trail.unshift(label(p));
     $("#crumb").textContent = trail.length ? `${trail.join(" › ")} ›` : "";
-    const hh = lastOf(V.households[k]).value;
-    const pop = lastOf(V.population[k]).value;
-    const land = lastOf(V.land[k]);
-    const paddy = V.paddy[k]?.[land.i];
-    const rice = V.rice[k]?.[1];
-    const aging = agingRatio(k);
-    $("#facts").innerHTML = [
-      `<li>${ICONS.home}<span>농가 <b>${int(hh)}</b>가구 · 농가인구 <b>${int(pop)}</b>명</span></li>`,
-      `<li>${ICONS.field}<span>경지 <b>${int(land.value)}</b> ha · 논 비중 <b>${land.value ? pct((paddy / land.value) * 100) : "–"}</b></span></li>`,
-      `<li>${ICONS.rice}<span>쌀 생산 <b>${int(rice)}</b>톤 (${P.rice}년)</span></li>`,
-      `<li class="accent">${ICONS.people}<span>농가인구 열에 <b>${aging == null ? "–" : nf0.format(aging / 10)}</b>명은 65세 이상 (${P.aging}년)</span></li>`,
-    ].join("");
   }
 
   // ---------- 왼쪽 패널 ----------
