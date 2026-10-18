@@ -105,6 +105,8 @@ def parse_addr(raw):
                 break
     # 지명과 번지가 붙은 경우(원당리5692-24, 후죽리산12). 성수동1가·향양로370번길 같은 이름은 두고
     a = re.sub(r"(\S(?:리|동|가|로|길))(산?\d+(?![\d가]|번?길|로))", r"\1 \2", a)
+    # 도로명 사이 띄어쓰기(기월 4길, 포충로 511번길)를 붙인다
+    a = re.sub(r"(\S)\s+(\d+번?길)(?=\s)", r"\1\2", a)
     toks = a.split()
     key = sido_key(toks[0])
     if not key:
@@ -386,7 +388,8 @@ def main():
         print(f"주소 {len(uniq)}곳 지오코딩, 실패 {sum(v is None for v in geo.values())}", file=sys.stderr)
 
         # 2) 상호 검색 (이름이 가려지지 않았고 지번·도로명보다 덜 자세한 행)
-        targets = [r for r in rows if not r["masked"] and (not r["p"] or r["p"]["level"] not in ("지번", "도로명"))]
+        exact = lambda r: r["p"] and (geo[json.dumps(r["p"], sort_keys=True, ensure_ascii=False)] or (0, 0, ""))[2] in ("지번", "도로명")
+        targets = [r for r in rows if not r["masked"] and not exact(r)]
         names = sorted({r["name"] for r in targets})
         cands = dict(zip(names, pool.map(lambda n: poi_candidates(vw, n), names)))
         print(f"상호 {len(names)}개 검색", file=sys.stderr)
@@ -409,7 +412,7 @@ def main():
             mg = geocode(vw, p) if p else None
             if mg:
                 rec.update(lon=mg[0], lat=mg[1], prec=mg[2], src="웹검색", ref=f'{mg[3]} · {m.get("source", "")}'.strip(" ·"))
-        if not r["masked"] and (not p or p["level"] not in ("지번", "도로명")):
+        if not r["masked"] and rec["prec"] not in ("지번", "도로명"):
             c = pick_poi(p, r["tel"], cands.get(r["name"], []), r["name"])
             if c:
                 rec.update(lon=c[0], lat=c[1], prec="상호", src="상호검색", ref=f'{c[3]} · {c[2]}')
