@@ -108,8 +108,15 @@
     }
     return { n, e, x, grow: n + e, net: n + e - x };
   }
+  // 고객 수 튐: 해마다 3·11월 검침에 계절 고객이 함께 잡혀 앞뒤 달보다 크게 나온다(전국 +26~49%).
+  // 앞뒤 달 평균보다 8% 넘게 크면 튄 달로 보고, 그림에서 빼고 비율의 분모는 직전 달 값을 쓴다
+  const spike = (k, i) => {
+    const v = at(k, "c", i), a = at(k, "c", i - 1), b = i < LAST ? at(k, "c", i + 1) : a;
+    return ok(v) && ok(a) && ok(b) && v > ((a + b) / 2) * 1.08;
+  };
+  const custAt = (k, i) => (spike(k, i) ? at(k, "c", i - 1) : at(k, "c", i));
   const perCust = (k, i) => {
-    const s = sum12(k, i), c = at(k, "c", i);
+    const s = sum12(k, i), c = custAt(k, i);
     return ok(s) && c ? (s * 1000) / c : null; // kWh/호/년
   };
   const seasonOf = (k) => P.season?.[k] || null;
@@ -135,7 +142,7 @@
       note: "최근 12개월 사용량 ÷ 고객호수 (연간). 시설·축산처럼 전기를 많이 쓰는 농업이 클수록 높다" },
     { key: "kw", label: "계약전력 증감", kind: "div", get: (k, i) => yoy(k, i, "w"), fmt: pctS,
       note: "계약전력(설비 규모)을 전년 같은 달과 비교. 시설 투자나 철거를 반영" },
-    { key: "inv", label: "신설·증설 활발도", kind: "seq", get: (k, i) => { const v = invest(k, i), c = at(k, "c", i); return v && c ? (v.grow / c) * 1000 : null; },
+    { key: "inv", label: "신설·증설 활발도", kind: "seq", get: (k, i) => { const v = invest(k, i), c = custAt(k, i); return v && c ? (v.grow / c) * 1000 : null; },
       fmt: (v) => (ok(v) ? `${nf0.format(v)}건` : "–"),
       note: "최근 12개월 신설+증설 건수, 농사용 고객 1천 호당 (한전 산업분류 농업·임업·어업). 한전 집계 건수라 고객 수 증감과는 다르다" },
   ];
@@ -362,7 +369,7 @@
     $(`[data-v="${key}"]`).textContent = v;
     const unit = $(`[data-u="${key}"]`);
     if (unit) unit.textContent = u;
-    $(`[data-d="${key}"]`).innerHTML = delta == null ? "" : `${deltaHTML(delta)} <span>${deltaNote}</span>`;
+    $(`[data-d="${key}"]`).innerHTML = delta == null ? "" : `<span class="d-lab">${deltaNote}</span>${deltaHTML(delta)}`;
   }
 
   function renderNow() {
@@ -372,13 +379,14 @@
     setStat("kwh", energy(at(k, "k", i)), yoy(k, i), "전년 같은 달");
     const n = norm(k, i);
     setStat("norm", [n ? pctS(n.dev) : "–", ""], null);
-    $('[data-d="norm"]').innerHTML = n ? (n.out ? `<span class="pw-flag">직전 ${n.n}년 범위 밖</span>` : `<span>직전 ${n.n}년 범위 안</span>`) : "";
+    $('[data-d="norm"]').innerHTML = n ? `<span class="d-lab">직전 ${n.n}년 범위</span>${n.out ? '<span class="pw-flag">벗어남</span>' : "<span>안</span>"}` : "";
     const cust = at(k, "c", i);
     setStat("cust", count(cust, "호"), yoy(k, i, "c"), "전년 같은 달");
     setStat("kw", power(at(k, "w", i)), yoy(k, i, "w"), "전년 같은 달");
     const notes = [];
     if (gap(k, i)) notes.push("이 달은 원자료에서 이 지역의 일부 시군구가 빠져 있어 증감을 계산하지 않았습니다.");
     if (!ok(at(k, "w", i))) notes.push("이 달은 계약전력 자료가 없습니다.");
+    if (spike(k, i)) notes.push("이 달(해마다 3·11월) 검침에는 계절 고객이 함께 잡혀 고객 수가 평소보다 많습니다.");
     $('[data-note="now"]').textContent = notes.join(" ");
     drawBand();
     drawTrend();
@@ -459,7 +467,7 @@
   // 장기 추이: 최근 12개월 사용량 합계
   const drawTrend = () => drawSeries("chart-trend", (k, j) => sum12(k, j), (d) => energy(d).join(""));
   // 고객 수: 원자료 시군구가 빠진 달은 뺀다
-  const drawCust = () => drawSeries("chart-cust", (k, j) => (gap(k, j) ? null : at(k, "c", j)), (d) => (Math.abs(d) >= 1e5 ? `${nf0.format(d / 1e4)}만` : int(d)), false);
+  const drawCust = () => drawSeries("chart-cust", (k, j) => (gap(k, j) || spike(k, j) ? null : at(k, "c", j)), (d) => (Math.abs(d) >= 1e5 ? `${nf0.format(d / 1e4)}만` : int(d)), false);
 
   // ---------- 오른쪽: 계절 유형 ----------
   function renderSeason() {
@@ -496,7 +504,7 @@
     const d = (a, b) => (cur && prev ? ratio(a, b) : null);
     setStat("grow", count(cur?.grow, "건"), d(cur?.grow, prev?.grow), "전년 같은 기간");
     setStat("cancel", count(cur?.x, "건"), d(cur?.x, prev?.x), "전년 같은 기간");
-    const c = at(k, "c", i);
+    const c = custAt(k, i);
     $("#invest-net").innerHTML = cur
       ? `<span>신설 <b>${int(cur.n)}</b> · 증설 <b>${int(cur.e)}</b></span>${c ? `<span>고객 1천 호당 신설·증설 <b>${nf0.format((cur.grow / c) * 1000)}</b>건</span>` : ""}`
       : `<span>한전에 이 기간 일부 달의 자료가 없어 계산하지 않았습니다</span>`;
