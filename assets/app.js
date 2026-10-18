@@ -430,6 +430,9 @@
     drawCrops(k);
   }
 
+  // 지역내총생산 산업 묶음 색 (data.js grdpGroups 순서): 농림어업 · 광업·제조업 · 전기·가스·건설 · 유통·운수·숙박 · 정보·금융·부동산·사업서비스 · 공공·교육·보건·기타 · 순생산물세
+  const GRDP_COLORS = ["#f5a524", "#3987e5", "#9085e9", "#199e70", "#d55181", "#7d8590", "#4a4f59"];
+
   function renderGrdp() {
     const k = state.key;
     const p = parentOf(k);
@@ -440,11 +443,24 @@
     const s = grdpShare(k);
     const ps = p ? grdpShare(p) : null;
     countTo($('[data-v="grdpShare"]'), s, pct);
-    meter("grdp", s, ps, Math.max(20, Math.ceil(Math.max(s || 0, ps || 0) / 10) * 10));
+    // 산업별 구성: 농림어업은 강조색, 나머지 산업 묶음은 저마다 다른 색
+    const mix = V.grdpMix?.[k];
+    const groups = D.grdpGroups || [];
+    if (mix) {
+      const tot = mix.slice(0, groups.length).reduce((a, b) => a + (b || 0), 0) || 1;
+      const parts = groups.map((g, i) => ({ g, v: (mix[i] / tot) * 100, c: GRDP_COLORS[i] }));
+      $("#grdp-mix").innerHTML = parts.map((p) => `<span style="flex-basis:${p.v}%;background:${p.c}" title="${p.g} ${pct(p.v)}"></span>`).join("");
+      $("#grdp-mix").setAttribute("aria-label", parts.map((p) => `${p.g} ${pct(p.v)}`).join(", "));
+      $("#grdp-legend").innerHTML = parts.map((p, i) => `<span class="${i === 0 ? "agri" : ""}"><i style="background:${p.c}"></i>${p.g} <b>${pct(p.v)}</b></span>`).join("");
+    } else {
+      $("#grdp-mix").innerHTML = "";
+      $("#grdp-legend").innerHTML = "";
+    }
     const rk = rankText(k, grdpShare);
+    const my = mix ? `${mix.at(-1)}년 ` : "";
     setNote("grdp", p
-      ? `흰 선은 ${label(p)} ${pct(ps)}${rk ? ` · 비중 ${rk}` : ""}`
-      : `지역 총생산 ${won(g?.[1] * 1e6)} 가운데 농림어업 몫 (명목)`);
+      ? `${my}지역 총생산 ${won(g?.[1] * 1e6)} 가운데 · ${label(p)} 농림어업 ${pct(ps)}${rk ? ` · 비중 ${rk}` : ""}`
+      : `${my}지역 총생산 ${won(g?.[1] * 1e6)}의 산업별 구성 (명목)`);
   }
 
   function renderEcon() {

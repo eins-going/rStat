@@ -295,6 +295,8 @@ def sec_crops(out, v):
 def sec_grdp(out, v):
     """지역내총생산 (연)"""
     v["grdpAgri"], v["grdpTotal"] = grdp()
+    v["grdpMix"] = grdp_mix()  # [묶음별 백만원…, 연도]
+    out["grdpGroups"] = [g for g, _ in GRDP_GROUPS]
     out["sources"]["grdp"] = "국가데이터처 시도별 지역내총생산 · 각 시도 시군별 지역내총생산 · 명목"
 
 
@@ -680,6 +682,69 @@ def grdp():
         for (key, year, is_agri), c in acc.items():
             put(key, year, is_agri, next((c[k] for k in ("val", "explicit", "sum") if c[k] is not None), None))
     return fill_single_units(agri), fill_single_units(total)
+
+
+# 산업 묶음 (시군 표가 공통으로 가진 16개 산업 → 6개 + 순생산물세). 지역내총생산(시장가격) = 총부가가치 + 순생산물세
+GRDP_GROUPS = [
+    ("농림어업", ["농업 임업 및 어업"]),
+    ("광업·제조업", ["광업", "제조업"]),
+    ("전기·가스·건설", ["전기 가스 증기 및 공기 조절 공급업", "건설업"]),
+    ("유통·운수·숙박", ["도매 및 소매업", "운수 및 창고업", "숙박 및 음식점업"]),
+    ("정보·금융·부동산·사업서비스", ["정보통신업", "금융 및 보험업", "부동산업", "사업서비스업"]),
+    ("공공·교육·보건·기타", ["공공 행정 국방 및 사회보장 행정", "교육 서비스업", "보건업 및 사회복지 서비스업", "문화 및 기타서비스업"]),
+    ("순생산물세", ["순생산물세"]),
+]
+# 시도 표마다 산업 이름의 띄어쓰기·'및'이 달라(전북 '금융보험업', '공공행정 국방…') 빼고 맞춘다
+_norm = lambda name: name.replace(" ", "").replace("및", "")  # noqa: E731  ('금융보험업' = '금융 및 보험업')
+GROUP_OF = {_norm(n): i for i, (_, names) in enumerate(GRDP_GROUPS) for n in names}
+group_of = lambda name: GROUP_OF.get(_norm(name))  # noqa: E731
+
+
+def grdp_mix():
+    """{지역키: [묶음별 백만원…]} — 지역마다 자료가 있는 가장 최근 연도 (명목). 시도·전국은 DT_1C91, 시군은 시도별 표."""
+    years = GRDP_YEARS[-2:]
+    acc = defaultdict(lambda: defaultdict(lambda: [0.0] * len(GRDP_GROUPS)))  # key → year → 묶음 값
+
+    def query(org, tbl, dims, item):
+        rdim = region_dim(dims)
+        adim = next(k for k in dims if k not in ("ITEM", rdim))
+        order = [k for k in dims if k != "ITEM"]
+        params = {"method": "getList", "orgId": org, "tblId": tbl, "itmId": item, "prdSe": "Y",
+                  "startPrdDe": years[0], "endPrdDe": years[-1]}
+        params.update({f"objL{i + 1}": "ALL" for i in range(len(order))})
+        return call("Param/statisticsParameterData.do", params), f"C{order.index(rdim) + 1}", f"C{order.index(adim) + 1}"
+
+    dims = meta("101", "DT_1C91")
+    rmap = region_map(dims[region_dim(dims)])
+    item = next(it["id"] for it in dims["ITEM"]["items"] if it["name"] == "명목")
+    rows, rc, ac = query("101", "DT_1C91", dims, item)
+    for r in rows:
+        hit, g, val = rmap.get(r[rc]), group_of(r[f"{ac}_NM"]), num(r["DT"])
+        if hit and hit[1] == "area" and g is not None and val is not None:
+            acc[hit[0]][r["PRD_DE"]][g] += val * unit_scale(r.get("UNIT_NM"))
+    for sido, (org, tbl) in GRDP_TABLES.items():
+        try:
+            dims = meta(org, tbl)
+            rows, rc, ac = query(org, tbl, dims, dims["ITEM"]["items"][0]["id"])
+        except Exception as e:
+            print("  GRDP 산업 실패", sido, e)
+            continue
+        for r in rows:
+            name, g, val = r[f"{rc}_NM"].strip(), group_of(r[f"{ac}_NM"]), num(r["DT"])
+            if g is None or val is None or sido_code(name) == sido or name in ("서울시",):
+                continue
+            u = unit_of(sido, name)
+            if not u or u[0] not in UNIT_KEYS or u[1] == "explicit":
+                continue  # 시부는 구를 더해 만든다 (명시값과 섞지 않는다)
+            acc[u[0]][r["PRD_DE"]][g] += val * unit_scale(r.get("UNIT_NM"))
+    if "29" in acc:
+        acc["29|세종시"] = acc["29"]  # 세종은 시도이자 시군 하나
+    out = {}
+    for key, by_year in acc.items():
+        y = max((yy for yy, vals in by_year.items() if sum(vals) > 0), default=None)
+        if y:
+            out[key] = [round(x) for x in by_year[y]] + [int(y)]
+    return out
 
 
 if __name__ == "__main__":

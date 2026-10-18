@@ -15,13 +15,13 @@ id = "kosis_farm"
 name = "농가·농가인구"
 page = "주요 통계"
 method = "auto"
-schedule = { kind = "yearly", months = [5], day = 1 }
+schedule = { kind = "yearly", months = [5, 11], day = 1 }
 retry_days = 60
 commands = [["scripts/fetch_data.py", "--only", "farm"]]
 outputs = ["data/data.js"]
 check = "kosis"
 keys = ["KOSIS_API_KEY"]
-note = "매년 4월 하순 공표. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
+note = "매년 4월 하순 공표. 총조사 연도(2020·2025)는 총조사 결과로 나중에 채워져 5·11월 두 번 확인한다. 공표가 늦으면 60일 동안 1주마다 다시 확인한다."
 
 [[source.dataset]]
 name = "농가·농가인구"
