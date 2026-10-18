@@ -207,8 +207,10 @@
     return 1 / h;
   };
   // ---------- 선택 상자 ----------
-  const sidoSel = $("#sido"), sggSel = $("#sgg"), yearSel = $("#year"), eqSel = $("#equip"), cropSel = $("#crop");
-  eqSel.innerHTML = EQ.map((e, i) => `<option value="${i}">${esc(e.name)}</option>`).join("");
+  const sidoSel = $("#sido"), sggSel = $("#sgg"), yearSel = $("#year"), eqSeg = $("#equip"), cropSel = $("#crop");
+  eqSeg.innerHTML = EQ.map((e, i) => `<button type="button" data-eq="${i}" aria-pressed="false" title="${e.from}~${e.to}년">${esc(e.name)}</button>`).join("");
+  const eqBtns = $$("#equip button");
+  const eqBusy = (on) => eqBtns.forEach((b) => { b.disabled = on; });
   yearSel.innerHTML = Y.map((y, i) => `<option value="${i}">${y}년</option>`).reverse().join("");
   cropSel.innerHTML = `<option value="-1">전체</option>${D.crops.map((c, i) => `<option value="${i}">${esc(c)}</option>`).join("")}`;
   sidoSel.innerHTML = `<option value="${NATION}">전국</option>${SIDO_CODES.filter((c) => R.some((r) => sidoOf(r) === c)).map((c) => `<option value="${c}">${esc(T.sidos[c].name)}</option>`).join("")}`;
@@ -216,22 +218,21 @@
   sggSel.addEventListener("change", () => select(sggSel.value));
   yearSel.addEventListener("change", () => setYear(+yearSel.value));
   cropSel.addEventListener("change", () => { state.crop = +cropSel.value; render(); });
-  eqSel.addEventListener("change", () => setEq(+eqSel.value));
+  eqBtns.forEach((b) => b.addEventListener("click", () => { if (+b.dataset.eq !== state.eq) setEq(+b.dataset.eq); }));
   $$("#dir button").forEach((b) => b.addEventListener("click", () => { state.dir = b.dataset.dir; applyEnds(); render(); }));
   $$("#lv button").forEach((b) => b.addEventListener("click", () => { state.lv = b.dataset.lv; render(); }));
   $("#reset").addEventListener("click", () => select(level(state.k) === 2 ? sidoOf(state.k) : NATION));
 
   async function setEq(i) {
-    eqSel.disabled = true;
+    eqBusy(true);
     try {
       await loadEq(i);
     } catch (err) {
       alert(err.message);
-      eqSel.disabled = false;
-      eqSel.value = state.eq;
+      eqBusy(false);
       return;
     }
-    eqSel.disabled = false;
+    eqBusy(false);
     state.eq = i;
     const e = EQ[i];
     if (Y[state.yi] < e.from || Y[state.yi] > e.to) state.yi = Y.indexOf(e.to);
@@ -256,7 +257,7 @@
     sggSel.disabled = !s;
     sggSel.value = level(state.k) === 2 ? state.k : s || NATION;
     yearSel.value = state.yi;
-    eqSel.value = state.eq;
+    eqBtns.forEach((b) => b.setAttribute("aria-pressed", +b.dataset.eq === state.eq));
     cropSel.value = state.crop;
     $$("#dir button").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.dir === state.dir); b.disabled = all(); });
     $$("#lv button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.lv === state.lv));
@@ -527,8 +528,8 @@
 
   // ---------- 제목 ----------
   function renderTitle() {
-    const tags = [eqName(), shName(), cropName(), dtName() && `${dtName()}행`].filter(Boolean);
-    const tag = ` <span class="tag">${esc(tags.join(" · "))}</span>`;
+    const tags = [shName(), cropName(), dtName() && `${dtName()}행`].filter(Boolean);
+    const tag = tags.length ? ` <span class="tag">${esc(tags.join(" · "))}</span>` : "";
     const k = state.k;
     $("#title").innerHTML = all() ? `전국 물류기기 흐름${tag}`
       : state.dir === "out" ? `<span class="o">${esc(fullLabel(k))}</span><span class="arrow">→</span>어디로${tag}`
