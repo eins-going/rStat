@@ -163,6 +163,8 @@ body {
 .tk .up { color: var(--up); }
 .tk .down { color: var(--down); }
 .tk-region { color: #14161b; background: var(--accent); font-weight: 700; }
+.tk small { font-size: 11px; color: var(--faint); margin-left: 2px; }
+.tk small.hot { color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   .ticker { overflow-x: auto; mask-image: none; }

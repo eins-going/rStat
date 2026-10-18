@@ -385,26 +385,6 @@ file = "at_data/*수출검역단지*.xlsx"
 where = "https://www.data.go.kr/data/15118469/fileData.do"
 
 [[source]]
-id = "at_farms"
-name = "aT 생산자 목록 (지도 미사용)"
-page = "(화면 없음)"
-method = "manual"
-inputs = ["at_data/농가리스트.xls"]
-remind = { months = 12, note = "필요할 때만" }
-commands = [["scripts/build_farms.py"]]
-outputs = []
-how = ["aT 식품산업통계정보 생산자 정보(https://www.atfis.or.kr/home/producer.do)에서 목록을 받아 at_data/농가리스트.xls로 넣는다. 개인·단체 주소가 시군까지만 있어 지도에는 싣지 않는다."]
-
-[[source.dataset]]
-name = "aT 생산자 목록 (화면 미사용)"
-origin = "aT 식품산업통계정보 생산자 정보"
-freq = "수시"
-cadence = "필요할 때"
-period = "static:지도에 싣지 않음"
-file = "at_data/농가리스트.xls"
-where = "https://www.atfis.or.kr/home/producer.do"
-
-[[source]]
 id = "geo"
 name = "지도 경계 (통계청 2013 행정경계 → 현행 시군)"
 page = "모든 지도"

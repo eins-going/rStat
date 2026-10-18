@@ -1016,32 +1016,59 @@
     $$("#rank .seg button").forEach((b) => b.addEventListener("click", () => { state.rankScope = b.dataset.scope; renderRank(); }));
   }
 
-  // ---------- 흐르는 증감 띠 ----------
-  function tickerItem(text, arr) {
-    const { value, prev } = lastOf(arr);
-    const r = change(value, prev);
-    if (r == null) return "";
-    const cls = r > 0 ? "up" : r < 0 ? "down" : "";
-    const arrow = r > 0 ? "▲" : r < 0 ? "▼" : "–";
-    return `<span class="tk">${text} <b class="${cls}">${arrow} ${nf1.format(Math.abs(r))}%</b></span>`;
-  }
+  // ---------- 흐르는 특징 띠 ----------
+  // 고른 지역이 견줄 지역들(시군이면 같은 도의 시군, 시도면 17개 시도) 가운데 위·아래 끝에 있는 지표를 골라 보여준다.
+  // 규모(가구 수·면적)는 지역 크기를 따라가므로 빼고, 비율·증감처럼 견줄 수 있는 지표만 쓴다. 전국이면 지표마다 가장 높은 시도.
+  const chg = (arr) => { const { value, prev } = lastOf(arr); return change(value, prev); };
+  const sgnPct = (n) => (n == null ? "–" : `${n > 0 ? "▲" : n < 0 ? "▼" : ""}${nf1.format(Math.abs(n))}%`);
+  const TICKS = [
+    { label: "40세 미만 경영주", get: youngOperator, fmt: pct },
+    { label: "65세 이상 경영주", get: oldOperator, fmt: pct },
+    { label: "65세 이상 농가인구", get: agingRatio, fmt: pct },
+    { label: "농가 증감", get: farmChange, fmt: sgnPct, signed: true },
+    { label: "귀농가구 증감", get: (k) => chg(V.returnFarm[k]), fmt: sgnPct, signed: true },
+    { label: "귀촌인 증감", get: (k) => chg(V.returnRural[k]), fmt: sgnPct, signed: true },
+    { label: "논 비중", get: paddyShare, fmt: pct },
+    { label: "10a당 쌀 생산", get: riceYield, fmt: (v) => (v == null ? "–" : `${int(v)}kg`) },
+    { label: "채소·특용작물 면적 증감(5년)", get: (k) => cropChange(k), fmt: sgnPct, signed: true },
+    { label: "농림어업 GRDP 비중", get: grdpShare, fmt: pct },
+    { label: "농업예산 비중", get: (k) => budgetShare(k), fmt: pct },
+    { label: "농업예산 증감", get: (k) => chg(V.budgetAgri[k]), fmt: sgnPct, signed: true },
+  ];
+  const tickVal = (t, v) => `<b class="${t.signed ? (v > 0 ? "up" : v < 0 ? "down" : "") : ""}">${t.fmt(v)}</b>`;
 
   function renderTicker() {
     const k = state.key;
-    const head = [
-      `<span class="tk tk-region">${label(k)}</span>`,
-      tickerItem("농가", V.households[k]),
-      tickerItem("농가인구", V.population[k]),
-      tickerItem("귀농가구", V.returnFarm[k]),
-      tickerItem("귀촌인", V.returnRural[k]),
-      tickerItem("경지면적", V.land[k]),
-    ];
-    const others = (level(k) === 2 ? peersOf(k) : childrenOf(k)).filter((x) => x !== k).flatMap((x) => [
-      `<span class="tk"><b style="color:var(--text)">${shortLabel(x)}</b></span>`,
-      tickerItem("농가", V.households[x]),
-      tickerItem("귀촌인", V.returnRural[x]),
-    ]);
-    const html = [...head, ...others].join("");
+    let items = [];
+    if (k === NATION) {
+      // 전국: 지표마다 전국 값과 가장 높은 시도
+      items = TICKS.map((t) => {
+        const v = t.get(NATION);
+        const top = SIDO_CODES.map((s) => [s, t.get(s)]).filter(([, x]) => x != null).sort((a, b) => b[1] - a[1])[0];
+        if (v == null && !top) return "";
+        return `<span class="tk">${t.label} ${tickVal(t, v)}${top ? ` <small>최고 ${shortLabel(top[0])} ${t.fmt(top[1])}</small>` : ""}</span>`;
+      });
+    } else {
+      const peers = peersOf(k);
+      const scope = level(k) === 2 ? T.sidos[sidoOf(k)].short : "시도";
+      const facts = [];
+      for (const t of TICKS) {
+        const v = t.get(k);
+        if (v == null) continue;
+        const list = peers.map((x) => [x, t.get(x)]).filter(([, x]) => x != null).sort((a, b) => b[1] - a[1]);
+        const n = list.length, r = list.findIndex(([x]) => x === k) + 1;
+        if (!r || n < 4) continue;
+        const fromTop = r, fromBottom = n - r + 1;
+        const edge = Math.min(fromTop, fromBottom);
+        const where = fromTop <= fromBottom ? `${scope} ${fromTop}위` : fromBottom === 1 ? `${scope} 가장 낮음` : `${scope} 아래에서 ${fromBottom}위`;
+        facts.push({ score: edge / n, html: `<span class="tk">${t.label} ${tickVal(t, v)} <small class="${edge <= 3 ? "hot" : ""}">${where}/${n}</small></span>` });
+      }
+      facts.sort((a, b) => a.score - b.score);
+      // 끝에 가까운 지표부터 6~8개 (위·아래 3위 안이 많으면 8개까지)
+      const strong = facts.filter((f) => f.score <= 3 / 17 + 1e-9).length;
+      items = facts.slice(0, Math.min(8, Math.max(6, strong))).map((f) => f.html);
+    }
+    const html = [`<span class="tk tk-region">${label(k)} 특징</span>`, ...items].join("");
     const track = $("#ticker");
     track.innerHTML = `${html}<span aria-hidden="true" style="display:contents">${html}</span>`;
     requestAnimationFrame(() => track.style.setProperty("--ticker-dur", `${Math.max(20, Math.round(track.scrollWidth / 2 / 50))}s`));
