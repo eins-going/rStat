@@ -832,6 +832,9 @@ body {
 .stats.two .stat { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 6px; }
 .stats.two .stat > .stat-label, .stats.two .stat > .spark { grid-column: 1 / -1; }
 .stats.two .stat > .delta { white-space: nowrap; }
+/* 증감 위에 '전년 대비'를 작게 얹은 경우: 증감 숫자가 큰 수치의 아랫줄에 맞게 */
+.stats.two .stat > .delta:has(.d-lab) { display: inline-flex; flex-direction: column; align-self: end; line-height: 1.15; padding-bottom: 3px; }
+.delta .d-lab { font-size: 10px; color: var(--faint); }
 /* 품목별 재배면적: 칸(칼럼) 배치 막대 */
 #bars-crop { display: block; height: 78px; }
 #bars-crop svg { display: block; width: 100%; height: 100%; overflow: visible; }
