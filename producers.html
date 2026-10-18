@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>농식품 생산자 지도</title>
+  <meta name="description" content="aT 식품산업통계정보에 등록된 농식품 생산자 3만여 건(개인·법인·RPC·농협·온라인농가)을 지도에 점으로 찍었습니다. 위치 정확도(지번·상호·읍면·시군)를 함께 보여 줍니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/producers.css">
+  <link rel="preconnect" href="https://api.vworld.kr">
+</head>
+<body class="pd">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">지역 통계</a>
+          <a href="producers" aria-current="page">생산자 지도</a>
+        </nav>
+      </div>
+      <form class="pd-search" role="search" id="search-form">
+        <input type="search" id="q" placeholder="상호·주소·품목 검색" aria-label="상호, 주소, 품목 검색" autocomplete="off" enterkeyhint="search">
+      </form>
+    </header>
+
+    <main class="pd-main">
+      <aside class="pd-side" aria-label="거르기와 목록">
+        <section class="pd-box">
+          <div class="pd-count" id="count" aria-live="polite"></div>
+          <p class="pd-note" id="note"></p>
+        </section>
+
+        <section class="pd-box">
+          <h2>위치 정확도</h2>
+          <div class="pd-chips" id="precs" role="group" aria-label="위치 정확도"></div>
+          <p class="pd-hint">점 하나가 같은 좌표에 놓인 생산자 묶음입니다. 개인·단체는 이름과 주소가 시군까지만 공개돼 시군 중심에 모입니다.</p>
+        </section>
+
+        <section class="pd-box">
+          <h2>조직 유형</h2>
+          <div class="pd-chips" id="types" role="group" aria-label="조직 유형"></div>
+        </section>
+
+        <section class="pd-box">
+          <h2>품목</h2>
+          <label class="pd-item">
+            <input list="item-list" id="item" placeholder="전체 품목" aria-label="품목" autocomplete="off">
+            <button type="button" id="item-clear" aria-label="품목 지우기" hidden>×</button>
+          </label>
+          <datalist id="item-list"></datalist>
+          <div class="pd-top" id="top-items" aria-label="많은 품목"></div>
+        </section>
+
+        <section class="pd-box pd-list-box" id="list-box" hidden>
+          <header class="pd-list-head">
+            <h2 id="list-title"></h2>
+            <button type="button" class="pd-x" id="list-close" aria-label="목록 닫기">×</button>
+          </header>
+          <p class="pd-ref" id="list-ref"></p>
+          <ol class="pd-list" id="list"></ol>
+          <button type="button" class="pd-more" id="list-more" hidden></button>
+        </section>
+      </aside>
+
+      <section class="pd-map-wrap" aria-label="생산자 지도">
+        <div id="map" class="pd-map"></div>
+        <div class="pd-mapbar">
+          <span class="seg" role="group" aria-label="배경 지도">
+            <button type="button" data-base="midnight" aria-pressed="true">지도</button>
+            <button type="button" data-base="sat" aria-pressed="false">위성</button>
+          </span>
+        </div>
+        <div class="pd-legend" id="legend"></div>
+        <p class="pd-msg" id="msg" hidden></p>
+      </section>
+    </main>
+
+    <footer class="pd-src">
+      자료: aT 식품산업통계정보(<a href="https://www.atfis.or.kr/home/producer.do" target="_blank" rel="noopener">생산자 정보</a>) 생산자 목록 ·
+      좌표: VWorld 지오코더·행정구역·장소 검색(상호로 찾은 지점은 목록 주소의 시군·읍면과 맞을 때만 사용) · 배경 VWorld
+      <span id="built"></span>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="data/producers.js"></script>
+  <script src="assets/producers.js"></script>
+</body>
+</html>
