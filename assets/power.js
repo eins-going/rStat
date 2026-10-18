@@ -1,5 +1,5 @@
 (() => {
-  // 농사용 전력 모니터 — 한전 농사용 전력(시군·월)으로 지역 농업활동을 살핀다 (data/power.js, scripts/build_power.py)
+  // 농사용 전기 모니터 — 한전 농사용 전기(시군·월)으로 지역 농업활동을 살핀다 (data/power.js, scripts/build_power.py)
   // 지역 체계·지도는 지역농업 통계(app.js)와 같다. 계절 차이가 커서 변화는 늘 전년·평년 같은 달과 비교한다.
   const P = window.AGRI_POWER;
   const T = window.AGRI_TOPO;
