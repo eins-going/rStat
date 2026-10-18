@@ -419,10 +419,14 @@
 
   // 월별 사용량: 선택 연도 · 전년 · 직전 5년 범위
   // animate: 처음 열 때와 지역·기준월을 바꿨을 때 선이 왼쪽에서 오른쪽으로 그려지게 (창 크기만 바뀌면 그냥 그린다)
-  const SWEEP = 1400;
+  // 처음 열 때는 패널이 자리를 잡으며 크기가 바뀌어 다시 그리게 되는데, 그때도 드러냄이 끊기지 않게 남은 시간만큼 이어 간다
+  const SWEEP = 1800;
   function drawBand(animate = true) {
     const k = state.key, i = state.i;
     const el = $("#chart-band");
+    const now = performance.now();
+    if (animate) el._sweep = now;
+    const done = el._sweep == null ? 1 : Math.min(1, (now - el._sweep) / SWEEP);
     const { svg, w, h } = frame(el, 150);
     const y0 = +M[i].slice(0, 4);
     const idx = (y, m) => M.indexOf(`${y}-${String(m).padStart(2, "0")}`);
@@ -446,21 +450,28 @@
       .attr("x", (d) => x(d)).attr("y", h - 4).attr("text-anchor", "middle").text((d) => d);
     // 범위 띠·전년·선택 연도 선을 한 묶음으로 잘라 두고, 자르는 상자를 왼쪽에서 오른쪽으로 넓힌다
     // 한 번 지나가는 짧은 드러냄이라 '움직임 줄이기' 설정과 상관없이 보인다 (한국은행 스냅샷처럼)
-    const sweep = animate;
+    const sweep = done < 1;
+    const ease = d3.easeSinInOut;
+    const x0 = m.l + (w - m.l) * ease(done);
     const clip = svg.append("defs").append("clipPath").attr("id", "pw-band-clip")
-      .append("rect").attr("x", 0).attr("y", 0).attr("height", h).attr("width", sweep ? m.l : w);
+      .append("rect").attr("x", 0).attr("y", 0).attr("height", h).attr("width", sweep ? x0 : w);
     const plot = svg.append("g").attr("clip-path", "url(#pw-band-clip)");
     const area = d3.area().defined((d) => d).x((d, j) => x(months[j])).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveMonotoneX);
     plot.append("path").attr("class", "pw-bandarea").attr("d", area(band));
     const line = d3.line().defined(ok).x((d, j) => x(months[j])).y((d) => y(d)).curve(d3.curveMonotoneX);
     plot.append("path").attr("class", "pw-prev").attr("d", line(prev));
     plot.append("path").attr("class", "pw-cur").attr("d", line(cur));
-    if (sweep) clip.transition().duration(SWEEP).ease(d3.easeCubicInOut).attr("width", w);
+    // 남은 구간도 같은 곡선을 따라가게 시간 t를 done→1로 돌린다
+    if (sweep) clip.transition().duration(SWEEP * (1 - done)).ease(d3.easeLinear)
+      .attrTween("width", () => (t) => m.l + (w - m.l) * ease(done + (1 - done) * t));
     const sm = +M[i].slice(5);
     if (ok(cur[sm - 1])) {
       // 선택한 달의 점은 선이 그 자리에 닿을 때 나타난다
       const dot = svg.append("circle").attr("class", "pw-dot").attr("cx", x(sm)).attr("cy", y(cur[sm - 1])).attr("r", 4);
-      if (sweep) dot.style("opacity", 0).transition().delay(SWEEP * Math.min(1, (x(sm) - m.l) / (w - m.l - m.r))).duration(200).style("opacity", 1);
+      // 점이 나타날 때: 드러냄 곡선이 그 자리(비율 f)에 닿는 시각
+      const f = Math.min(1, (x(sm) - m.l) / (w - m.l));
+      const tf = d3.bisector((t) => ease(t)).left(d3.range(0, 1.0001, 0.01), f) / 100;
+      if (sweep && tf > done) dot.style("opacity", 0).transition().delay(SWEEP * (tf - done)).duration(200).style("opacity", 1);
     }
     $("#band-key").innerHTML = `<span><i class="cur"></i>${y0}년</span><span><i class="prev"></i>${y0 - 1}년</span><span><i class="band"></i>${y0 - 5}~${y0 - 1}년 범위</span>`;
   }
