@@ -471,29 +471,11 @@ body {
 }
 .reset:hover { border-color: var(--accent); }
 
-/* 시군 화면에서 농경지 위성지도 열기 (assets/farm.js는 누를 때 불러온다) */
-.farm-open {
-  position: absolute;
-  left: 4px;
-  top: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent);
-  background: var(--panel-2);
-  border: 1px solid rgba(245, 165, 36, 0.55);
-  border-radius: 8px;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-.farm-open[hidden] { display: none; }
-.farm-open:hover { background: var(--accent-soft); }
-.farm-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.farm-open svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-.farm-open.loading { cursor: progress; opacity: 0.7; }
+/* 시군 화면: 통계 지도 ↔ 위성 지도 (위성은 assets/farm.js를 고를 때 불러온다) */
+.view-seg { position: absolute; left: 4px; top: 4px; z-index: 2; border: 1px solid var(--line); }
+.view-seg[hidden] { display: none; }
+.view-seg button { font-size: 12px; padding: 3px 10px; }
+.view-seg.loading { cursor: progress; opacity: 0.7; }
 
 /* 지도 확대·축소·이동 */
 .zoom-ctl {

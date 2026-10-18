@@ -1,5 +1,5 @@
-// 농경지 위성지도: VWorld 항공영상 위에 팜맵 필지를 그린다.
-// 시군 화면에서 버튼을 처음 누를 때만 Leaflet과 함께 불러온다 (app.js의 loadFarm).
+// 위성 지도: 가운데 지도 카드 안에서 VWorld 항공영상 위에 팜맵 필지를 그린다.
+// 시군에서 '위성 지도'를 처음 고를 때만 Leaflet과 함께 불러온다 (app.js의 loadFarm·setView).
 (() => {
   const API = "/api/farmmap";
   const KIND_COLOR = { 논: "#5cc8ff", 밭: "#ffd23f", 과수: "#ff7ab6", 시설: "#ff6a5c" };
@@ -10,6 +10,7 @@
   const nf1 = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 1 });
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const colorOf = (kind) => KIND_COLOR[kind] || OTHER;
+  const coarse = window.matchMedia("(pointer: coarse)");
 
   // 같은 요청은 한 번만 보낸다 (실패하면 다시 보낼 수 있게 지운다)
   const memo = new Map();
@@ -31,67 +32,49 @@
     return memo.get(qs);
   }
 
-  let root, map, bases, labels, regionLayer, mask, parcelLayer, marker, circle;
+  let H = null; // 지도 카드 안의 자리: { card, bar, map, info }
+  let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle;
   const ui = {};
   const drawn = new Map(); // 팜맵 ID → 그려 둔 필지 레이어
-  const st = { base: "sat", labels: true, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, opener: null, tileErrors: 0, tileLoads: 0 };
+  const st = { base: "sat", labels: true, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, full: false, tileErrors: 0, tileLoads: 0 };
 
   function busy(d) {
     pending += d;
-    root?.classList.toggle("fv-busy", pending > 0);
+    H?.map.classList.toggle("fv-busy", pending > 0);
   }
 
   const ICON = {
     search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
-    close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+    shrink: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
   };
 
-  function build() {
-    root = document.createElement("div");
-    root.className = "fv";
-    root.hidden = true;
-    root.setAttribute("role", "dialog");
-    root.setAttribute("aria-modal", "true");
-    root.setAttribute("aria-labelledby", "fv-title");
-    root.innerHTML = `
-      <div class="fv-box">
-        <header class="fv-bar">
-          <h2 id="fv-title"><span data-ui="region"></span> <span class="fv-sub">농경지 위성지도</span></h2>
-          <form class="fv-search" role="search" data-ui="form">
-            <input type="search" data-ui="q" placeholder="주소·지번·장소 검색" aria-label="주소, 지번, 장소 검색" autocomplete="off" enterkeyhint="search">
-            <button type="submit" aria-label="검색">${ICON.search}</button>
-            <ul class="fv-results" data-ui="results" hidden></ul>
-          </form>
-          <div class="fv-tools">
-            <span class="seg" role="group" aria-label="배경 지도">
-              <button type="button" data-base="sat" aria-pressed="true">위성</button><button type="button" data-base="map" aria-pressed="false">지도</button>
-            </span>
-            <label class="fv-check"><input type="checkbox" data-ui="labels" checked> 지명</label>
-            <button type="button" class="fv-close" data-ui="close" aria-label="위성지도 닫기">${ICON.close}</button>
-          </div>
-        </header>
-        <div class="fv-body">
-          <div class="fv-map" data-ui="map"></div>
-          <div class="fv-progress" aria-hidden="true"></div>
-          <p class="fv-hint" data-ui="hint" aria-live="polite"></p>
-          <aside class="fv-panel" data-ui="panel" hidden aria-label="필지 정보">
-            <section class="fv-sec" data-ui="parcel"></section>
-            <section class="fv-sec" data-ui="near"></section>
-          </aside>
-          <ul class="fv-legend" aria-label="팜맵 판독 분류">${KINDS.map((k) => `<li><i style="--c:${KIND_COLOR[k]}"></i>${k}</li>`).join("")}</ul>
-        </div>
-      </div>`;
-    document.body.append(root);
-    root.querySelectorAll("[data-ui]").forEach((el) => { ui[el.dataset.ui] = el; });
+  function build(hosts) {
+    H = hosts;
+    H.bar.innerHTML = `
+      <form class="fv-search" role="search" data-ui="form">
+        <input type="search" data-ui="q" placeholder="주소·지번·장소 검색" aria-label="주소, 지번, 장소 검색" autocomplete="off" enterkeyhint="search">
+        <button type="submit" aria-label="검색">${ICON.search}</button>
+        <ul class="fv-results" data-ui="results" hidden></ul>
+      </form>
+      <span class="seg fv-base" role="group" aria-label="배경 지도">
+        <button type="button" data-base="sat" aria-pressed="true">위성</button><button type="button" data-base="map" aria-pressed="false">지도</button>
+      </span>
+      <label class="fv-check"><input type="checkbox" data-ui="labels" checked> 지명</label>
+      <button type="button" class="fv-expand" data-ui="expand" aria-pressed="false" aria-label="크게 보기" title="크게 보기">${ICON.expand}</button>`;
+    H.map.innerHTML = `
+      <div class="fv-map" data-ui="map"></div>
+      <div class="fv-progress" aria-hidden="true"></div>
+      <p class="fv-hint" data-ui="hint" aria-live="polite" hidden></p>
+      <ul class="fv-legend" aria-label="팜맵 판독 분류">${KINDS.map((k) => `<li><i style="--c:${KIND_COLOR[k]}"></i>${k}</li>`).join("")}</ul>`;
+    H.info.innerHTML = `
+      <section class="fv-sec" data-ui="parcel" aria-label="필지 정보"></section>
+      <section class="fv-sec" data-ui="near" aria-label="주변 농경지"></section>`;
+    for (const el of [H.bar, H.map, H.info]) el.querySelectorAll("[data-ui]").forEach((x) => { ui[x.dataset.ui] = x; });
 
-    ui.close.addEventListener("click", close);
-    root.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape") return;
-      if (!ui.results.hidden) { ui.results.hidden = true; ui.q.focus(); return; }
-      close();
-    });
-    root.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
+    H.bar.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
     ui.labels.addEventListener("change", () => { st.labels = ui.labels.checked; syncLayers(); });
+    ui.expand.addEventListener("click", () => setFull(!st.full));
     ui.form.addEventListener("submit", (e) => { e.preventDefault(); search(); });
     ui.q.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown" && !ui.results.hidden) { e.preventDefault(); ui.results.querySelector("button")?.focus(); }
@@ -104,6 +87,13 @@
       (i < 0 ? ui.q : btns[Math.min(i, btns.length - 1)]).focus();
     });
     document.addEventListener("pointerdown", (e) => { if (!ui.form.contains(e.target)) ui.results.hidden = true; });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || !H.card.classList.contains("sat-mode")) return;
+      if (!ui.results.hidden) { ui.results.hidden = true; ui.q.focus(); }
+      else if (st.full) setFull(false);
+    });
+    coarse.addEventListener("change", syncDragging);
+    idle();
   }
 
   function initMap(key) {
@@ -122,7 +112,7 @@
       zoomControl: false,
     });
     L.control.zoom({ position: "bottomright", zoomInTitle: "확대", zoomOutTitle: "축소" }).addTo(map);
-    map.attributionControl.setPrefix(false).addAttribution("영상: VWorld(국토교통부) · 필지: 팜맵(농림수산식품교육문화정보원)");
+    map.attributionControl.setPrefix(false).addAttribution("영상 VWorld · 필지 팜맵(농정원)");
     // 인증키의 서비스 URL이 맞지 않으면 타일이 모두 실패한다 (바다 등 일부 실패는 정상)
     Object.values(bases).forEach((t) => t
       .on("tileload", () => { st.tileLoads++; })
@@ -134,25 +124,44 @@
     marker = L.circleMarker([0, 0], { radius: 5, color: "#fff", weight: 2, fillColor: "#f5a524", fillOpacity: 1, interactive: false });
     circle = L.circle([0, 0], { radius: 500, color: "#fff", weight: 1.5, opacity: 0.8, dashArray: "6 6", fill: false, interactive: false });
     syncLayers();
+    syncDragging();
     map.on("click", (e) => {
       if (map.getZoom() < QUERY_ZOOM) { map.setView(e.latlng, Math.min(17, Math.max(QUERY_ZOOM + 1, map.getZoom() + 3))); return; }
       inspect(e.latlng);
     });
-    map.on("zoomend", () => { syncMask(); syncHint(); });
+    map.on("zoomend", () => { syncMask(); if (!drawn.size && !st.nearAt) idle(); });
   }
 
   function setBase(b) {
     st.base = b;
-    root.querySelectorAll("[data-base]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.base === b));
+    H.bar.querySelectorAll("[data-base]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.base === b));
     syncLayers();
   }
 
   function syncLayers() {
     for (const [k, t] of Object.entries(bases)) (k === st.base ? t.addTo(map) : t.remove());
     // 일반 지도에는 지명이 이미 있으므로 위성일 때만 지명 층을 얹는다
-    const showLabels = st.base === "sat" && st.labels;
-    if (showLabels) labels.addTo(map); else labels.remove();
+    if (st.base === "sat" && st.labels) labels.addTo(map); else labels.remove();
     ui.labels.disabled = st.base !== "sat";
+  }
+
+  // 터치 화면에서 카드 안에 있을 때는 한 손가락으로 페이지를 스크롤할 수 있게 지도 끌기를 끈다 (두 손가락으로 이동·확대)
+  function syncDragging() {
+    if (!map) return;
+    if (coarse.matches && !st.full) map.dragging.disable(); else map.dragging.enable();
+  }
+
+  // ---------- 크게 보기 ----------
+  function setFull(on) {
+    st.full = on;
+    H.card.classList.toggle("sat-full", on);
+    document.documentElement.classList.toggle("fv-lock", on);
+    ui.expand.setAttribute("aria-pressed", on);
+    ui.expand.setAttribute("aria-label", on ? "작게 보기" : "크게 보기");
+    ui.expand.title = on ? "작게 보기 (Esc)" : "크게 보기";
+    ui.expand.innerHTML = on ? ICON.shrink : ICON.expand;
+    syncDragging();
+    requestAnimationFrame(() => map?.invalidateSize());
   }
 
   // ---------- 시군 경계 ----------
@@ -165,7 +174,7 @@
       stroke: false, fillColor: "#0b0c0f", fillOpacity: 0.28, interactive: false,
     }).addTo(regionLayer);
     const outline = L.polygon(polys.map((p) => p.map(flip)), { color: "#f5a524", weight: 2, fill: false, interactive: false }).addTo(regionLayer);
-    map.fitBounds(outline.getBounds(), { padding: [24, 24], animate: false });
+    map.fitBounds(outline.getBounds(), { padding: [16, 16], animate: false });
     syncMask();
   }
 
@@ -181,11 +190,13 @@
     ui.hint.classList.toggle("warn", warn);
   }
 
-  function syncHint() {
-    if (ui.hint.classList.contains("warn")) return;
-    if (map.getZoom() < QUERY_ZOOM) hint("지도를 누르거나 확대하면 필지를 고를 수 있습니다");
-    else if (!drawn.size) hint("논·밭·하우스를 누르면 팜맵 필지 정보가 나옵니다");
-    else hint("");
+  // 아무것도 고르지 않았을 때 정보 칸의 안내
+  function idle() {
+    const far = !map || map.getZoom() < QUERY_ZOOM;
+    ui.parcel.innerHTML = `
+      <div class="fv-sec-head"><h3>팜맵 필지</h3></div>
+      <p class="fv-empty"><b>${far ? "지도를 누르거나 확대해 농경지를 찾아보세요" : "논·밭·하우스를 누르면 필지 정보가 나옵니다"}</b>위쪽 검색창에서 주소·지번으로 바로 찾을 수도 있습니다.${coarse.matches ? " 카드 안에서는 두 손가락으로 지도를 움직입니다." : ""}</p>`;
+    ui.near.innerHTML = "";
   }
 
   // ---------- 필지 ----------
@@ -222,8 +233,7 @@
   async function inspect(ll, pnu = "") {
     const my = ++st.seq;
     marker.setLatLng(ll).addTo(map);
-    showPanel();
-    ui.parcel.innerHTML = `<p class="fv-loading">필지를 찾는 중…</p>`;
+    ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 필지</h3></div><p class="fv-loading">필지를 찾는 중…</p>`;
     loadNear(ll);
     const lat = ll.lat.toFixed(6), lon = ll.lng.toFixed(6);
     try {
@@ -233,19 +243,20 @@
       if (my !== st.seq) return;
       drawParcels(features);
       select(features);
-      syncHint();
     } catch (err) {
-      if (my === st.seq) ui.parcel.innerHTML = `<p class="fv-error">${esc(err.message)}</p>`;
+      if (my === st.seq) ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 필지</h3></div><p class="fv-error">${esc(err.message)}</p>`;
     }
   }
 
-  const area = (m2) => `<b>${nf.format(m2)}</b>㎡ <span>${nf.format(Math.round(m2 / 3.3058))}평 · ${nf1.format(m2 / 10000)}ha</span>`;
+  const nf2 = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
+  const ha = (m2) => (m2 < 10000 ? nf2 : nf1).format(m2 / 10000);
+  const area = (m2) => `<b>${nf.format(m2)}</b>㎡ <span>${nf.format(Math.round(m2 / 3.3058))}평 · ${ha(m2)}ha</span>`;
 
   function parcelCard(p) {
     const changed = p.change && p.change !== "유지";
     return `
       <article class="fv-parcel">
-        <div class="fv-p-head"><span class="fv-kind" style="--c:${colorOf(p.kind)}">${esc(p.kind || "기타")}</span><h3>${esc(p.emd)} ${esc(p.lnm)}</h3></div>
+        <div class="fv-p-head"><span class="fv-kind" style="--c:${colorOf(p.kind)}">${esc(p.kind || "기타")}</span><h4>${esc(p.emd)} ${esc(p.lnm)}</h4></div>
         <p class="fv-area">${area(p.area)}</p>
         <dl>
           <div><dt>판독 영상</dt><dd>${esc(p.image)}${p.date ? ` · ${esc(p.date)}` : ""}</dd></div>
@@ -267,25 +278,19 @@
       const sum = features.reduce((s, f) => s + f.properties.area, 0);
       body = `<p class="fv-multi">이 지번에 걸친 필지 <b>${features.length}</b>개 · 합계 ${area(sum)}</p>${features.map((f) => parcelCard(f.properties)).join("")}`;
     }
-    ui.parcel.innerHTML = `${head}${body}<p class="fv-note">팜맵은 영상 판독으로 구획한 참고 자료로, 지적도의 법적 경계와 다를 수 있습니다.</p>`;
+    ui.parcel.innerHTML = `${head}${body}<p class="fv-note" title="팜맵은 항공·위성영상을 판독해 실제 경작지를 구획한 지도로, 법적 효력이 없습니다.">영상 판독으로 구획한 참고 자료로, 지적도의 법적 경계와 다를 수 있습니다.</p>`;
     ui.parcel.querySelector('[data-act="clear"]').addEventListener("click", clearAll);
   }
 
   function clearAll() {
     st.seq++;
     st.nearSeq++;
-    parcelLayer.clearLayers();
+    parcelLayer?.clearLayers();
     drawn.clear();
-    marker.remove();
-    circle.remove();
+    marker?.remove();
+    circle?.remove();
     st.nearAt = null;
-    ui.panel.hidden = true;
-    syncHint();
-  }
-
-  function showPanel() {
-    ui.panel.hidden = false;
-    hint("");
+    idle();
   }
 
   // ---------- 주변 농경지 구성 ----------
@@ -321,9 +326,9 @@
       }).join("");
       const emd = d.emd.map((e) => e.name).join("·");
       body = `
-        <p class="fv-total"><b>${nf.format(d.total)}</b>개 필지 <span>반경 ${d.radius === 1000 ? "1km" : "500m"}</span></p>
+        <p class="fv-total"><b>${nf.format(d.total)}</b>개 필지 <span>반경 ${d.radius === 1000 ? "1km" : "500m"}${emd ? ` · ${esc(emd)}` : ""}</span></p>
         <div class="fv-bars">${rows}</div>
-        <p class="fv-note">필지 개수 기준(면적 아님)${d.counted < d.total ? ` · 앞 ${nf.format(d.counted)}개만 집계` : ""} · 지난 판독 이후 바뀐 필지 ${nf.format(d.changed)}개${emd ? ` · ${esc(emd)}` : ""}</p>`;
+        <p class="fv-note">필지 개수 기준(면적 아님)${d.counted < d.total ? ` · 앞 ${nf.format(d.counted)}개만 집계` : ""} · 지난 판독 이후 바뀐 필지 ${nf.format(d.changed)}개</p>`;
     }
     ui.near.innerHTML = `<div class="fv-sec-head"><h3>주변 농경지</h3>${seg}</div>${body}`;
     ui.near.querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => {
@@ -335,7 +340,7 @@
   // ---------- 검색 ----------
   async function search() {
     const q = ui.q.value.trim();
-    if (q.length < 2) return;
+    if (q.length < 2 || !map) return;
     ui.results.hidden = false;
     ui.results.innerHTML = `<li class="fv-muted">찾는 중…</li>`;
     try {
@@ -348,10 +353,7 @@
         const r = results[+b.dataset.i];
         ui.results.hidden = true;
         const ll = L.latLng(r.ll[1], r.ll[0]);
-        // 좁은 화면에서는 아래 정보 시트에 가리지 않게 찾은 곳을 위쪽에 둔다
-        const narrow = ui.map.clientWidth <= 760;
-        map.setView(ll, 18, { animate: !narrow && map.getCenter().distanceTo(ll) < 15000 });
-        if (narrow) map.panBy([0, ui.map.clientHeight * 0.22], { animate: false });
+        map.setView(ll, 18, { animate: map.getCenter().distanceTo(ll) < 15000 });
         inspect(ll, r.pnu);
       }));
     } catch (err) {
@@ -359,21 +361,23 @@
     }
   }
 
-  // ---------- 열기·닫기 ----------
-  async function open({ title, geometry, opener }) {
-    if (!root) build();
-    st.opener = opener || document.activeElement;
-    ui.region.textContent = title;
-    root.hidden = false;
-    document.documentElement.classList.add("fv-open");
-    ui.close.focus();
+  // ---------- 보이기·숨기기 ----------
+  function toggleHosts(on) {
+    H.card.classList.toggle("sat-mode", on);
+    H.bar.hidden = H.map.hidden = H.info.hidden = !on;
+  }
+
+  async function show(hosts, { title, geometry }) {
+    if (!H) build(hosts);
+    toggleHosts(true);
     if (!map) {
-      hint("위성지도를 불러오는 중…");
+      hint("위성 지도를 불러오는 중…");
       try {
         const cfg = await api({ op: "config" });
-        initMap(cfg.vworld);
+        if (!map) initMap(cfg.vworld);
+        hint("");
       } catch (err) {
-        hint(`위성지도를 열 수 없습니다: ${err.message}`, true);
+        hint(`위성 지도를 열 수 없습니다: ${err.message}`, true);
         return;
       }
     }
@@ -383,14 +387,14 @@
       st.region = title;
       setRegion(geometry);
     }
-    syncHint();
   }
 
-  function close() {
-    root.hidden = true;
-    document.documentElement.classList.remove("fv-open");
-    st.opener?.focus();
+  function hide() {
+    if (!H) return;
+    if (st.full) setFull(false);
+    ui.results.hidden = true;
+    toggleHosts(false);
   }
 
-  window.FarmView = { open, close };
+  window.FarmView = { show, hide };
 })();

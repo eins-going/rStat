@@ -200,7 +200,7 @@
   ];
   const withUnit = (m, v) => `${m.fmt(v)}${m.unit && m.unit !== "%" ? ` ${m.unit}` : ""}`;
 
-  const state = { key: NATION, metric: METRICS[0], rankScope: "local", econGroup: "영농형태" };
+  const state = { key: NATION, metric: METRICS[0], rankScope: "local", econGroup: "영농형태", view: "stats" };
 
   // ---------- 선택 상자 ----------
   const sidoSel = $("#sido");
@@ -220,17 +220,17 @@
     const reset = $("#reset");
     reset.hidden = state.key === NATION;
     reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체 보기` : "전국 보기";
-    $("#farm-open").hidden = level(state.key) !== 2;
+    $("#view-seg").hidden = level(state.key) !== 2;
     if (level(state.key) === 2) warmFarm();
   }
 
-  // ---------- 농경지 위성지도 (시군에서만, 처음 누를 때 Leaflet과 함께 불러온다) ----------
+  // ---------- 위성 지도 (시군에서만, 처음 고를 때 Leaflet과 함께 불러온다) ----------
   const FARM_CSS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css", "assets/farm.css"];
   const FARM_JS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js", "assets/farm.js"];
   let farmWarm = false;
   let farmReady = null;
 
-  // 시군을 처음 고르면 브라우저가 쉴 때 미리 받아 두고 서버 함수도 깨워 둔다 (누르면 바로 열리게)
+  // 시군을 처음 고르면 브라우저가 쉴 때 미리 받아 두고 서버 함수도 깨워 둔다 (고르면 바로 열리게)
   function warmFarm() {
     if (farmWarm) return;
     farmWarm = true;
@@ -264,29 +264,39 @@
     return farmReady;
   }
 
-  $("#farm-open").addEventListener("click", async (e) => {
-    const btn = e.currentTarget;
+  const viewSeg = $("#view-seg");
+  viewSeg.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+  // 통계 지도 ↔ 위성 지도. 위성은 시군에서만 고를 수 있고, 다른 시군을 고르면 그 시군으로 옮겨 간다
+  async function setView(v) {
+    if (level(state.key) !== 2) v = "stats";
+    state.view = v;
+    viewSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === v));
+    syncHash();
+    if (v === "stats") { window.FarmView?.hide(); return; }
     const k = state.key;
-    if (level(k) !== 2 || btn.classList.contains("loading")) return;
-    btn.classList.add("loading");
+    viewSeg.classList.add("loading");
     try {
       await loadFarm();
-      window.FarmView.open({
-        title: `${T.sidos[sidoOf(k)].short} ${label(k)}`,
-        geometry: unitFeatures.find((f) => f.properties.key === k).geometry,
-        opener: btn,
-      });
-      btn.querySelector("span").textContent = "위성지도로 농경지 보기";
+      if (state.view !== "sat" || state.key !== k) return; // 불러오는 사이 다른 것을 골랐다
+      viewSeg.title = "";
+      window.FarmView.show(
+        { card: $("#map-card"), bar: $("#sat-bar"), map: $("#sat-map"), info: $("#sat-info") },
+        { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, geometry: unitFeatures.find((f) => f.properties.key === k).geometry },
+      );
     } catch {
-      btn.querySelector("span").textContent = "불러오지 못했습니다 · 다시 누르기";
+      viewSeg.title = "위성 지도를 불러오지 못했습니다. 다시 눌러 주세요.";
+      if (state.key === k) setView("stats");
     } finally {
-      btn.classList.remove("loading");
+      viewSeg.classList.remove("loading");
     }
-  });
+  }
 
+  // #경기도 · #경기도/가평군 · 위성 지도면 #경기도/가평군/위성
   function toHash(k) {
     if (k === NATION) return "";
-    return `#${encodeURIComponent(level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}`)}`;
+    const path = level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}${state.view === "sat" ? "/위성" : ""}`;
+    return `#${encodeURIComponent(path)}`;
   }
 
   function fromHash() {
@@ -297,12 +307,18 @@
     return u || s;
   }
 
+  const viewFromHash = () => (decodeURIComponent(location.hash.slice(1)).split("/")[2] === "위성" ? "sat" : "stats");
+
+  function syncHash() {
+    const hash = toHash(state.key);
+    if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname + location.search);
+  }
+
   function select(k) {
     state.key = k;
-    const hash = toHash(k);
-    if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname + location.search);
     syncControls();
     render();
+    setView(state.view);
   }
 
   // ---------- 제목 ----------
@@ -1067,13 +1083,17 @@
     if (open) $("#econ-detail").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
   });
   drawMap();
+  state.view = viewFromHash();
   select(fromHash());
   // ?m=budget 처럼 지표를 지정해 열 수 있다
   // ?rank=nation 이면 전국 기준 순위로 연다
   if (new URLSearchParams(location.search).get("rank") === "nation") { state.rankScope = "nation"; renderRank(); }
   const initial = METRICS.find((m) => m.key === new URLSearchParams(location.search).get("m"));
   if (initial) setMetric(initial);
-  window.addEventListener("hashchange", () => { const k = fromHash(); if (k !== state.key) select(k); });
+  window.addEventListener("hashchange", () => {
+    const k = fromHash(), v = viewFromHash();
+    if (k !== state.key) { state.view = v; select(k); } else if (v !== state.view) setView(v);
+  });
 
   // 지도 영역 크기가 바뀌면 (창 크기 변경, 한 화면 모드 전환 등) 지도와 카드를 다시 그린다
   let resizeT;

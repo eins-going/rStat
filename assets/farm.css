@@ -1,38 +1,19 @@
-/* 농경지 위성지도 (assets/farm.js) — 처음 열 때만 불러온다 */
-html.fv-open, html.fv-open body { overflow: hidden; }
+/* 위성 지도 (assets/farm.js) — 지도 카드 안에 붙는다. 처음 고를 때만 불러온다 */
 
-.fv {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(8, 9, 12, 0.72);
-  display: flex;
-  padding: 16px;
-}
-.fv[hidden] { display: none; }
-.fv-box {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-}
+/* 위성 모드: 통계 지도의 지표 줄·범례·순위 자리를 검색 줄과 필지 정보가 대신한다 */
+.sat-mode .chipbar, .sat-mode .legend, .sat-mode .rank, .sat-mode .zoom-ctl, .sat-mode .tip { display: none; }
+.sat-mode #map { visibility: hidden; } /* 자리(높이)는 그대로 둔다 */
+.sat-mode .reset { z-index: 2; }
 
-/* 머리 줄: 제목 · 검색 · 도구 */
-.fv-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px 10px 16px;
-  border-bottom: 1px solid var(--line);
-}
-.fv-bar h2 { margin: 0; font-size: 15px; font-weight: 700; white-space: nowrap; }
-.fv-sub { color: var(--muted); font-weight: 500; }
-.fv-search { position: relative; flex: 1; max-width: 420px; display: flex; margin-left: auto; }
+.sat-bar { display: flex; align-items: center; gap: 10px; }
+.sat-bar[hidden] { display: none; }
+.sat-map { position: absolute; inset: 0; z-index: 1; border-radius: 10px; overflow: hidden; background: #0b0c0f; }
+.sat-map[hidden] { display: none; }
+.sat-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px; }
+.sat-info[hidden] { display: none; }
+
+/* 검색 */
+.fv-search { position: relative; flex: 1; min-width: 0; display: flex; }
 .fv-search input {
   flex: 1;
   min-width: 0;
@@ -43,13 +24,13 @@ html.fv-open, html.fv-open body { overflow: hidden; }
   border: 1px solid var(--line);
   border-right: 0;
   border-radius: 8px 0 0 8px;
-  padding: 6px 10px;
+  padding: 5px 10px;
 }
 .fv-search input:focus { outline: none; border-color: var(--accent); }
 .fv-search button[type="submit"] {
   display: grid;
   place-items: center;
-  width: 36px;
+  width: 34px;
   color: var(--muted);
   background: var(--panel-2);
   border: 1px solid var(--line);
@@ -57,7 +38,7 @@ html.fv-open, html.fv-open body { overflow: hidden; }
   cursor: pointer;
 }
 .fv-search button[type="submit"]:hover { color: var(--accent); }
-.fv-search svg, .fv-close svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.fv-search svg, .fv-expand svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fv-results {
   position: absolute;
   top: calc(100% + 6px);
@@ -95,73 +76,74 @@ html.fv-open, html.fv-open body { overflow: hidden; }
 .fv-r-sub { font-size: 11.5px; color: var(--faint); }
 .fv-muted { padding: 8px; font-size: 12.5px; color: var(--muted); }
 
-.fv-tools { display: flex; align-items: center; gap: 10px; }
-.fv-tools .seg button { font-size: 12px; padding: 3px 10px; }
+.fv-base button { font-size: 12px; padding: 3px 10px; }
 .fv-check { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .fv-check input { accent-color: var(--accent); margin: 0; }
 .fv-check:has(input:disabled) { opacity: 0.4; cursor: default; }
-.fv-close {
+.fv-expand {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  flex: none;
+  width: 30px;
+  height: 30px;
   color: var(--muted);
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
 }
-.fv-close:hover { color: var(--text); border-color: var(--accent); }
-.fv-close:focus-visible, .fv-search button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fv-expand:hover { color: var(--text); border-color: var(--accent); }
+.fv-expand[aria-pressed="true"] { color: var(--accent); }
+.fv-expand:focus-visible, .fv-search button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* 지도 */
-.fv-body { position: relative; flex: 1; min-height: 0; }
-.fv-map { position: absolute; inset: 0; background: #0b0c0f; }
-.fv-map.leaflet-container { font: inherit; cursor: crosshair; }
+.fv-map { position: absolute; inset: 0; }
+.fv-map.leaflet-container { font: inherit; background: #0b0c0f; cursor: crosshair; }
 .fv-map .leaflet-interactive { cursor: pointer; }
-.fv-map .fv-sat { filter: brightness(1.12) contrast(1.06) saturate(1.08); } /* 겨울 항공영상이 어둡게 보이는 것을 살짝 보정 */
 .fv-map .leaflet-dragging .leaflet-grab { cursor: grabbing; }
+.fv-map .fv-sat { filter: brightness(1.12) contrast(1.06) saturate(1.08); } /* 겨울 항공영상이 어둡게 보이는 것을 살짝 보정 */
 .fv-map .leaflet-control-zoom { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: none; }
-.fv-map .leaflet-control-zoom a { width: 32px; height: 32px; line-height: 30px; color: var(--text); background: var(--panel-2); border-color: var(--line); }
+.fv-map .leaflet-control-zoom a { width: 30px; height: 30px; line-height: 28px; color: var(--text); background: var(--panel-2); border-color: var(--line); }
 .fv-map .leaflet-control-zoom a:hover { color: var(--accent); background: var(--panel); }
 .fv-map .leaflet-control-zoom a.leaflet-disabled { color: var(--faint); background: var(--panel-2); }
-.fv-map .leaflet-control-attribution { font-size: 10.5px; color: #c9cdd4; background: rgba(13, 14, 18, 0.7); }
+.fv-map .leaflet-control-attribution { font-size: 10px; color: #c9cdd4; background: rgba(13, 14, 18, 0.7); }
 
 /* 불러오는 동안 지도 위 가는 띠 */
-.fv-progress { position: absolute; left: 0; right: 0; top: 0; height: 2px; z-index: 900; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+.fv-progress { position: absolute; left: 0; right: 0; top: 0; height: 2px; z-index: 1001; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
 .fv-progress::before { content: ""; position: absolute; inset: 0; width: 40%; background: var(--accent); animation: fv-slide 1s ease-in-out infinite; }
 .fv-busy .fv-progress { opacity: 1; }
 @keyframes fv-slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 .fv-hint {
   position: absolute;
-  top: 12px;
+  top: 44px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 800;
+  z-index: 1001;
   margin: 0;
+  width: max-content;
   max-width: calc(100% - 24px);
   padding: 6px 12px;
   font-size: 12.5px;
   color: var(--text);
-  background: rgba(13, 14, 18, 0.85);
+  background: rgba(13, 14, 18, 0.88);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 10px;
   pointer-events: none;
   text-align: center;
 }
 .fv-hint[hidden] { display: none; }
-.fv-hint.warn { color: #ffd2cd; border-color: rgba(255, 107, 94, 0.6); border-radius: 10px; }
+.fv-hint.warn { color: #ffd2cd; border-color: rgba(255, 107, 94, 0.6); }
 
 .fv-legend {
   position: absolute;
-  left: 10px;
-  bottom: 22px;
-  z-index: 800;
+  left: 8px;
+  bottom: 20px;
+  z-index: 1001;
   display: flex;
-  gap: 10px;
+  gap: 9px;
   margin: 0;
-  padding: 5px 10px;
+  padding: 4px 9px;
   list-style: none;
   font-size: 11.5px;
   color: var(--text);
@@ -173,84 +155,81 @@ html.fv-open, html.fv-open body { overflow: hidden; }
 .fv-legend li { display: flex; align-items: center; gap: 5px; }
 .fv-legend i { width: 12px; height: 10px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 30%, transparent); border-radius: 2px; }
 
-/* 정보 판 */
-.fv-panel {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  bottom: 12px;
-  z-index: 1001; /* Leaflet 컨트롤(1000) 위 */
-  width: 320px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: calc(100% - 110px); /* 오른쪽 아래 확대 버튼은 가리지 않는다 */
-  height: max-content;
-}
-.fv-panel[hidden] { display: none; }
-.fv-sec {
-  background: rgba(20, 22, 27, 0.94);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 11px 13px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-}
+/* 정보 칸 */
+.fv-sec { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; }
 .fv-sec:empty { display: none; }
-.fv-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.fv-sec-head h3 { margin: 0; font-size: 13.5px; }
+.fv-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.fv-sec-head h3 { margin: 0; font-size: 13px; }
 .fv-link { font: inherit; font-size: 12px; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .fv-link:hover { color: var(--accent); }
 
-.fv-parcel + .fv-parcel { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.fv-parcel + .fv-parcel { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .fv-p-head { display: flex; align-items: center; gap: 8px; }
-.fv-p-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
-.fv-kind { flex: none; font-size: 12px; font-weight: 700; color: #111; background: var(--c); border-radius: 6px; padding: 1px 8px; }
-.fv-area { margin: 6px 0 8px; font-size: 13px; color: var(--muted); }
-.fv-area b { font-size: 20px; color: var(--text); font-variant-numeric: tabular-nums; }
+.fv-p-head h4 { margin: 0; font-size: 14px; font-weight: 700; }
+.fv-kind { flex: none; font-size: 12px; font-weight: 700; color: #111; background: var(--c); border-radius: 6px; padding: 0 8px; }
+.fv-area { margin: 4px 0 6px; font-size: 12.5px; color: var(--muted); }
+.fv-area b { font-size: 19px; color: var(--text); font-variant-numeric: tabular-nums; }
 .fv-area span { margin-left: 4px; }
-.fv-multi { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); }
-.fv-multi .fv-area, .fv-multi b { font-variant-numeric: tabular-nums; }
-.fv-parcel dl { margin: 0; display: grid; gap: 3px; font-size: 12.5px; }
-.fv-parcel dl div { display: grid; grid-template-columns: 64px 1fr; gap: 8px; }
+.fv-multi { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.fv-multi b { font-variant-numeric: tabular-nums; }
+.fv-parcel dl { margin: 0; display: grid; gap: 2px; font-size: 12px; }
+.fv-parcel dl div { display: grid; grid-template-columns: 60px 1fr; gap: 8px; }
 .fv-parcel dt { color: var(--faint); }
-.fv-parcel dd { margin: 0; color: var(--text); }
+.fv-parcel dd { margin: 0; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
 .fv-parcel dd span { color: var(--muted); }
 .fv-changed { color: var(--accent) !important; }
 .fv-mono { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
-.fv-note { margin: 8px 0 0; font-size: 11.5px; color: var(--faint); line-height: 1.45; }
+.fv-note { margin: 6px 0 0; font-size: 11px; color: var(--faint); line-height: 1.45; }
 .fv-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
-.fv-empty b { display: block; color: var(--text); font-size: 13.5px; margin-bottom: 2px; }
+.fv-empty b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
 .fv-loading { margin: 0; font-size: 12.5px; color: var(--muted); }
 .fv-error { margin: 0; font-size: 12.5px; color: #ffb4ab; }
 
 .fv-total { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); }
 .fv-total b { font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
 .fv-total span { margin-left: 4px; color: var(--faint); }
-.fv-bars { display: grid; gap: 4px; }
-.fv-bar-row { display: grid; grid-template-columns: 30px 1fr 40px 40px; align-items: center; gap: 8px; font-size: 12.5px; }
+.fv-bars { display: grid; gap: 3px; }
+.fv-bar-row { display: grid; grid-template-columns: 30px 1fr 40px 44px; align-items: center; gap: 8px; font-size: 12px; }
 .fv-bar-row b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .fv-bar-row em { text-align: right; font-style: normal; color: var(--faint); font-variant-numeric: tabular-nums; }
 .fv-track { height: 8px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
 .fv-track i { display: block; height: 100%; background: var(--c); border-radius: 999px; }
 
-/* 좁은 화면: 꽉 채우고, 정보 판은 아래에서 올라오는 시트로 */
-@media (max-width: 760px) {
-  .fv { padding: 0; }
-  .fv-box { border-radius: 0; border: 0; }
-  .fv-bar { flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
-  .fv-bar h2 { flex: 1; font-size: 14px; }
-  .fv-tools { gap: 8px; }
-  .fv-search { order: 3; flex-basis: 100%; max-width: none; margin: 0; }
-  .fv-search input { font-size: 16px; } /* iOS가 입력할 때 확대하지 않게 */
-  .fv-panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 46%; }
-  .fv-map .leaflet-control-zoom { display: none; } /* 손가락으로 확대한다 */
-  .fv-legend { bottom: auto; top: 50px; left: 8px; }
-  .fv-hint { top: 10px; }
+/* 한 화면 모드: 정보 칸은 순위 자리만큼만 쓰고 지도가 남는 높이를 갖는다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .sat-info { flex: none; max-height: 34%; overflow-y: auto; scrollbar-width: thin; margin-top: 6px; }
+  .sat-bar { margin-bottom: 0; }
 }
-@media (max-width: 420px) {
-  .fv-sub { display: none; }
+
+/* 크게 보기: 지도 카드를 화면 가득 펼친다 (오른쪽에 정보 칸) */
+html.fv-lock, html.fv-lock body { overflow: hidden; }
+.map-card.sat-full {
+  position: fixed;
+  inset: 16px;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 100vmax rgba(8, 9, 12, 0.72), 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+.sat-full .sat-bar { grid-column: 1 / -1; }
+.sat-full .map-wrap { grid-column: 1; grid-row: 2; margin: 0; min-height: 0; height: auto; }
+.sat-full #map { display: none; }
+.sat-full .sat-info { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; margin: 0; max-height: none; overflow-y: auto; }
+
+@media (max-width: 760px) {
+  .sat-bar { flex-wrap: wrap; gap: 8px; }
+  .fv-search { flex-basis: 100%; }
+  .fv-search input { font-size: 16px; } /* iOS가 입력할 때 확대하지 않게 */
+  .fv-map .leaflet-control-zoom { display: none; } /* 손가락으로 확대한다 */
+  .map-card.sat-full { inset: 0; border-radius: 0; border: 0; padding: 8px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .sat-full .sat-info { grid-column: 1; grid-row: 3; max-height: 40vh; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fv-progress::before { animation-duration: 3s; }
