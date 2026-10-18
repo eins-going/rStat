@@ -1,4 +1,4 @@
-// 유통시설 지도: data/facilities.js(scripts/build_facilities.py)의 미곡처리장·산지유통센터·로컬푸드 직매장·6차산업 인증 사업자를 점으로 그린다.
+// 유통시설 지도: data/facilities.js(scripts/build_facilities.py)의 유통시설·6차산업 사업자·과수 생산단지·수출단지를 점으로 그린다.
 // 색은 시설 종류, 채운 점은 건물 위치(도로명·지번·좌표·이름 검색), 속이 빈 원은 행정구역 중심.
 // 같은 좌표에 놓인 시설은 한 점으로 묶고, 점을 누르면 왼쪽에 그 자리의 시설 정보가 나온다.
 (() => {
@@ -7,7 +7,8 @@
   const nf = new Intl.NumberFormat("ko-KR");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  const COLORS = ["#f5a524", "#5fb37c", "#ff7ab6", "#6cb8ff"]; // 미곡처리장 · 산지유통센터 · 로컬푸드 직매장 · 6차산업 인증 사업자
+  // 미곡처리장 · 산지유통센터 · 로컬푸드 직매장 · 6차산업 인증 사업자 · 과수 생산단지 · 수출전문농가단지 · 수출검역단지
+  const COLORS = ["#f5a524", "#5fb37c", "#ff7ab6", "#6cb8ff", "#ff5d5d", "#c6e05a", "#b28dff"];
   const SIX = D.kinds.indexOf("6차산업 인증 사업자");
   const EXACT = new Set(["도로명", "지번", "좌표", "상호"]);
   const PREC_NOTE = {
@@ -120,7 +121,7 @@
   }));
 
   $("#legend").innerHTML = D.kinds.map((name, k) => `<span><i style="background:${COLORS[k]}"></i>${esc(name)}</span>`).join("")
-    + `<span class="ring"><i></i>지역 중심(주소 불완전)</span>`;
+    + `<span class="ring"><i></i>지역 중심(주소가 읍면·시군까지)</span>`;
 
   // ---------- 검색 ----------
   let qTimer;
