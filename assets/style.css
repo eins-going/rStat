@@ -967,18 +967,20 @@ body {
 .chart-tip b { color: var(--text); margin-right: 6px; }
 .chart-tip[hidden] { display: none; }
 
-/* 만든이 버튼과 창 (assets/about.js) */
-.about-btn { height: 34px; box-sizing: border-box; padding: 0 12px; font: inherit; font-size: 12.5px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; white-space: nowrap; }
+/* 만든이 버튼 (assets/about.js) — 누르면 만든이 화면(about.html) */
+.about-btn { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; padding: 0 12px; font-size: 12.5px; color: var(--muted); text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; white-space: nowrap; }
 .about-btn:hover { color: var(--text); border-color: #4a4f59; }
 .about-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.about-pop { position: fixed; inset: auto; margin: 0; padding: 14px 18px 14px 14px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
-.about-pop:popover-open { display: flex; align-items: center; gap: 14px; }
-.about-pop img { flex: none; width: 76px; height: 76px; border-radius: 50%; box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px rgba(245, 165, 36, 0.75); } /* 강조색 고리 */
-.about-pop dl { display: grid; grid-template-columns: auto auto; gap: 6px 14px; margin: 0; font-size: 12.5px; }
-.about-pop dt { color: var(--faint); }
-.about-pop dd { margin: 0; font-weight: 600; }
-.about-pop a { color: var(--accent); text-decoration: none; }
-.about-pop a:hover { text-decoration: underline; }
+.about-btn[aria-current="page"] { color: #14161b; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+
+/* 만든이 화면 */
+.ab-main { flex: 1; display: grid; place-items: center; min-height: 60vh; padding: 24px 0 48px; }
+.ab-card { display: flex; flex-direction: column; align-items: center; gap: 18px; margin: 0; text-align: center; }
+.ab-card img { width: 168px; height: 168px; border-radius: 50%; box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px rgba(245, 165, 36, 0.75); } /* 강조색 고리 */
+.ab-card figcaption { display: flex; flex-direction: column; gap: 6px; }
+.ab-card b { font-size: 22px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
+.ab-card a { font-size: 14px; color: var(--accent); text-decoration: none; }
+.ab-card a:hover { text-decoration: underline; }
 @media (max-width: 760px) {
   .brand-wrap { width: 100%; }
   .about-btn { order: 1; margin-left: auto; height: 28px; padding: 0 10px; font-size: 12px; } /* 폰: 제목 줄 오른쪽에 */
