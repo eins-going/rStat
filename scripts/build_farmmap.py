@@ -14,10 +14,15 @@
   한 덩어리로 묶는다. mesh 덩어리 유효 크기(ha, Σ덩어리면적²/Σ덩어리면적 = 무작위 농지 한 점이 속한 덩어리의 기대 면적),
   big10 10ha 이상 덩어리에 든 농지 비중, blocks 덩어리 수
 
+- bins·bins_ha 면적 구간(0.1ha 미만, 0.1~0.3, 0.3~1, 1ha 이상)별 필지 수·면적
+- 시도('31')·전국('00')은 시군 값을 더하지 않고 필지 배열을 이어 다시 계산한다(덩어리는 시군 안에서만 묶는다).
+
 출력
-- db/clean/farmmap/<판>/metrics.json   시군 지표 + 확인용 값(직사각형도의 경지정리 구분력 등)
+- db/clean/farmmap/<판>/arrays/<키>.npz  시군별 계산용 배열(면적·분류·직사각형도·형상지수·경지정리·덩어리 면적)
+- db/clean/farmmap/<판>/metrics.json   시군·시도·전국 지표 + 시도별 확인용 값(직사각형도의 경지정리 구분력 등)
+- data/farmmap.js                      주요 통계 화면용 (window.AGRI_FARMMAP)
 - db/clean/farmmap/<판>/<시도>.pmtiles  필지 타일(레이어 p: c 분류, a 면적, r 직사각형도, y 경지정리 1/0), z13~15
-실행: python scripts/build_farmmap.py [시도코드 ...] [--tag 2026] [--no-tiles]
+실행: python scripts/build_farmmap.py [시도코드 ...] [--tag 2026] [--no-tiles] [--aggregate-only]
 """
 import argparse
 import collections
@@ -34,13 +39,16 @@ import shapely
 from pyproj import Transformer
 
 from fetch_agrix_corp import region
+from regions import SIDOS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "db", "raw", "farmmap")
 OUT = os.path.join(ROOT, "db", "clean", "farmmap")
+JS = os.path.join(ROOT, "data", "farmmap.js")
 TIPPECANOE = os.path.expanduser("~/.local/bin/tippecanoe")
 BLOCK_GAP = 5.0  # m
 GROUPS = ["전체", "논", "밭"]
+BINS = [0, 1000, 3000, 10000, np.inf]  # m² — 0.1ha 미만, 0.1~0.3ha, 0.3~1ha, 1ha 이상
 CLASS_CODE = {"논": 1, "밭": 2, "과수": 3, "시설": 4, "인삼": 6}
 
 
@@ -118,6 +126,7 @@ def blocks(geoms, area):
 
 
 def summarize(a, rect, si, armt):
+    a = a.astype(np.float64)
     n = len(a)
     if n == 0:
         return None
@@ -130,44 +139,56 @@ def summarize(a, rect, si, armt):
     }
 
 
-def build_region(rows):
-    """시군 하나 → (지표, 타일·확인용 배열)"""
-    geoms = shapely.make_valid(shapely.from_geojson([json.dumps(r["geometry"]) for r in rows]))
-    a = np.array([float(r["area"] or 0) for r in rows])
-    cls = np.array([r["clsf_nm"] or "" for r in rows], dtype=object)
-    armt = np.array([r.get("fl_armt_yn") == "Y" for r in rows])
-    rect, _, si = shape_metrics(geoms)
+def indicators(x):
+    """필지 배열 묶음(시군 하나 또는 여러 시군을 이은 것) → 지표. 시도·전국도 시군 값을 더하지 않고 필지에서 다시 낸다.
+    덩어리는 시군 안에서만 묶으므로 시군 경계를 넘는 덩어리는 나뉜 채로 센다."""
+    a, cls, rect, si, armt, b = x["a"], x["cls"], x["rect"], x["si"], x["armt"], x["b"]
     out = {}
     for g in GROUPS:
-        sel = slice(None) if g == "전체" else cls == g
+        sel = slice(None) if g == "전체" else cls == CLASS_CODE[g]
         s = summarize(a[sel], rect[sel], si[sel], armt[sel])
         if s:
+            s["bins"] = [int(v) for v in np.histogram(a[sel], BINS)[0]]
+            s["bins_ha"] = [round(float(v) / 1e4, 1) for v in np.histogram(a[sel], BINS, weights=a[sel])[0]]
             out[g] = s
     for g in ["과수", "시설", "인삼"]:
-        sel = cls == g
+        sel = cls == CLASS_CODE[g]
         if sel.any():
-            out[g] = {"n": int(sel.sum()), "ha": round(a[sel].sum() / 1e4, 1)}
-    b = blocks(geoms, a)
+            out[g] = {"n": int(sel.sum()), "ha": round(float(a[sel].sum()) / 1e4, 1)}
     out["집적"] = {"mesh": round(float((b ** 2).sum() / b.sum() / 1e4), 2),
                  "big10": round(float(b[b >= 1e5].sum() / b.sum()), 4), "blocks": int(len(b))}
-    return out, (geoms, a, cls, rect, armt)
+    return out
+
+
+def build_region(rows):
+    """시군 하나 → (계산용 배열, 타일용 값)"""
+    geoms = shapely.make_valid(shapely.from_geojson([json.dumps(r["geometry"]) for r in rows]))
+    a = np.array([float(r["area"] or 0) for r in rows])
+    cls = np.array([CLASS_CODE.get(r["clsf_nm"], 0) for r in rows], dtype=np.int8)
+    armt = np.array([r.get("fl_armt_yn") == "Y" for r in rows])
+    rect, _, si = shape_metrics(geoms)
+    x = {"a": a.astype(np.float32), "cls": cls, "rect": rect.astype(np.float32), "si": si.astype(np.float32),
+         "armt": armt, "b": blocks(geoms, a).astype(np.float64)}
+    return x, (geoms, a, cls, rect, armt)
 
 
 def build_sido(sido, tagdir, outdir, tiles):
+    """시도의 시군마다 계산용 배열을 arrays/<키>.npz로 남기고 (타일을 만들고) 확인용 값을 돌려준다."""
     t0 = time.time()
-    metrics = {}
+    adir = os.path.join(outdir, "arrays")
+    os.makedirs(adir, exist_ok=True)
     paddy_rect, paddy_armt, ratio = [], [], []
     flight, updt = collections.Counter(), collections.Counter()
     with tempfile.TemporaryDirectory() as work:
         files, unmatched = split_by_region(sido, tagdir, work)
         if not files:
-            return {}, {}
+            return {}
         seq = open(os.path.join(work, "tiles.geojsons"), "w", encoding="utf-8") if tiles else None
         for key in sorted(files):
             rows = load(files[key])
-            out, (geoms, a, cls, rect, armt) = build_region(rows)
-            metrics[key] = out
-            paddy = cls == "논"
+            x, (geoms, a, cls, rect, armt) = build_region(rows)
+            np.savez_compressed(os.path.join(adir, key.replace("|", "_") + ".npz"), **x)
+            paddy = cls == CLASS_CODE["논"]
             paddy_rect.append(rect[paddy])
             paddy_armt.append(armt[paddy])
             ratio.append(np.median(a / np.maximum(shapely.area(geoms), 1e-9)))
@@ -175,7 +196,7 @@ def build_sido(sido, tagdir, outdir, tiles):
             updt.update(r["updt_ymd"] for r in rows)
             if seq:
                 write_tile_features(seq, rows, geoms, a, cls, rect, armt)
-            print(f"  {key}: {out['전체']['n']:,}필지, 덩어리 {out['집적']['blocks']:,}개 ({time.time() - t0:.0f}초)", flush=True)
+            print(f"  {key}: {len(rows):,}필지, 덩어리 {len(x['b']):,}개 ({time.time() - t0:.0f}초)", flush=True)
         if seq:
             seq.close()
             make_tiles(sido, seq.name, outdir)
@@ -192,8 +213,23 @@ def build_sido(sido, tagdir, outdir, tiles):
         "updt_ymd": dict(updt.most_common(3)),
     }
     print(f"{sido} 끝 {time.time() - t0:.0f}초", flush=True)
-    return metrics, check
+    return check
 
+
+def aggregate(outdir):
+    """arrays/*.npz → 시군·시도·전국 지표"""
+    groups = collections.defaultdict(list)
+    for path in sorted(glob.glob(os.path.join(outdir, "arrays", "*.npz"))):
+        key = os.path.basename(path)[:-4].replace("_", "|", 1)
+        with np.load(path) as z:
+            x = {k: z[k] for k in z.files}
+        groups[key].append(x)
+        groups[key.split("|")[0]].append(x)
+        groups["00"].append(x)
+    out = {}
+    for key, xs in groups.items():
+        out[key] = indicators({k: np.concatenate([x[k] for x in xs]) for k in xs[0]})
+    return out
 
 def auc(score, label):
     ok = ~np.isnan(score)
@@ -211,7 +247,7 @@ TO_4326 = Transformer.from_crs(5179, 4326, always_xy=True)
 def write_tile_features(f, rows, geoms, a, cls, rect, armt):
     g4326 = shapely.transform(geoms, lambda xy: np.column_stack(TO_4326.transform(xy[:, 0], xy[:, 1])))
     for r, g, ai, c, ri, y in zip(rows, shapely.to_geojson(g4326, indent=None), a, cls, rect, armt):
-        props = {"c": CLASS_CODE.get(c, 0), "a": int(round(ai)), "r": None if np.isnan(ri) else round(float(ri), 2),
+        props = {"c": int(c), "a": int(round(ai)), "r": None if np.isnan(ri) else round(float(ri), 2),
                  "y": int(y)}
         f.write(json.dumps({"type": "Feature", "id": r["gid"], "properties": props,
                             "geometry": json.loads(g)}, separators=(",", ":")) + "\n")
@@ -226,29 +262,54 @@ def make_tiles(sido, seq_path, outdir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("sidos", nargs="*")
+    ap.add_argument("sidos", nargs="*", help="다시 계산할 시도 (없으면 받은 시도 모두). 비우고 --aggregate-only면 합치기만")
     ap.add_argument("--tag", default=time.strftime("%Y"))
     ap.add_argument("--no-tiles", action="store_true")
+    ap.add_argument("--aggregate-only", action="store_true")
     a = ap.parse_args()
     tagdir = os.path.join(RAW, a.tag)
     outdir = os.path.join(OUT, a.tag)
     os.makedirs(outdir, exist_ok=True)
-    sidos = a.sidos or sorted({os.path.basename(p).split("_")[0] for p in glob.glob(os.path.join(tagdir, "*_*.jsonl.gz"))})
-
     path = os.path.join(outdir, "metrics.json")
-    res = {"regions": {}, "check": {}}
+    res = {"check": {}}
     if os.path.exists(path):
         with open(path, encoding="utf-8") as f:
             res = json.load(f)
-    for s in sidos:
-        m, c = build_sido(s, tagdir, outdir, not a.no_tiles)
-        res["regions"].update(m)
-        res["check"][s] = c
+    if not a.aggregate_only:
+        sidos = a.sidos or sorted({os.path.basename(p).split("_")[0] for p in glob.glob(os.path.join(tagdir, "*_*.jsonl.gz"))})
+        for s in sidos:
+            res["check"][s] = build_sido(s, tagdir, outdir, not a.no_tiles)
+    res["regions"] = aggregate(outdir)
     res["built"] = time.strftime("%Y-%m-%d")
     res["block_gap_m"] = BLOCK_GAP
+    res["bins_m2"] = BINS[1:-1]
     with open(path, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)
-    print("→", path)
+    print("→", path, f"지역 {len(res['regions'])}곳")
+    write_js(res)
+
+
+def write_js(res):
+    """data/farmmap.js — 주요 통계 화면용 (지역 키별: 전체·논·밭 지표, 면적 구간 분포, 집적)"""
+    years = collections.Counter()
+    for c in res["check"].values():
+        for y, n in (c.get("updt_ymd") or {}).items():
+            if y and y != "None":
+                years[y[:4]] += n
+    keep = ("n", "ha", "med", "small", "gini", "armt", "rect", "bins", "bins_ha")
+    regions = {}
+    for k, v in res["regions"].items():
+        r = {g: {f: v[g][f] for f in keep if f in v[g]} for g in GROUPS if g in v}
+        r["집적"] = v["집적"]
+        regions[k] = r
+    # 17개 시도가 모두 들어와야 화면에 보인다 (일부 시도만 계산한 중간 결과가 배포돼도 드러나지 않게)
+    complete = set(SIDOS) <= set(regions)
+    data = {"built": res["built"], "year": max(years) if years else None, "complete": complete,
+            "bins_m2": res["bins_m2"], "block_gap_m": res["block_gap_m"], "regions": regions}
+    with open(JS, "w", encoding="utf-8") as f:
+        f.write("// 팜맵 필지 구조 지표 (scripts/fetch_farmmap.py → scripts/build_farmmap.py)\n")
+        f.write("window.AGRI_FARMMAP = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    print("→", JS, f"{os.path.getsize(JS) / 1e3:.0f}KB")
 
 
 if __name__ == "__main__":

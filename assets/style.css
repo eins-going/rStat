@@ -309,6 +309,27 @@ body {
 .split-bar span { transition: flex-basis 0.6s cubic-bezier(.2, .8, .2, 1); }
 .split-legend { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 .split-legend b { color: var(--text); font-variant-numeric: tabular-nums; }
+/* 경지면적 카드의 팜맵 필지 구조 */
+.fm[hidden] { display: none; }
+.fm-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 12px 0 5px; }
+.fm-head .sub-head { margin: 0; cursor: help; white-space: nowrap; }
+.fm-legend { display: flex; gap: 7px; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.fm-legend .dot { margin-right: 3px; }
+.fm-bins .split-bar { height: 13px; }
+.fm-bins .split-bar span { font-size: 9.5px; line-height: 13px; text-align: center; color: #14161b; font-weight: 600; overflow: hidden; }
+.fm-bins .split-bar span:first-child { color: var(--text); }
+.fm-tiles { margin-top: 6px; }
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) {
+  .fm-head { margin: 6px 0 3px; }
+  .fm-bins .split-bar { height: 11px; }
+  .fm-bins .split-bar span { line-height: 11px; font-size: 9px; }
+  .fm-tiles { margin-top: 4px; }
+  [data-note="land"] { display: none; } /* 같은 설명이 경지율 도넛 툴팁에 있다 */
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
+  .fm-legend, .fm-bins { display: none; } /* 구간 비중은 '0.1ha 미만' 타일 툴팁에 있다 */
+  .fm-head { margin: 4px 0 2px; }
+}
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
 
 /* 가축 표 */
@@ -713,7 +734,7 @@ body {
 .spark.tall { height: 64px; margin-top: 8px; }
 .bars-econ .bar-row { grid-template-columns: 64px 1fr 48px; }
 @media (min-width: 1281px) and (min-height: 720px) {
-  #p-farm .chart { flex: 1 1 90px; min-height: 90px; max-height: 160px; }
+  #p-farm .chart { flex: 1 1 70px; min-height: 70px; max-height: 160px; }
   .spark { height: 56px; }
   .spark.tall { height: 56px; margin-top: 4px; }
   .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
@@ -727,12 +748,12 @@ body {
   .meter-pair .note { grid-column: 1 / -1; }
 }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) {
-  #p-farm .chart { flex-basis: 80px; min-height: 80px; }
+  #p-farm .chart { flex-basis: 50px; min-height: 50px; }
   .spark, .spark.tall { height: 50px; }
   .bars-econ .bar-row:nth-child(n+6) { display: none; }
 }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
-  #p-farm .chart { flex-basis: 66px; min-height: 66px; }
+  #p-farm .chart { flex-basis: 44px; min-height: 44px; }
   .spark, .spark.tall { height: 46px; margin-top: 2px; }
   .bars-econ .bar-row:nth-child(n+5) { display: none; }
   .panel { padding: 7px 12px 6px; }
@@ -758,7 +779,7 @@ body {
 }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
   .bars-econ .bar-row:nth-child(n+5) { display: none; }
-  #p-farm .chart { flex-basis: 56px; min-height: 56px; }
+  #p-farm .chart { flex-basis: 40px; min-height: 40px; }
   .spark, .spark.tall { height: 42px; }
   .sub-head { margin: 5px 0 3px; }
 }
@@ -769,7 +790,7 @@ body {
   .topbar { padding: 5px 0; }
   .ticker { margin-bottom: 6px; }
   .tk { padding: 1px 7px; }
-  #p-farm .chart { flex-basis: 50px; min-height: 50px; }
+  #p-farm .chart { flex-basis: 40px; min-height: 40px; }
   .spark, .spark.tall { height: 40px; }
   .meter-row { margin-top: 5px; }
 }

@@ -3,6 +3,10 @@
   const T = window.AGRI_TOPO;
   const V = D.v;
   const P = D.periods;
+  // 팜맵 필지 구조 (scripts/build_farmmap.py). 17개 시도가 다 계산된 뒤에만 보인다 (?fm 이면 미리 보기)
+  const FM_RAW = window.AGRI_FARMMAP || { regions: {} };
+  const FM = FM_RAW.complete || new URLSearchParams(location.search).has("fm") ? FM_RAW : { regions: {} };
+  const FR = FM.regions;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -164,6 +168,14 @@
   // 경지율: 경지면적 ÷ 행정구역 면적(지적통계)
   const landRatio = (k) => { const l = lastOf(V.land[k]).value, a = V.area?.[k]; return l != null && a ? (l / a) * 100 : null; };
   const paddyShare = (k) => { const t = lastOf(V.land[k]); const p = V.paddy[k]?.[t.i]; return t.value && p != null ? (p / t.value) * 100 : null; };
+  // 팜맵 필지 구조: 필지는 팜맵 농경지 경계(논두렁 기준) 하나. 시도·전국은 필지에서 다시 계산한 값이다
+  const parcelMed = (k) => FR[k]?.["전체"]?.med ?? null;
+  const parcelSmall = (k) => (FR[k]?.["전체"] ? FR[k]["전체"].small * 100 : null);
+  const paddyArmt = (k) => (FR[k]?.["논"] ? FR[k]["논"].armt * 100 : null);
+  const landBlock = (k) => FR[k]?.["집적"]?.mesh ?? null;
+  const m2 = (v) => (v == null ? "–" : `${nf0.format(v)}㎡`);
+  const ha1 = (v) => (v == null ? "–" : `${nf1.format(v)}ha`);
+  const FM_YEAR = FM.year ? `팜맵 ${FM.year}` : "팜맵";
   const riceYield = (k) => { const r = V.rice[k]; return r && r[0] ? (r[1] / r[0]) * 100 : null; };
   const cropArea = (k) => {
     const c = V.crops[k];
@@ -198,6 +210,12 @@
     { key: "field", label: "밭 면적", unit: "ha", year: fy(P.land.at(-1)), get: latestOf(V.field), fmt: int },
     { key: "landRatio", label: "경지율", unit: "%", year: fy(P.land.at(-1)), get: landRatio, fmt: pct },
     { key: "paddyShare", label: "논 비중", unit: "%", year: fy(P.land.at(-1)), get: paddyShare, fmt: pct },
+    ...(FM.year ? [
+      { key: "parcelMed", label: "필지 면적 중앙값", unit: "㎡", year: FM_YEAR, get: parcelMed, fmt: int },
+      { key: "parcelSmall", label: "0.1ha 미만 필지 비율", unit: "%", year: FM_YEAR, get: parcelSmall, fmt: pct },
+      { key: "paddyArmt", label: "논 경지정리율", unit: "%", year: FM_YEAR, get: paddyArmt, fmt: pct },
+      { key: "landBlock", label: "농지 집적도", unit: "ha", year: FM_YEAR, get: landBlock, fmt: (v) => (v == null ? "–" : nf1.format(v)) },
+    ] : []),
     { key: "rice", label: "쌀 생산량", unit: "톤", year: fy(P.rice), get: pairAt(V.rice, 1), fmt: int },
     { key: "riceArea", label: "논벼 재배면적", unit: "ha", year: fy(P.rice), get: pairAt(V.rice, 0), fmt: int },
     { key: "riceYield", label: "10a당 쌀 생산량", unit: "kg", year: fy(P.rice), get: riceYield, fmt: int },
@@ -411,6 +429,36 @@
         <span><i class="dot" style="background:var(--accent)"></i>논 <b>${int(paddy)}</b> ha · ${nf1.format(pp)}%</span>
         <span><i class="dot" style="background:var(--field)"></i>밭 <b>${int(field)}</b> ha · ${nf1.format(100 - pp)}%</span>
       </div>` : '<p class="note">경지면적 자료가 없습니다.</p>';
+    renderParcels();
+  }
+
+  const FM_BINS = [["0.1ha 미만", "#5e4925", "<0.1ha"], ["0.1~0.3ha", "#8a6322", "~0.3"], ["0.3~1ha", "#c0841f", "~1"], ["1ha 이상", "#f5a524", "≥1ha"]];
+
+  function renderParcels() {
+    const k = state.key, f = FR[k]?.["전체"];
+    $("#fm").hidden = !f;
+    if (!f) return;
+    const p = parentOf(k);
+    $("#fm-scope").textContent = FM_YEAR;
+    $("#fm-head").title = `${label(k)} ${int(f.n)}필지 · ${int(f.ha)}ha\n` + "필지: 팜맵 농경지 경계(논두렁 기준) 하나\n막대: 필지 면적 구간별 농지 면적 비중\n" +
+      `농지 집적도: ${FM.block_gap_m}m 이하 틈(논두렁·농로·좁은 수로)으로만 떨어진 농지를 한 덩어리로 묶었을 때, ` +
+      "농지 한 곳이 속한 덩어리의 평균 면적(면적 가중)\n시도·전국은 시군 값을 합치지 않고 필지에서 다시 계산";
+    const tot = f.bins_ha.reduce((a, b) => a + b, 0) || 1;
+    const sh = f.bins_ha.map((v) => (v / tot) * 100);
+    $("#fm-legend").innerHTML = FM_BINS.map(([n, c, short]) => `<span title="${n}"><i class="dot" style="background:${c}"></i>${short}</span>`).join("");
+    $("#fm-bins").innerHTML = `
+      <div class="split-bar" role="img" aria-label="필지 면적 구간별 농지 면적 비중: ${FM_BINS.map(([n], i) => `${n} ${pct(sh[i])}`).join(", ")}">
+        ${sh.map((v, i) => `<span style="flex-basis:${v}%;background:${FM_BINS[i][1]}" title="${FM_BINS[i][0]} 필지 ${int(f.bins[i])}개 · ${int(f.bins_ha[i])}ha · 면적의 ${pct(v)}">${v >= 9 ? `${nf0.format(v)}%` : ""}</span>`).join("")}
+      </div>`;
+    const tiles = [["parcelMed", parcelMed, m2], ["parcelSmall", parcelSmall, pct], ["paddyArmt", paddyArmt, pct], ["landBlock", landBlock, ha1]];
+    for (const [key, get, fmt] of tiles) {
+      setV(key, get(k), fmt);
+      const rk = rankText(k, get);
+      $(`[data-fm="${key}"]`).title = [p && get(p) != null ? `${label(p)} ${fmt(get(p))}` : "", rk || ""].filter(Boolean).join(" · ");
+    }
+    const binsText = `면적 구간별 농지 면적 비중: ${FM_BINS.map(([n], i) => `${n} ${pct(sh[i])}`).join(", ")}`;
+    const smallTile = $('[data-fm="parcelSmall"]');
+    smallTile.title = [smallTile.title, binsText].filter(Boolean).join("\n");
   }
 
   function renderLivestock() {
