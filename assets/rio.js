@@ -470,8 +470,11 @@
   const PT_COL = ["#3987e5", "#5a9bea", "#7eb1ef", "#a3c8f4", "#c6ddf8"], PT_REST = "#4a4f59";
   function renderPartners(n = ptN) {
     const s = state.sido, el = $("#partners");
-    el.hidden = s === NATION;
-    if (s === NATION) return;
+    const head = `<h3 class="sub-head">주요 교역 상대 <span>다른 시도와 거래한 금액 중 비중</span></h3>`;
+    if (s === NATION) {  // 전국은 교역 상대가 없다: 도넛 자리에 시도를 고르라는 안내
+      el.innerHTML = head + `<div class="ri-pt-empty"><b>지도에서 시도를 눌러 보세요</b><span>그 시도가 다른 시도로 어디에 많이 보내고, 어디서 많이 받는지 보여 드립니다.</span></div>`;
+      return;
+    }
     const side = (obj, label) => {
       const list = Object.entries(obj).filter(([k, v]) => k !== s && v > 0).sort((a, b) => b[1] - a[1]);
       const tot = d3.sum(list, (d) => d[1]) || 1;
@@ -482,7 +485,7 @@
       return { label, tot, parts };
     };
     const sides = [side(sent(s), "보내는 곳"), side(received(s), "받는 곳")];
-    el.innerHTML = `<h3 class="sub-head">주요 교역 상대 <span>다른 시도와 거래한 금액 중 비중</span></h3><div class="ri-dns">`
+    el.innerHTML = head + `<div class="ri-dns">`
       + sides.map((d) => `<div class="ri-dn"><div class="ri-dn-h">${d.label} <b>${won(d.tot)}</b></div><div class="ri-dn-b"><svg viewBox="-32 -32 64 64" aria-hidden="true"></svg>`
         + `<div class="ri-dn-k">${d.parts.map((p) => `<span title="${esc(p.full)} ${won(p.v)} (${pct(p.v / d.tot)})"><i style="background:${p.c}"></i><b>${p.nm}</b><em>${pct0(p.v / d.tot)}</em></span>`).join("")}</div></div></div>`).join("")
       + `</div>`;
@@ -644,6 +647,8 @@
       if (size >= 96) { ptN = 5; renderPartners(); }
     }
     if (spare() > 8) { flowExtra = Math.min(50, Math.floor(spare())); renderSupply(); }
+    const empty = $("#partners .ri-pt-empty");  // 전국 안내 상자는 그림을 다시 그린 뒤에 키운다 (다시 그리면 새로 만들어진다)
+    if (empty && spare() > 8) empty.style.minHeight = `${Math.floor(Math.min(130, empty.getBoundingClientRect().height + spare()))}px`;
     const rest = Math.floor(spare()), open = gaps.filter((g) => !g.hidden);
     if (rest > 8) open.forEach((g) => { g.style.marginTop = `${Math.min(28, Math.floor(rest / open.length)) + parseFloat(getComputedStyle(g).marginTop)}px`; });
   }
