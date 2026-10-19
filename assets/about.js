@@ -11,7 +11,8 @@
   pop.id = "about";
   pop.className = "about-pop";
   pop.setAttribute("popover", "");
-  pop.innerHTML = `<dl>
+  pop.innerHTML = `<img src="assets/maker.webp" width="76" height="76" alt="Seunghyun Cho 초상 일러스트">
+  <dl>
     <dt>만든이</dt><dd>Seunghyun Cho</dd>
     <dt>연락처</dt><dd><a href="mailto:einsgoing@gmail.com">einsgoing@gmail.com</a></dd>
   </dl>`;
