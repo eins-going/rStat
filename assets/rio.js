@@ -381,8 +381,8 @@
     return `<div class="ri-bar" title="${esc(title)}"><span class="nm">${esc(label)}</span><span class="track">${parts}</span><span class="val">${val}</span></div>`;
   }
 
-  // 특화계수 눈금: 17개 시도 점. 값이 비슷한 점은 위아래로 비켜 겹치지 않게 하고,
-  // 점에 마우스를 올리면 그 시도 이름·값을, 떼면 고른 시도를 위에 보인다. 누르면 그 시도로
+  // 특화계수 눈금: 17개 시도 점을 한 줄에 (겹쳐도 둔다). 점에 마우스를 올리면 그 시도 이름·값을,
+  // 떼면 고른 시도를 위에 보인다. 누르면 그 시도로
   function drawLQ() {
     const el = $("#lq-scale");
     const w = el.clientWidth || 300;
@@ -392,28 +392,19 @@
     const top = d3.max(vals, ([, v]) => v), q90 = d3.quantile(vals.map(([, v]) => v).sort(d3.ascending), 0.9);
     const hi = Math.max(2, Math.ceil(Math.min(top, q90 * 1.3) * 2) / 2), cut = top > hi;
     const x = d3.scaleLinear().domain([0, hi]).range([10, w - 10]);
-    // 비켜 놓기: 고른 시도부터, 이미 놓인 점과 닿지 않는 가장 가까운 줄(0, -1, +1, -2, …)에
-    const rOf = (k) => (k === sel ? 6.5 : 4.5), step = 9.5;
-    const dots = vals.map(([k, v]) => ({ k, v, x: x(Math.min(v, hi)), r: rOf(k) }))
-      .sort((p, q) => (q.k === sel) - (p.k === sel) || p.x - q.x);
-    // 줄은 위아래 2단(5줄)까지: 빈 자리가 없으면 가장 덜 겹치는 줄에 둔다 (한 화면에서 눈금이 너무 높아지지 않게)
-    const slots = [0, -1, 1, -2, 2].map((i) => i * step), placed = [];
-    for (const d of dots) {
-      const gap = (off) => Math.min(Infinity, ...placed.map((o) => Math.hypot(o.x - d.x, o.off - off) - o.r - d.r));
-      d.off = slots.find((off) => gap(off) >= 1) ?? slots.reduce((b, off) => (gap(off) > gap(b) ? off : b));
-      placed.push(d);
-    }
-    const lo = d3.min(dots, (d) => d.off - d.r), up = d3.max(dots, (d) => d.off + d.r);
-    const cy = 16 - lo, h = cy + up + 16;
+    // 고른 시도는 맨 위에 그린다
+    const dots = vals.map(([k, v]) => ({ k, v, x: x(Math.min(v, hi)), r: k === sel ? 6.5 : 4.5 }))
+      .sort((p, q) => (p.k === sel) - (q.k === sel));
+    const cy = 20, h = 44;
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();
     svg.append("line").attr("class", "ri-lq-base").attr("x1", x(0)).attr("x2", x(hi)).attr("y1", cy).attr("y2", cy);
-    svg.append("rect").attr("class", "ri-lq-hot").attr("x", x(1)).attr("y", cy + lo - 2).attr("width", x(hi) - x(1)).attr("height", up - lo + 4).attr("rx", 3);
-    svg.append("line").attr("class", "ri-lq-one").attr("x1", x(1)).attr("x2", x(1)).attr("y1", cy + lo - 4).attr("y2", cy + up + 4);
+    svg.append("rect").attr("class", "ri-lq-hot").attr("x", x(1)).attr("y", cy - 10).attr("width", x(hi) - x(1)).attr("height", 20).attr("rx", 3);
+    svg.append("line").attr("class", "ri-lq-one").attr("x1", x(1)).attr("x2", x(1)).attr("y1", cy - 12).attr("y2", cy + 12);
     svg.append("text").attr("class", "ri-lq-t").attr("x", x(1)).attr("y", h - 2).attr("text-anchor", "middle").text("전국 평균 1");
     svg.append("text").attr("class", "ri-lq-t").attr("x", x(hi)).attr("y", h - 2).attr("text-anchor", "end").text(`${nf1.format(hi)}${cut ? "+" : ""}`);
     if (x(1) - x(0) > 60) svg.append("text").attr("class", "ri-lq-t").attr("x", x(0)).attr("y", h - 2).attr("text-anchor", "start").text("0");
-    const label = svg.append("text").attr("class", "ri-lq-sel").attr("y", cy + lo - 5).attr("text-anchor", "middle");
+    const label = svg.append("text").attr("class", "ri-lq-sel").attr("y", cy - 13).attr("text-anchor", "middle");
     const show = (d) => {
       if (!d) { label.text(""); return; }
       const t = `${short(d.k)} ${nf2.format(d.v)}`;
@@ -421,10 +412,10 @@
     };
     const selDot = dots.find((d) => d.k === sel);
     show(selDot);
-    svg.append("g").selectAll("circle").data(dots.slice().reverse()).join("circle")
-      .attr("cx", (d) => d.x).attr("cy", (d) => cy + d.off).attr("r", (d) => d.r)
+    svg.append("g").selectAll("circle").data(dots).join("circle")
+      .attr("cx", (d) => d.x).attr("cy", cy).attr("r", (d) => d.r)
       .attr("class", (d) => `ri-lq-dot${d.k === sel ? " sel" : ""}`)
-      .on("mouseenter", function (_, d) { d3.select(this).classed("hover", true); show(d); })
+      .on("mouseenter", function (_, d) { d3.select(this).classed("hover", true).raise(); show(d); })
       .on("mouseleave", function () { d3.select(this).classed("hover", false); show(selDot); })
       .on("click", (_, d) => setSido(d.k))
       .append("title").text((d) => `${name(d.k)} 특화계수 ${nf2.format(d.v)}`);
@@ -472,19 +463,32 @@
       .map(([n, v, c]) => `<span><i style="background:${c}"></i>${n} <b>${won(v)}</b></span>`).join("");
   }
 
-  // 주요 교역 상대: 이출(보내는 곳)·이입(받는 곳) 상위 3개 시도와 그 비중
+  // 주요 교역 상대: 이출(보내는 곳)·이입(받는 곳)을 도넛으로. 상위 3개 시도(파랑 3단) + 기타(회색)
+  const PT_COL = ["#3987e5", "#78aef0", "#b4d2f7"], PT_REST = "#4a4f59";
   function renderPartners() {
     const s = state.sido, el = $("#partners");
     el.hidden = s === NATION;
     if (s === NATION) return;
-    const side = (obj, label, color) => {
+    const side = (obj, label) => {
       const list = Object.entries(obj).filter(([k, v]) => k !== s && v > 0).sort((a, b) => b[1] - a[1]);
       const tot = d3.sum(list, (d) => d[1]) || 1;
-      return `<div class="ri-pt"><span class="ri-pt-h">${label}</span>${list.slice(0, 3).map(([k, v]) =>
-        `<span class="ri-pt-i" title="${name(k)} ${won(v)} (${pct(v / tot)})"><b>${short(k)}</b><span class="tr"><i style="width:${Math.max(6, (v / list[0][1]) * 100)}%;background:${color}"></i></span><em>${pct0(v / tot)}</em></span>`).join("")}</div>`;
+      const parts = list.slice(0, 3).map(([k, v], i) => ({ nm: short(k), full: name(k), v, c: PT_COL[i] }));
+      const rest = d3.sum(list.slice(3), (d) => d[1]);
+      if (rest > 0) parts.push({ nm: "기타", full: `그 밖의 ${list.length - 3}개 시도`, v: rest, c: PT_REST });
+      return { label, tot, parts };
     };
-    el.innerHTML = `<h3 class="sub-head">주요 교역 상대 <span>다른 시도와 거래한 금액 중 비중</span></h3>`
-      + side(sent(s), "보내는 곳", C.oth) + side(received(s), "받는 곳", C.oth);
+    const sides = [side(sent(s), "보내는 곳"), side(received(s), "받는 곳")];
+    el.innerHTML = `<h3 class="sub-head">주요 교역 상대 <span>다른 시도와 거래한 금액 중 비중</span></h3><div class="ri-dns">`
+      + sides.map((d) => `<div class="ri-dn"><div class="ri-dn-h">${d.label} <b>${won(d.tot)}</b></div><div class="ri-dn-b"><svg viewBox="-32 -32 64 64" aria-hidden="true"></svg>`
+        + `<div class="ri-dn-k">${d.parts.map((p) => `<span title="${esc(p.full)} ${won(p.v)} (${pct(p.v / d.tot)})"><i style="background:${p.c}"></i><b>${p.nm}</b><em>${pct0(p.v / d.tot)}</em></span>`).join("")}</div></div></div>`).join("")
+      + `</div>`;
+    const arc = d3.arc().innerRadius(19).outerRadius(31).padAngle(0.025).cornerRadius(1.5);
+    $$("#partners .ri-dn svg").forEach((node, i) => {
+      const d = sides[i];
+      d3.select(node).selectAll("path").data(d3.pie().sort(null).value((p) => p.v)(d.parts)).join("path")
+        .attr("d", arc).attr("fill", (a) => a.data.c)
+        .append("title").text((a) => `${a.data.full} ${won(a.data.v)} (${pct(a.data.v / d.tot)})`);
+    });
   }
 
   // ---------- 오른쪽 ④ 투입구조: 생산 100원의 구성 ----------
