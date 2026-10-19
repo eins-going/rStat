@@ -67,6 +67,7 @@
     { key: "leak", group: "파급", label: "역외 누출", get: (k) => leak(k), fmt: pct,
       note: "생산유발 가운데 다른 시도에서 일어나는 몫. 높을수록 효과가 도 밖으로 샌다" },
   ];
+  let flowExtra = 0, ptN = 3; // 한 화면 맞춤에서 남는 높이를 쓰는 값 (growLeft)
   const state = { sido: NATION, item: "농축산물", metric: METRICS.find((m) => m.key === "x"), view: "map" };
 
   const selSido = $("#sido"), selItem = $("#item");
@@ -432,25 +433,26 @@
       ? `국내에서 쓰는 ${esc(itemLabel())}의 <b>${pct0(own / dT)}</b>는 국산, <b>${pct0(r0.imp / dT)}</b>는 수입입니다.`
       : `도내에서 쓰는 ${esc(itemLabel())}의 <b>${pct0(r0.own / dT)}</b>를 도내에서 대고(자급률), 도내 생산의 <b>${pct0(r0.out / pT)}</b>는 다른 시도로 나갑니다(이출률).`;
     const el = $("#supply-flow");
-    const w = el.clientWidth || 300, h = 112;
+    const w = el.clientWidth || 300, h = 112 + flowExtra; // flowExtra: 한 화면 맞춤에서 남는 높이 (growLeft)
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();
     // 생산·수요를 같은 금액 축으로 왼쪽에 맞춰 그리고 막대 끝에 총액. 도내(국내) 몫 띠는 두 막대에서 같은 금액이다
-    const L = 46, TW = 62, U = w - L - TW, bh = 18, yP = 16, yD = 80;
+    const L = 46, TW = 62, U = w - L - TW, bh = 18 + Math.round(Math.min(10, flowExtra * 0.12)), yP = 16, yD = yP + bh + 46 + flowExtra - 2 * (bh - 18);
+    const ty = (y) => y + bh / 2 + 4;
     const sc = U / Math.max(pT, dT, 1);
     const xP = L, xD = L;
     const row = (segs, y, label, total, x0) => {
-      svg.append("text").attr("class", "ri-fl-h").attr("x", 0).attr("y", y + 13).text(label);
+      svg.append("text").attr("class", "ri-fl-h").attr("x", 0).attr("y", ty(y)).text(label);
       let x = x0;
       for (const [nm, v, c] of segs) {
         const ww = Math.max(0, v) * sc;
         if (ww <= 0) continue;
         svg.append("rect").attr("x", x).attr("y", y).attr("width", Math.max(0, ww - 2)).attr("height", bh).attr("rx", 3).attr("fill", c)
           .append("title").text(`${nm} ${won(v)} (${pct(v / total)})`);
-        if (ww > 34) svg.append("text").attr("class", "ri-fl-v").attr("x", x + 5).attr("y", y + 13).text(pct0(v / total));
+        if (ww > 34) svg.append("text").attr("class", "ri-fl-v").attr("x", x + 5).attr("y", ty(y)).text(pct0(v / total));
         x += ww;
       }
-      svg.append("text").attr("class", "ri-fl-t").attr("x", x + 3).attr("y", y + 13).text(won(total));
+      svg.append("text").attr("class", "ri-fl-t").attr("x", x + 3).attr("y", ty(y)).text(won(total));
     };
     const ow = Math.max(0, Math.max(0, own) * sc - 2), y1 = yP + bh, y2 = yD, my = (y1 + y2) / 2;
     svg.append("path").attr("class", "ri-fl-band")
@@ -463,18 +465,20 @@
       .map(([n, v, c]) => `<span><i style="background:${c}"></i>${n} <b>${won(v)}</b></span>`).join("");
   }
 
-  // 주요 교역 상대: 이출(보내는 곳)·이입(받는 곳)을 도넛으로. 상위 3개 시도(파랑 3단) + 기타(회색)
-  const PT_COL = ["#3987e5", "#78aef0", "#b4d2f7"], PT_REST = "#4a4f59";
-  function renderPartners() {
+  // 주요 교역 상대: 이출(보내는 곳)·이입(받는 곳)을 도넛으로. 상위 n개 시도(파랑 단계) + 기타(회색)
+  // 한 화면 맞춤에서 왼쪽 열 아래가 남으면 fitCols가 도넛을 키우고 n을 5로 늘린다
+  const PT_COL = ["#3987e5", "#5a9bea", "#7eb1ef", "#a3c8f4", "#c6ddf8"], PT_REST = "#4a4f59";
+  function renderPartners(n = ptN) {
     const s = state.sido, el = $("#partners");
     el.hidden = s === NATION;
     if (s === NATION) return;
     const side = (obj, label) => {
       const list = Object.entries(obj).filter(([k, v]) => k !== s && v > 0).sort((a, b) => b[1] - a[1]);
       const tot = d3.sum(list, (d) => d[1]) || 1;
-      const parts = list.slice(0, 3).map(([k, v], i) => ({ nm: short(k), full: name(k), v, c: PT_COL[i] }));
-      const rest = d3.sum(list.slice(3), (d) => d[1]);
-      if (rest > 0) parts.push({ nm: "기타", full: `그 밖의 ${list.length - 3}개 시도`, v: rest, c: PT_REST });
+      const cols = n === 3 ? [PT_COL[0], PT_COL[2], PT_COL[4]] : PT_COL;
+      const parts = list.slice(0, n).map(([k, v], i) => ({ nm: short(k), full: name(k), v, c: cols[i] }));
+      const rest = d3.sum(list.slice(n), (d) => d[1]);
+      if (rest > 0) parts.push({ nm: "기타", full: `그 밖의 ${list.length - n}개 시도`, v: rest, c: PT_REST });
       return { label, tot, parts };
     };
     const sides = [side(sent(s), "보내는 곳"), side(received(s), "받는 곳")];
@@ -621,7 +625,31 @@
   // 한 화면 맞춤에서 옆 열이 넘치면 그 열에서 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
   const oneScreen = matchMedia("(min-width: 1281px) and (min-height: 720px)");
   const TRIM = [[".col-left", [["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
+  // 한 화면 맞춤에서 왼쪽 열 아래가 남으면: 먼저 교역 상대 도넛을 키우고(최대 120px, 96px 이상이면 상위 5개 시도),
+  // 그래도 남으면 수급 구조 그림을 키우고(막대를 굵게, 생산·수요 사이를 길게, 최대 +50px), 나머지는 그림·범례·교역 상대 위 간격으로 나눈다(한 곳 28px까지)
+  function growLeft() {
+    const box = $("#partners"), panel = $("#p-supply");
+    flowExtra = 0; ptN = 3;
+    box.style.removeProperty("--dn");
+    const gaps = ["#supply-flow", "#supply-key", "#partners"].map((q) => $(q));
+    gaps.forEach((g) => { g.style.marginTop = ""; });
+    renderSupply();
+    if (!oneScreen.matches) return;
+    const spare = () => panel.getBoundingClientRect().bottom - parseFloat(getComputedStyle(panel).paddingBottom)
+      - [...panel.children].filter((c) => !c.hidden).at(-1).getBoundingClientRect().bottom - 6;
+    const svg = $("#partners .ri-dn svg");
+    if (svg && spare() > 8) {
+      const cur = svg.getBoundingClientRect().height, size = Math.floor(Math.min(120, cur + spare()));
+      box.style.setProperty("--dn", `${size}px`);
+      if (size >= 96) { ptN = 5; renderPartners(); }
+    }
+    if (spare() > 8) { flowExtra = Math.min(50, Math.floor(spare())); renderSupply(); }
+    const rest = Math.floor(spare()), open = gaps.filter((g) => !g.hidden);
+    if (rest > 8) open.forEach((g) => { g.style.marginTop = `${Math.min(28, Math.floor(rest / open.length)) + parseFloat(getComputedStyle(g).marginTop)}px`; });
+  }
+
   function fitCols() {
+    growLeft();
     for (const [colSel, specs] of TRIM) {
       const col = $(colSel);
       const lists = specs.map(([sel, min]) => ({ rows: $$(`${sel} .ri-bar`), min }));
