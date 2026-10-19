@@ -419,12 +419,14 @@
     const w = el.clientWidth || 300, h = 112;
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();
-    // 생산·수요를 각각 100% 막대로 그리고, 도내(국내) 몫끼리를 곡선 띠로 잇는다
-    const L = 46, W = w - L - 4, bh = 18, yP = 16, yD = 80;
-    const row = (segs, y, label, total) => {
+    // 생산·수요를 같은 금액 축으로, 가운데 맞춰 그린다. 도내(국내) 몫은 두 막대에서 같은 금액이라
+    // 띠 너비는 같고, 막대 길이가 다르면 시작점이 어긋나 S자로 이어진다. 막대 끝에 총액
+    const L = 46, TW = 62, U = w - L - TW, bh = 18, yP = 16, yD = 80;
+    const sc = U / Math.max(pT, dT, 1), wp = pT * sc, wd = dT * sc;
+    const xP = L + (U - wp) / 2, xD = L + (U - wd) / 2;
+    const row = (segs, y, label, total, x0) => {
       svg.append("text").attr("class", "ri-fl-h").attr("x", 0).attr("y", y + 13).text(label);
-      const sc = W / (total || 1);
-      let x = L;
+      let x = x0;
       for (const [nm, v, c] of segs) {
         const ww = Math.max(0, v) * sc;
         if (ww <= 0) continue;
@@ -433,14 +435,14 @@
         if (ww > 34) svg.append("text").attr("class", "ri-fl-v").attr("x", x + 5).attr("y", y + 13).text(pct0(v / total));
         x += ww;
       }
+      svg.append("text").attr("class", "ri-fl-t").attr("x", x + 3).attr("y", y + 13).text(won(total));
     };
-    const y1 = yP + bh, y2 = yD, my = (y1 + y2) / 2;
-    const a = Math.max(0, Math.max(0, own) * (W / (pT || 1)) - 2), b = Math.max(0, Math.max(0, own) * (W / (dT || 1)) - 2);
+    const ow = Math.max(0, Math.max(0, own) * sc - 2), y1 = yP + bh, y2 = yD, my = (y1 + y2) / 2;
     svg.append("path").attr("class", "ri-fl-band")
-      .attr("d", `M${L},${y1} L${L + a},${y1} C${L + a},${my} ${L + b},${my} ${L + b},${y2} L${L},${y2} Z`);
-    svg.append("text").attr("class", "ri-fl-b").attr("x", L + 6).attr("y", my + 4).text(`${nat ? "국내" : "도내"}에서 만들어 ${nat ? "국내" : "도내"}에서 씀 ${won(own)}`);
-    row(prod, yP, "생산", pT);
-    row(dem, yD, "수요", dT);
+      .attr("d", `M${xP},${y1} L${xP + ow},${y1} C${xP + ow},${my} ${xD + ow},${my} ${xD + ow},${y2} L${xD},${y2} C${xD},${my} ${xP},${my} ${xP},${y1} Z`);
+    svg.append("text").attr("class", "ri-fl-b").attr("x", (xP + xD) / 2 + 6).attr("y", my + 4).text(`${nat ? "국내" : "도내"}에서 만들어 ${nat ? "국내" : "도내"}에서 씀 ${won(own)}`);
+    row(prod, yP, "생산", pT, xP);
+    row(dem, yD, "수요", dT, xD);
     renderPartners();
     $("#supply-key").innerHTML = [...prod.slice(1).map(([n, v, c]) => [`생산 → ${n}`, v, c]), ...dem.slice(1).map(([n, v, c]) => [`수요 ← ${n}`, v, c])]
       .map(([n, v, c]) => `<span><i style="background:${c}"></i>${n} <b>${won(v)}</b></span>`).join("");
