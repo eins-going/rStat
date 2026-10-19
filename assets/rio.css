@@ -11,16 +11,12 @@ h2 .ri-hint { margin-left: 4px; }
 .ri-mnote { margin: 4px 0 0; font-size: 11.5px; color: var(--faint); line-height: 1.45; }
 .ri-empty { fill: var(--faint); font-size: 13px; }
 
-/* 특화계수 눈금 */
-.ri-lq { height: 44px; }
-.ri-lq svg, .ri-flow svg, .ri-waffle svg, .ri-mult svg { display: block; width: 100%; height: auto; overflow: visible; }
-.ri-lq-base { stroke: var(--line); stroke-width: 2; }
-.ri-lq-hot { fill: rgba(245, 165, 36, 0.08); }
-.ri-lq-one { stroke: #8d94a0; stroke-width: 1.2; stroke-dasharray: 3 2; }
-.ri-lq-t { fill: var(--faint); font-size: 10px; }
-.ri-lq-dot { fill: #6b717c; stroke: var(--panel); stroke-width: 2; }
-.ri-lq-dot.sel { fill: var(--accent); }
-.ri-lq-sel { fill: var(--text); font-size: 11px; font-weight: 700; }
+/* 특화계수 순위 */
+.ri-flow svg, .ri-waffle svg, .ri-mult svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ri-lq .ri-bar { grid-template-columns: 2.6em 1fr 34px; cursor: pointer; }
+.ri-lq .ri-bar:hover .nm { color: var(--text); }
+.ri-lq .track { position: relative; }
+.ri-lq .track u { position: absolute; top: -2px; bottom: -2px; border-left: 1px dashed #8d94a0; }
 
 /* 막대 목록 (품목 구성·투입·판로) */
 .ri-bars { display: grid; gap: 3px; margin-top: 6px; }
@@ -31,6 +27,8 @@ h2 .ri-hint { margin-left: 4px; }
 .ri-bar .track i:first-child { border-radius: 3px; }
 .ri-bar .val { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 .ri-bar.sel .nm { color: var(--accent); font-weight: 600; }
+#mix .ri-bar { grid-template-columns: minmax(0, 7.5em) 1fr 92px; }
+.ri-bar .val .amt { color: var(--muted); margin-right: 6px; }
 .ri-bar[hidden] { display: none; }
 
 /* 범례 조각 */

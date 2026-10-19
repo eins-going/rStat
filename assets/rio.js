@@ -370,8 +370,8 @@
     const rows = members.map((c) => [c, D.items[c].regions[s].x]).sort((a, b) => b[1] - a[1]);
     const max = rows[0][1] / tot || 1;
     $("#mix-scope").textContent = `${short(s)} ${D.items[g].name} ${won(tot)}`;
-    $("#mix").innerHTML = rows.map(([c, v]) => bar(D.items[c].name, [[v / tot, c === state.item || it.members ? C.own : "#6b717c"]], pct0(v / tot),
-      `${D.items[c].name} ${won(v)}`, max)).join("");
+    $("#mix").innerHTML = rows.map(([c, v]) => bar(D.items[c].name, [[v / tot, c === state.item || it.members ? C.own : "#6b717c"]], `<span class="amt">${won(v)}</span>${pct0(v / tot)}`,
+      `${D.items[c].name} ${won(v)} (${pct(v / tot)})`, max)).join("");
     $$("#mix .ri-bar").forEach((el, i) => el.classList.toggle("sel", rows[i][0] === state.item));
   }
 
@@ -381,29 +381,15 @@
     return `<div class="ri-bar" title="${esc(title)}"><span class="nm">${esc(label)}</span><span class="track">${parts}</span><span class="val">${val}</span></div>`;
   }
 
+  // 특화계수: 17개 시도 순위 막대. 점선이 전국 평균 1. 한 화면 맞춤에서 좁으면 아래(작은 값)부터 숨긴다
   function drawLQ() {
-    const el = $("#lq-scale");
-    const w = el.clientWidth || 300, h = 44;
-    const vals = SIDOS.map((k) => [k, R(k).lq]).filter(([, v]) => ok(v));
-    const hi = Math.max(2, Math.ceil(d3.max(vals, ([, v]) => v) * 2) / 2);
-    const x = d3.scaleLinear().domain([0, hi]).range([10, w - 10]);
-    const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
-    svg.selectAll("*").remove();
-    svg.append("line").attr("class", "ri-lq-base").attr("x1", x(0)).attr("x2", x(hi)).attr("y1", 20).attr("y2", 20);
-    svg.append("rect").attr("class", "ri-lq-hot").attr("x", x(1)).attr("y", 14).attr("width", x(hi) - x(1)).attr("height", 12).attr("rx", 3);
-    svg.append("line").attr("class", "ri-lq-one").attr("x1", x(1)).attr("x2", x(1)).attr("y1", 8).attr("y2", 32);
-    svg.append("text").attr("class", "ri-lq-t").attr("x", x(1)).attr("y", 42).attr("text-anchor", "middle").text("전국 평균 1");
-    svg.append("text").attr("class", "ri-lq-t").attr("x", x(hi)).attr("y", 42).attr("text-anchor", "end").text(`${nf1.format(hi)}`);
-    svg.append("text").attr("class", "ri-lq-t").attr("x", x(0)).attr("y", 42).attr("text-anchor", "start").text("0");
     const sel = state.sido;
-    svg.selectAll("circle").data(vals.sort((a, b) => (a[0] === sel) - (b[0] === sel))).join("circle")
-      .attr("cx", ([, v]) => x(Math.min(v, hi))).attr("cy", 20).attr("r", ([k]) => (k === sel ? 6.5 : 4.5))
-      .attr("class", ([k]) => `ri-lq-dot${k === sel ? " sel" : ""}`)
-      .append("title").text(([k, v]) => `${name(k)} ${nf2.format(v)}`);
-    if (sel !== NATION) {
-      const v = R(sel).lq;
-      svg.append("text").attr("class", "ri-lq-sel").attr("x", x(Math.min(v, hi))).attr("y", 9).attr("text-anchor", "middle").text(`${short(sel)} ${nf2.format(v)}`);
-    }
+    const vals = SIDOS.map((k) => [k, R(k).lq, R(k).share]).filter(([, v]) => ok(v)).sort((a, b) => b[1] - a[1]);
+    const hi = Math.max(2, d3.max(vals, ([, v]) => v));
+    $("#lq-list").innerHTML = vals.map(([k, v, sh]) => `<div class="ri-bar${k === sel ? " sel" : ""}" data-k="${k}" title="${name(k)} 특화계수 ${nf2.format(v)} (도내 산업 중 ${pct(sh)})">`
+      + `<span class="nm">${short(k)}</span><span class="track"><i style="width:${(v / hi) * 100}%;background:${k === sel ? "var(--accent)" : v >= 1 ? "#8a6322" : "#4a4f59"}"></i>`
+      + `<u style="left:${(1 / hi) * 100}%"></u></span><span class="val">${nf2.format(v)}</span></div>`).join("");
+    $$("#lq-list .ri-bar").forEach((el) => el.addEventListener("click", () => setSido(el.dataset.k)));
   }
 
   // ---------- 왼쪽 ③ 수급 구조: 생산은 어디로, 수요는 어디서 ----------
@@ -592,7 +578,7 @@
 
   // 한 화면 맞춤에서 옆 열이 넘치면 그 열에서 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
   const oneScreen = matchMedia("(min-width: 1281px) and (min-height: 720px)");
-  const TRIM = [[".col-left", [["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
+  const TRIM = [[".col-left", [["#lq-list", 3], ["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
   function fitCols() {
     for (const [colSel, specs] of TRIM) {
       const col = $(colSel);
