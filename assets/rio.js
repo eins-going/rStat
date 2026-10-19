@@ -419,11 +419,10 @@
     const w = el.clientWidth || 300, h = 112;
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();
-    // 생산·수요를 같은 금액 축으로, 가운데 맞춰 그린다. 도내(국내) 몫은 두 막대에서 같은 금액이라
-    // 띠 너비는 같고, 막대 길이가 다르면 시작점이 어긋나 S자로 이어진다. 막대 끝에 총액
+    // 생산·수요를 같은 금액 축으로 왼쪽에 맞춰 그리고 막대 끝에 총액. 도내(국내) 몫 띠는 두 막대에서 같은 금액이다
     const L = 46, TW = 62, U = w - L - TW, bh = 18, yP = 16, yD = 80;
-    const sc = U / Math.max(pT, dT, 1), wp = pT * sc, wd = dT * sc;
-    const xP = L + (U - wp) / 2, xD = L + (U - wd) / 2;
+    const sc = U / Math.max(pT, dT, 1);
+    const xP = L, xD = L;
     const row = (segs, y, label, total, x0) => {
       svg.append("text").attr("class", "ri-fl-h").attr("x", 0).attr("y", y + 13).text(label);
       let x = x0;
