@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>농업 연관 분석</title>
+  <meta name="description" content="한국은행 2020년 지역산업연관표로 본 시도별 농식품 산업: 규모와 특화, 수급과 지역 간 교역, 투입·판로 연관, 생산·부가가치·일자리 파급효과, 핵심 부문 진단.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/rio.css">
+</head>
+<body class="ri">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+          <a href="rio" aria-current="page">농업 연관</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>품목</span>
+          <select id="item"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="규모·수급·파급">
+        <article class="panel" id="p-size">
+          <header class="panel-head">
+            <h2>규모와 특화</h2>
+            <span class="chip">2020년</span>
+          </header>
+          <p class="ri-lead" id="size-lead"></p>
+          <div class="tiles ri-tiles3">
+            <div class="tile"><span>산출액</span><b id="v-x"></b></div>
+            <div class="tile"><span>부가가치 <small id="v-varate"></small></span><b id="v-va"></b></div>
+            <div class="tile"><span>취업자 <small class="ri-hint" title="고용표는 통합중분류까지만 있어, 소분류 품목은 그 품목이 속한 중분류(작물·축산물·식료품 등)의 취업자 수입니다. 전업환산 기준.">중분류</small></span><b id="v-jobs"></b></div>
+          </div>
+          <h3 class="sub-head">특화계수 <span>도내 산업 중 비중 ÷ 전국 비중 · 1보다 크면 특화</span></h3>
+          <div class="ri-lq" id="lq-scale" aria-label="17개 시도 특화계수 분포"></div>
+        </article>
+
+        <article class="panel" id="p-supply">
+          <header class="panel-head">
+            <h2>수급 구조 <small class="ri-hint" title="생산: 도내에서 만든 것이 어디에 쓰였나. 수요: 도내에서 쓴 것(중간재+소비·투자, 수출 제외)이 어디서 왔나. 가운데 띠가 도내에서 만들어 도내에서 쓴 몫이다.">?</small></h2>
+          </header>
+          <p class="ri-lead" id="supply-lead"></p>
+          <div class="ri-flow" id="supply-flow" aria-label="생산과 수요의 지역 구성"></div>
+          <div class="ri-key" id="supply-key"></div>
+          <div id="partners"></div>
+        </article>
+
+        <article class="panel" id="p-mult">
+          <header class="panel-head">
+            <h2>파급효과 <small class="ri-hint" title="한국은행 생산·부가가치·수입 유발계수표(소분류)와 취업유발계수표(중분류)의 이 품목 열. 이 품목 최종수요가 10억 원 늘 때 모든 시도·산업에서 늘어나는 생산 등. 묶음은 품목 산출액으로 가중평균한 값(원표로 계산).">?</small></h2>
+          </header>
+          <p class="ri-lead" id="mult-lead"></p>
+          <div class="ri-mult" id="mult-bar" aria-label="생산유발의 지역 구성"></div>
+          <div class="tiles ri-tiles3" id="mult-tiles">
+            <div class="tile"><span>부가가치</span><b id="m-va"></b></div>
+            <div class="tile"><span>수입</span><b id="m-imp"></b></div>
+            <div class="tile"><span>일자리 <small class="ri-hint" title="취업유발계수(통합중분류, 전업환산)">중분류</small></span><b id="m-jobs"></b></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지역 간 교역과 핵심 부문">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title">전국 농축산물</span></h1>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <span class="seg view-seg" id="view-seg" role="group" aria-label="보기"><button type="button" data-view="map" aria-pressed="true">교역 지도</button><button type="button" data-view="link" aria-pressed="false" title="영향력계수·감응도계수로 본 도내 산업의 위치">핵심 부문 진단</button></span>
+            <svg id="map" role="img" aria-label="시도 지도"></svg>
+            <svg id="scatter" role="img" aria-label="영향력계수·감응도계수 산점도" hidden></svg>
+            <div class="tip" id="tip" hidden></div>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="ri-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="투입과 판로">
+        <article class="panel" id="p-input">
+          <header class="panel-head">
+            <h2>무엇이 들어가나 <small class="ri-sub">후방연관</small></h2>
+          </header>
+          <p class="ri-lead" id="input-lead"></p>
+          <div class="ri-waffle" id="waffle" aria-label="생산 100원의 구성"></div>
+          <div class="ri-key" id="waffle-key"></div>
+          <p class="ri-va" id="va-parts"></p>
+          <div class="ri-bars" id="inputs"></div>
+        </article>
+
+        <article class="panel" id="p-sales">
+          <header class="panel-head">
+            <h2>어디에 쓰이나 <small class="ri-sub">전방연관</small></h2>
+          </header>
+          <p class="ri-lead" id="sales-lead"></p>
+          <div class="ri-bars" id="sales"></div>
+        </article>
+
+        <article class="panel" id="p-mix">
+          <header class="panel-head">
+            <h2>품목 구성 <small class="ri-sub" id="mix-scope"></small></h2>
+            <span class="chip">산출액 비중</span>
+          </header>
+          <div class="ri-bars" id="mix"></div>
+        </article>
+
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p title="한국은행 2020년 지역산업연관표(생산자가격, 통합소분류 165부문, 17개 시도)와 지역 고용표(통합중분류). 한은 공표값과 그 단순 합계·비율만 썼고, 영향력·감응도계수는 생산유발계수표로 계산했습니다. 2020년은 코로나19 영향이 있던 해입니다.">자료: 한국은행 2020년 지역산업연관표(생산자가격, 통합소분류)·지역 고용표(통합중분류). 비율·특화계수·영향력·감응도계수는 원표로 계산. 지도: 국가데이터처 행정경계(2013).</p>
+      <p id="built"></p>
+      <p class="foot-link"><a href="status">자료 수집 현황</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/rio.js"></script>
+  <script src="assets/rio.js"></script>
+</body>
+</html>
