@@ -361,6 +361,7 @@
   }
 
   // 품목 구성: 묶음이면 그 구성, 단일 품목이면 그 품목이 속한 묶음 안에서의 자리
+  // ---------- 왼쪽 ② 품목 구성 ----------
   function renderMix() {
     const s = state.sido, it = item();
     const g = it.members ? state.item : D.groups.find((k) => D.items[k].members.includes(state.item));
@@ -405,7 +406,7 @@
     }
   }
 
-  // ---------- 왼쪽 ② 수급 구조: 생산은 어디로, 수요는 어디서 ----------
+  // ---------- 왼쪽 ③ 수급 구조: 생산은 어디로, 수요는 어디서 ----------
   function renderSupply() {
     const s = state.sido, r0 = R(s), nat = s === NATION;
     const own = nat ? r0.x - r0.exp : r0.own;
@@ -462,7 +463,7 @@
       + side(sent(s), "보내는 곳", C.oth) + side(received(s), "받는 곳", C.oth);
   }
 
-  // ---------- 오른쪽 ③ 투입구조: 생산 100원의 구성 ----------
+  // ---------- 오른쪽 ④ 투입구조: 생산 100원의 구성 ----------
   function renderInput() {
     const s = state.sido, r0 = R(s), nat = s === NATION, x = r0.x || 1;
     const [io, it2, ii] = r0.inputsTotal;
@@ -509,7 +510,7 @@
       `${sname(d.code)}: ${nat ? "국내" : "도내"} ${won(d.a)}${nat ? "" : ` · 다른 시도 ${won(d.b)}`} · 수입 ${won(d.c)}`, max)).join("");
   }
 
-  // ---------- 오른쪽 ④ 판로 ----------
+  // ---------- 오른쪽 ⑤ 판로 ----------
   function renderSales() {
     const s = state.sido, r0 = R(s), nat = s === NATION, x = r0.x || 1;
     const rows = [
@@ -527,7 +528,7 @@
       + `<div class="ri-key">${nat ? `<span><i style="background:${C.own}"></i>국내</span>` : `<span><i style="background:${C.own}"></i>도내</span><span><i style="background:${C.oth}"></i>다른 시도</span>`}<span><i style="background:${C.imp}"></i>수출</span></div>`;
   }
 
-  // ---------- 오른쪽 ⑤ 파급효과 ----------
+  // ---------- 오른쪽 ⑥ 파급효과 ----------
   function renderMult() {
     const s = state.sido, r0 = R(s), nat = s === NATION;
     $("#mult-bar").hidden = nat;
@@ -555,7 +556,10 @@
       if (ww <= 0.5) continue;
       svg.append("rect").attr("x", x).attr("y", 8).attr("width", Math.max(0.5, ww - 2)).attr("height", 20).attr("rx", 3).attr("fill", c).attr("opacity", c === C.oth && nm === "기타 시도" ? 0.55 : 1)
         .append("title").text(`${nm} ${eok(v)}`);
-      if (ww > 40) svg.append("text").attr("class", "ri-fl-v").attr("x", x + 5).attr("y", 22).text(`${nm} ${nf1.format(v)}`);
+      // 칸에 들어가는 만큼만: 이름+값 → 값만 → 없음
+      const t = svg.append("text").attr("class", "ri-fl-v").attr("x", x + 5).attr("y", 22).text(`${nm} ${nf1.format(v)}`);
+      if (t.node().getComputedTextLength() + 9 > ww) t.text(nf1.format(v));
+      if (t.node().getComputedTextLength() + 9 > ww) t.remove();
       x += ww;
     }
     svg.append("line").attr("class", "ri-ten").attr("x1", L + 10 * sc).attr("x2", L + 10 * sc).attr("y1", 2).attr("y2", 34);
@@ -582,22 +586,25 @@
     renderSales();
     renderMult();
     if (state.view === "map") { paintMap(); renderRank(); } else drawScatter();
-    fitRight();
+    fitCols();
     syncURL();
   }
 
-  // 한 화면 맞춤에서 오른쪽 열이 넘치면 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
+  // 한 화면 맞춤에서 옆 열이 넘치면 그 열에서 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
   const oneScreen = matchMedia("(min-width: 1281px) and (min-height: 720px)");
-  function fitRight() {
-    const col = $(".col-right");
-    const lists = [["#inputs", 4], ["#sales", 4], ["#mix", 3]].map(([sel, min]) => ({ rows: $$(`${sel} .ri-bar`), min }));
-    lists.forEach((l) => l.rows.forEach((el) => { el.hidden = false; }));
-    if (!oneScreen.matches) return;
-    while (col.scrollHeight > col.clientHeight) {
-      const cand = lists.map((l) => ({ l, vis: l.rows.filter((el) => !el.hidden && !el.classList.contains("sel")) }))
-        .filter(({ l, vis }) => vis.length > l.min).sort((a, b) => b.vis.length - a.vis.length)[0];
-      if (!cand) break;
-      cand.vis[cand.vis.length - 1].hidden = true;
+  const TRIM = [[".col-left", [["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
+  function fitCols() {
+    for (const [colSel, specs] of TRIM) {
+      const col = $(colSel);
+      const lists = specs.map(([sel, min]) => ({ rows: $$(`${sel} .ri-bar`), min }));
+      lists.forEach((l) => l.rows.forEach((el) => { el.hidden = false; }));
+      if (!oneScreen.matches) continue;
+      while (col.scrollHeight > col.clientHeight) {
+        const cand = lists.map((l) => ({ l, vis: l.rows.filter((el) => !el.hidden && !el.classList.contains("sel")) }))
+          .filter(({ l, vis }) => vis.length > l.min).sort((a, b) => b.vis.length - a.vis.length)[0];
+        if (!cand) break;
+        cand.vis[cand.vis.length - 1].hidden = true;
+      }
     }
   }
 
