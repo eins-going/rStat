@@ -388,18 +388,19 @@
     const w = el.clientWidth || 300;
     const sel = state.sido;
     const vals = SIDOS.map((k) => [k, R(k).lq]).filter(([, v]) => ok(v));
-    const hi = Math.max(2, Math.ceil(d3.max(vals, ([, v]) => v) * 2) / 2);
+    // 눈금 끝은 상위 10% 값의 1.3배에서 자른다 (한 시도가 튀면 나머지가 왼쪽에 몰린다). 넘는 점은 끝에 두고 'n+'로
+    const top = d3.max(vals, ([, v]) => v), q90 = d3.quantile(vals.map(([, v]) => v).sort(d3.ascending), 0.9);
+    const hi = Math.max(2, Math.ceil(Math.min(top, q90 * 1.3) * 2) / 2), cut = top > hi;
     const x = d3.scaleLinear().domain([0, hi]).range([10, w - 10]);
     // 비켜 놓기: 고른 시도부터, 이미 놓인 점과 닿지 않는 가장 가까운 줄(0, -1, +1, -2, …)에
     const rOf = (k) => (k === sel ? 6.5 : 4.5), step = 9.5;
     const dots = vals.map(([k, v]) => ({ k, v, x: x(Math.min(v, hi)), r: rOf(k) }))
       .sort((p, q) => (q.k === sel) - (p.k === sel) || p.x - q.x);
-    const placed = [];
+    // 줄은 위아래 2단(5줄)까지: 빈 자리가 없으면 가장 덜 겹치는 줄에 둔다 (한 화면에서 눈금이 너무 높아지지 않게)
+    const slots = [0, -1, 1, -2, 2].map((i) => i * step), placed = [];
     for (const d of dots) {
-      for (let i = 0; ; i++) {
-        const off = (i % 2 ? -1 : 1) * Math.ceil(i / 2) * step;
-        if (placed.every((o) => Math.hypot(o.x - d.x, o.off - off) >= o.r + d.r + 1)) { d.off = off; break; }
-      }
+      const gap = (off) => Math.min(Infinity, ...placed.map((o) => Math.hypot(o.x - d.x, o.off - off) - o.r - d.r));
+      d.off = slots.find((off) => gap(off) >= 1) ?? slots.reduce((b, off) => (gap(off) > gap(b) ? off : b));
       placed.push(d);
     }
     const lo = d3.min(dots, (d) => d.off - d.r), up = d3.max(dots, (d) => d.off + d.r);
@@ -410,8 +411,8 @@
     svg.append("rect").attr("class", "ri-lq-hot").attr("x", x(1)).attr("y", cy + lo - 2).attr("width", x(hi) - x(1)).attr("height", up - lo + 4).attr("rx", 3);
     svg.append("line").attr("class", "ri-lq-one").attr("x1", x(1)).attr("x2", x(1)).attr("y1", cy + lo - 4).attr("y2", cy + up + 4);
     svg.append("text").attr("class", "ri-lq-t").attr("x", x(1)).attr("y", h - 2).attr("text-anchor", "middle").text("전국 평균 1");
-    svg.append("text").attr("class", "ri-lq-t").attr("x", x(hi)).attr("y", h - 2).attr("text-anchor", "end").text(`${nf1.format(hi)}`);
-    svg.append("text").attr("class", "ri-lq-t").attr("x", x(0)).attr("y", h - 2).attr("text-anchor", "start").text("0");
+    svg.append("text").attr("class", "ri-lq-t").attr("x", x(hi)).attr("y", h - 2).attr("text-anchor", "end").text(`${nf1.format(hi)}${cut ? "+" : ""}`);
+    if (x(1) - x(0) > 60) svg.append("text").attr("class", "ri-lq-t").attr("x", x(0)).attr("y", h - 2).attr("text-anchor", "start").text("0");
     const label = svg.append("text").attr("class", "ri-lq-sel").attr("y", cy + lo - 5).attr("text-anchor", "middle");
     const show = (d) => {
       if (!d) { label.text(""); return; }
