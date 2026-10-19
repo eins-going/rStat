@@ -381,15 +381,52 @@
     return `<div class="ri-bar" title="${esc(title)}"><span class="nm">${esc(label)}</span><span class="track">${parts}</span><span class="val">${val}</span></div>`;
   }
 
-  // 특화계수: 17개 시도 순위 막대. 점선이 전국 평균 1. 한 화면 맞춤에서 좁으면 아래(작은 값)부터 숨긴다
+  // 특화계수 눈금: 17개 시도 점. 값이 비슷한 점은 위아래로 비켜 겹치지 않게 하고,
+  // 점에 마우스를 올리면 그 시도 이름·값을, 떼면 고른 시도를 위에 보인다. 누르면 그 시도로
   function drawLQ() {
+    const el = $("#lq-scale");
+    const w = el.clientWidth || 300;
     const sel = state.sido;
-    const vals = SIDOS.map((k) => [k, R(k).lq, R(k).share]).filter(([, v]) => ok(v)).sort((a, b) => b[1] - a[1]);
-    const hi = Math.max(2, d3.max(vals, ([, v]) => v));
-    $("#lq-list").innerHTML = vals.map(([k, v, sh]) => `<div class="ri-bar${k === sel ? " sel" : ""}" data-k="${k}" title="${name(k)} 특화계수 ${nf2.format(v)} (도내 산업 중 ${pct(sh)})">`
-      + `<span class="nm">${short(k)}</span><span class="track"><i style="width:${(v / hi) * 100}%;background:${k === sel ? "var(--accent)" : v >= 1 ? "#8a6322" : "#4a4f59"}"></i>`
-      + `<u style="left:${(1 / hi) * 100}%"></u></span><span class="val">${nf2.format(v)}</span></div>`).join("");
-    $$("#lq-list .ri-bar").forEach((el) => el.addEventListener("click", () => setSido(el.dataset.k)));
+    const vals = SIDOS.map((k) => [k, R(k).lq]).filter(([, v]) => ok(v));
+    const hi = Math.max(2, Math.ceil(d3.max(vals, ([, v]) => v) * 2) / 2);
+    const x = d3.scaleLinear().domain([0, hi]).range([10, w - 10]);
+    // 비켜 놓기: 고른 시도부터, 이미 놓인 점과 닿지 않는 가장 가까운 줄(0, -1, +1, -2, …)에
+    const rOf = (k) => (k === sel ? 6.5 : 4.5), step = 9.5;
+    const dots = vals.map(([k, v]) => ({ k, v, x: x(Math.min(v, hi)), r: rOf(k) }))
+      .sort((p, q) => (q.k === sel) - (p.k === sel) || p.x - q.x);
+    const placed = [];
+    for (const d of dots) {
+      for (let i = 0; ; i++) {
+        const off = (i % 2 ? -1 : 1) * Math.ceil(i / 2) * step;
+        if (placed.every((o) => Math.hypot(o.x - d.x, o.off - off) >= o.r + d.r + 1)) { d.off = off; break; }
+      }
+      placed.push(d);
+    }
+    const lo = d3.min(dots, (d) => d.off - d.r), up = d3.max(dots, (d) => d.off + d.r);
+    const cy = 16 - lo, h = cy + up + 16;
+    const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
+    svg.selectAll("*").remove();
+    svg.append("line").attr("class", "ri-lq-base").attr("x1", x(0)).attr("x2", x(hi)).attr("y1", cy).attr("y2", cy);
+    svg.append("rect").attr("class", "ri-lq-hot").attr("x", x(1)).attr("y", cy + lo - 2).attr("width", x(hi) - x(1)).attr("height", up - lo + 4).attr("rx", 3);
+    svg.append("line").attr("class", "ri-lq-one").attr("x1", x(1)).attr("x2", x(1)).attr("y1", cy + lo - 4).attr("y2", cy + up + 4);
+    svg.append("text").attr("class", "ri-lq-t").attr("x", x(1)).attr("y", h - 2).attr("text-anchor", "middle").text("전국 평균 1");
+    svg.append("text").attr("class", "ri-lq-t").attr("x", x(hi)).attr("y", h - 2).attr("text-anchor", "end").text(`${nf1.format(hi)}`);
+    svg.append("text").attr("class", "ri-lq-t").attr("x", x(0)).attr("y", h - 2).attr("text-anchor", "start").text("0");
+    const label = svg.append("text").attr("class", "ri-lq-sel").attr("y", cy + lo - 5).attr("text-anchor", "middle");
+    const show = (d) => {
+      if (!d) { label.text(""); return; }
+      const t = `${short(d.k)} ${nf2.format(d.v)}`;
+      label.text(t).attr("x", Math.max(24, Math.min(w - 24, d.x)));
+    };
+    const selDot = dots.find((d) => d.k === sel);
+    show(selDot);
+    svg.append("g").selectAll("circle").data(dots.slice().reverse()).join("circle")
+      .attr("cx", (d) => d.x).attr("cy", (d) => cy + d.off).attr("r", (d) => d.r)
+      .attr("class", (d) => `ri-lq-dot${d.k === sel ? " sel" : ""}`)
+      .on("mouseenter", function (_, d) { d3.select(this).classed("hover", true); show(d); })
+      .on("mouseleave", function () { d3.select(this).classed("hover", false); show(selDot); })
+      .on("click", (_, d) => setSido(d.k))
+      .append("title").text((d) => `${name(d.k)} 특화계수 ${nf2.format(d.v)}`);
   }
 
   // ---------- 왼쪽 ③ 수급 구조: 생산은 어디로, 수요는 어디서 ----------
@@ -578,7 +615,7 @@
 
   // 한 화면 맞춤에서 옆 열이 넘치면 그 열에서 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
   const oneScreen = matchMedia("(min-width: 1281px) and (min-height: 720px)");
-  const TRIM = [[".col-left", [["#lq-list", 3], ["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
+  const TRIM = [[".col-left", [["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
   function fitCols() {
     for (const [colSel, specs] of TRIM) {
       const col = $(colSel);
