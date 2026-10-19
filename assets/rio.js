@@ -1,5 +1,5 @@
 (() => {
-  // 농업 연관 분석 — 한국은행 2020년 지역산업연관표(통합소분류)로 시도별 농식품 산업을 본다 (data/rio.js, scripts/build_rio.py)
+  // 지역산업연관표(농업) — 한국은행 2020년 지역산업연관표(통합소분류)로 시도별 농식품 산업을 본다 (data/rio.js, scripts/build_rio.py)
   // 그림마다 한 가지 연관분석 개념을 맡는다: 특화(LQ) · 수급과 지역 간 교역 · 후방연관 · 전방연관 · 생산유발과 역외누출 · 영향력·감응도
   const D = window.AGRI_RIO;
   const T = window.AGRI_TOPO;
@@ -472,8 +472,9 @@
     let left = 100 - d3.sum(cells);
     raw.map((v, i) => [((v / tot) * 100) % 1, i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { cells[i]++; left--; } });
     const el = $("#waffle");
-    const w = el.clientWidth || 300, cols = 20, rows = 5, gap = 2;
-    const cw = (w - gap * (cols - 1)) / cols, ch = Math.min(cw, 15);
+    // 25×4 정사각 칸, 한 칸은 10px까지 (칸이 크면 오른쪽 열이 한 화면을 넘친다)
+    const w = el.clientWidth || 300, cols = 25, rows = 4, gap = 2;
+    const cw = Math.min((w - gap * (cols - 1)) / cols, 10), ch = cw;
     const h = rows * ch + gap * (rows - 1);
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();
@@ -577,7 +578,23 @@
     renderSales();
     renderMult();
     if (state.view === "map") { paintMap(); renderRank(); } else drawScatter();
+    fitRight();
     syncURL();
+  }
+
+  // 한 화면 맞춤에서 오른쪽 열이 넘치면 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
+  const oneScreen = matchMedia("(min-width: 1281px) and (min-height: 720px)");
+  function fitRight() {
+    const col = $(".col-right");
+    const lists = [["#inputs", 4], ["#sales", 4], ["#mix", 3]].map(([sel, min]) => ({ rows: $$(`${sel} .ri-bar`), min }));
+    lists.forEach((l) => l.rows.forEach((el) => { el.hidden = false; }));
+    if (!oneScreen.matches) return;
+    while (col.scrollHeight > col.clientHeight) {
+      const cand = lists.map((l) => ({ l, vis: l.rows.filter((el) => !el.hidden && !el.classList.contains("sel")) }))
+        .filter(({ l, vis }) => vis.length > l.min).sort((a, b) => b.vis.length - a.vis.length)[0];
+      if (!cand) break;
+      cand.vis[cand.vis.length - 1].hidden = true;
+    }
   }
 
   fromURL();

@@ -427,7 +427,7 @@ where = "https://www.data.go.kr/data/15118469/fileData.do"
 [[source]]
 id = "bok_rio"
 name = "지역산업연관표 (한국은행)"
-page = "농업 연관"
+page = "지역산업연관표(농업)"
 method = "event"
 commands = [["scripts/fetch_bok_rio.py"], ["scripts/build_rio.py"]]
 outputs = ["data/rio.js"]

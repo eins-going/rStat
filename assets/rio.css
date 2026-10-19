@@ -1,4 +1,4 @@
-/* 농업 연관 분석 (rio.html, assets/rio.js) — 바탕 꾸밈은 style.css를 그대로 쓴다
+/* 지역산업연관표(농업) (rio.html, assets/rio.js) — 바탕 꾸밈은 style.css를 그대로 쓴다
    역내·타지역·수입은 검증한 3색(주황 #d95926 · 파랑 #3987e5 · 청록 #199e70), 부가가치는 중립 회색 */
 
 .ri-lead { margin: 0 0 8px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
@@ -31,6 +31,7 @@ h2 .ri-hint { margin-left: 4px; }
 .ri-bar .track i:first-child { border-radius: 3px; }
 .ri-bar .val { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 .ri-bar.sel .nm { color: var(--accent); font-weight: 600; }
+.ri-bar[hidden] { display: none; }
 
 /* 범례 조각 */
 .ri-key { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-top: 5px; font-size: 11px; color: var(--muted); }

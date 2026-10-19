@@ -592,6 +592,9 @@ body {
   .select { flex: 1; }
   .select select { width: 100%; }
 }
+@media (max-width: 400px) {
+  .tabs a { padding: 3px 7px; } /* 360px 폰에서도 탭 네 개가 한 줄에 들어가게 */
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
