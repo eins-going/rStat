@@ -553,13 +553,10 @@
     const side = partner();
     const eff = effN(side === "o" ? cur.byO : cur.byD), effB = b ? effN(side === "o" ? b.byO : b.byD) : null;
     $("#kpi-share-label").textContent = A ? "다른 시도행 비중" : "전국 대비 비중";
-    $("#kpi-share-hint").title = A ? `출발 시도와 도착 시도가 다른 ${eqName()}의 비중`
-      : `이 지역이 ${state.dir === "out" ? "보낸" : "받은"} ${eqName()} ÷ 전국 ${eqName()} (품목·판로·출하 주체를 고르면 그 안에서). 사업 예산 규모가 해마다 달라도 비교할 수 있다`;
     if (A) setKpi("share", cr, pct, ok(cr) && ok(crB) ? cr - crB : null, pp);
     else setKpi("share", sh, pctS, ok(sh) && ok(shB) ? sh - shB : null, pp);
     setKpi("dist", dist, km, ok(dist) && ok(distB) ? dist - distB : null, km);
     $("#kpi-cross-label").textContent = A ? "같은 시군 안 이동" : "다른 시도와 오간 비중";
-    $("#kpi-cross-hint").title = A ? "출발과 도착이 같은 시군인 물량의 비중" : `${state.dir === "out" ? "다른 시도로 보낸" : "다른 시도에서 받은"} 비중`;
     if (A) setKpi("cross", near, pct, ok(near) && ok(nearB) ? near - nearB : null, pp);
     else setKpi("cross", cr, pct, ok(cr) && ok(crB) ? cr - crB : null, pp);
     $("#kpi-eff-label").textContent = side === "o" ? "실질 출발지 수" : "실질 도착지 수";

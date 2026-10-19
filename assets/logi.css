@@ -24,13 +24,8 @@ html:has(body.logi) { scrollbar-gutter: stable; }
 .play[aria-pressed="true"] { background: var(--accent-soft); border-color: rgba(245, 165, 36, 0.55); }
 .play:focus-visible, .flow-btn:focus-visible, .groupbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.hint {
-  display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%;
-  border: 1px solid var(--faint); color: var(--muted); font-size: 9.5px; cursor: help; vertical-align: 1px;
-}
 .stats.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
 .stats.three .stat-value b { font-size: 18px; }
-.stats.two .stat-label small { font-size: 9.5px; }
 
 /* 지표 묶음 · 흐름선 버튼 */
 .groupbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }

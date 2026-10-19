@@ -1,11 +1,6 @@
 /* 농사용 전기 모니터 (power.html, assets/power.js) — 바탕 꾸밈은 style.css를 그대로 쓴다 */
 
-.hint {
-  display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%;
-  border: 1px solid var(--faint); color: var(--muted); font-size: 9.5px; cursor: help; vertical-align: 1px;
-}
 .stats.two { row-gap: 14px; }
-.stats.two .stat-label small { font-size: 9.5px; }
 .facts .up { color: var(--up); }
 .facts .down { color: var(--down); }
 

@@ -703,7 +703,6 @@
     const all = isAll();
     const cr = cur.S ? (cur.X / cur.S) * 100 : null, crB = b && b.S ? (b.X / b.S) * 100 : null;
     $("#kpi-share-label").textContent = all ? "다른 시도행 비중" : "전국 대비 비중";
-    $("#kpi-share-hint").title = all ? `출발 시도와 도착 시도가 다른 ${eqName()}의 비중` : `이 흐름의 ${eqName()} ÷ 전국 ${eqName()} (품목·판로·출하 주체를 고르면 그 안에서). 사업 예산 규모가 해마다 달라도 비교할 수 있다`;
     $("#share-head").firstChild.textContent = all ? "다른 시도행 비중 추이 " : "전국 대비 비중 추이 ";
     if (all) setKpi("share", cr, pct, ok(cr) && ok(crB) ? cr - crB : null, pp);
     else setKpi("share", sh, pctS, ok(sh) && ok(shB) ? sh - shB : null, pp);
