@@ -419,9 +419,11 @@
     const w = el.clientWidth || 300, h = 112;
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();
-    const L = 46, W = w - L - 4, sc = W / Math.max(pT, dT, 1), bh = 18, yP = 16, yD = 80;
+    // 생산·수요를 각각 100% 막대로 그리고, 도내(국내) 몫끼리를 곡선 띠로 잇는다
+    const L = 46, W = w - L - 4, bh = 18, yP = 16, yD = 80;
     const row = (segs, y, label, total) => {
       svg.append("text").attr("class", "ri-fl-h").attr("x", 0).attr("y", y + 13).text(label);
+      const sc = W / (total || 1);
       let x = L;
       for (const [nm, v, c] of segs) {
         const ww = Math.max(0, v) * sc;
@@ -432,10 +434,11 @@
         x += ww;
       }
     };
-    // 가운데 띠: 도내(국내)에서 만들어 도내에서 쓴 몫
-    const ow = Math.max(0, own) * sc;
-    svg.append("path").attr("class", "ri-fl-band").attr("d", `M${L},${yP + bh} L${L + ow - 2},${yP + bh} L${L + ow - 2},${yD} L${L},${yD} Z`);
-    svg.append("text").attr("class", "ri-fl-b").attr("x", L + 6).attr("y", (yP + bh + yD) / 2 + 4).text(`${nat ? "국내" : "도내"}에서 만들어 ${nat ? "국내" : "도내"}에서 씀 ${won(own)}`);
+    const y1 = yP + bh, y2 = yD, my = (y1 + y2) / 2;
+    const a = Math.max(0, Math.max(0, own) * (W / (pT || 1)) - 2), b = Math.max(0, Math.max(0, own) * (W / (dT || 1)) - 2);
+    svg.append("path").attr("class", "ri-fl-band")
+      .attr("d", `M${L},${y1} L${L + a},${y1} C${L + a},${my} ${L + b},${my} ${L + b},${y2} L${L},${y2} Z`);
+    svg.append("text").attr("class", "ri-fl-b").attr("x", L + 6).attr("y", my + 4).text(`${nat ? "국내" : "도내"}에서 만들어 ${nat ? "국내" : "도내"}에서 씀 ${won(own)}`);
     row(prod, yP, "생산", pT);
     row(dem, yD, "수요", dT);
     renderPartners();
@@ -452,7 +455,7 @@
       const list = Object.entries(obj).filter(([k, v]) => k !== s && v > 0).sort((a, b) => b[1] - a[1]);
       const tot = d3.sum(list, (d) => d[1]) || 1;
       return `<div class="ri-pt"><span class="ri-pt-h">${label}</span>${list.slice(0, 3).map(([k, v]) =>
-        `<span class="ri-pt-i" title="${name(k)} ${won(v)} (${pct(v / tot)})"><b>${short(k)}</b><i style="width:${Math.max(3, (v / list[0][1]) * 46)}px;background:${color}"></i>${pct0(v / tot)}</span>`).join("")}</div>`;
+        `<span class="ri-pt-i" title="${name(k)} ${won(v)} (${pct(v / tot)})"><b>${short(k)}</b><span class="tr"><i style="width:${Math.max(6, (v / list[0][1]) * 100)}%;background:${color}"></i></span><em>${pct0(v / tot)}</em></span>`).join("")}</div>`;
     };
     el.innerHTML = `<h3 class="sub-head">주요 교역 상대 <span>다른 시도와 거래한 금액 중 비중</span></h3>`
       + side(sent(s), "보내는 곳", C.oth) + side(received(s), "받는 곳", C.oth);
@@ -472,9 +475,9 @@
     let left = 100 - d3.sum(cells);
     raw.map((v, i) => [((v / tot) * 100) % 1, i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { cells[i]++; left--; } });
     const el = $("#waffle");
-    // 25×4 정사각 칸, 한 칸은 10px까지 (칸이 크면 오른쪽 열이 한 화면을 넘친다)
+    // 25×4 정사각 칸으로 좌우를 채운다 (5줄보다 낮아 오른쪽 열이 덜 넘친다)
     const w = el.clientWidth || 300, cols = 25, rows = 4, gap = 2;
-    const cw = Math.min((w - gap * (cols - 1)) / cols, 10), ch = cw;
+    const cw = (w - gap * (cols - 1)) / cols, ch = cw;
     const h = rows * ch + gap * (rows - 1);
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();

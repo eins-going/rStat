@@ -43,16 +43,18 @@ h2 .ri-hint { margin-left: 4px; }
 .ri-flow { margin-top: 2px; }
 .ri-fl-h { fill: var(--muted); font-size: 12px; font-weight: 600; }
 .ri-fl-v { fill: #fff; font-size: 10.5px; font-weight: 600; pointer-events: none; }
-.ri-fl-band { fill: rgba(217, 89, 38, 0.18); }
+.ri-fl-band { fill: rgba(217, 89, 38, 0.26); }
 .ri-fl-b { fill: var(--muted); font-size: 11px; }
 
 /* 주요 교역 상대 */
 #partners[hidden] { display: none; }
-.ri-pt { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; margin-top: 5px; font-size: 11.5px; color: var(--muted); }
-.ri-pt-h { width: 4.6em; color: var(--faint); }
-.ri-pt-i { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.ri-pt { display: grid; grid-template-columns: 3.9em repeat(3, minmax(0, 1fr)); align-items: center; gap: 4px 10px; margin-top: 5px; font-size: 11.5px; color: var(--muted); white-space: nowrap; } /* 세 시도가 늘 한 줄 */
+.ri-pt-h { color: var(--faint); }
+.ri-pt-i { display: flex; align-items: center; gap: 4px; min-width: 0; font-variant-numeric: tabular-nums; }
 .ri-pt-i b { color: var(--text); font-weight: 600; }
-.ri-pt-i i { display: inline-block; height: 8px; border-radius: 0 3px 3px 0; }
+.ri-pt-i .tr { flex: 1; min-width: 6px; }
+.ri-pt-i i { display: block; height: 8px; border-radius: 0 3px 3px 0; }
+.ri-pt-i em { font-style: normal; min-width: 2.4em; text-align: right; }
 
 /* 와플 */
 .ri-waffle { margin-top: 2px; }
