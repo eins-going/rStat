@@ -297,6 +297,32 @@ cadence = "매월, 약 2개월 늦게"
 period = "kepco"
 
 [[source]]
+id = "employ"
+name = "농업고용 (경제활동인구조사·지역별고용조사)"
+page = "농업고용"
+method = "auto"
+schedule = { kind = "monthly", day = 20 }
+commands = [["scripts/build_employ.py"]]
+outputs = ["data/employ.js"]
+check = "employ"
+keys = ["KOSIS_API_KEY"]
+note = "경제활동인구조사는 매월 중순(전월분), 지역별고용조사는 반기마다(상반기분 10월 무렵, 하반기분 4월 무렵) 공표. 매월 20일에 둘 다 다시 받는다. 산업별 비임금 근로자는 8월 부가조사라 해마다 한 번 바뀐다."
+
+[[source.dataset]]
+name = "산업별·시도별 취업자 (농림어업, 1963~)"
+origin = "국가데이터처 경제활동인구조사"
+freq = "월"
+cadence = "매월 중순, 전월분"
+period = "employ:m"
+
+[[source.dataset]]
+name = "시군구 산업·직업별 취업자, 농업 연령·종사상지위·임금 (반기)"
+origin = "국가데이터처 지역별고용조사"
+freq = "반기"
+cadence = "상반기분 10월 · 하반기분 4월 무렵"
+period = "employ:h"
+
+[[source]]
 id = "agrix_corp"
 name = "농업법인 (농업경영체 등록정보)"
 page = "(화면 없음, DB만)"

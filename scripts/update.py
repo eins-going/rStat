@@ -145,7 +145,22 @@ def check_facilities(old, new):
     return True, ([f"시설 {a:,} → {b:,}곳"] if a != b else []), []
 
 
-CHECKS = {"kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco),
+def check_employ(old, new):
+    changes, problems = [], []
+    for key, name in (("months", "경활"), ("halves", "지역별")):
+        a, b = (old[key][-1] if old else ""), new[key][-1]
+        if b < a:
+            problems.append(f"{name} 마지막 시점이 뒤로 갔다 ({a} → {b})")
+        elif a != b:
+            changes.append(f"{name} {a or '–'} → {b}")
+    if len(new["u"]) < 160:
+        problems.append(f"시군이 {len(new['u'])}곳뿐이다")
+    if new["years"][0] != "1963":
+        problems.append(f"긴 흐름이 {new['years'][0]}년부터다 (1963년이어야 한다)")
+    return not problems, changes, problems
+
+
+CHECKS = {"kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
           "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities)}
 
 
@@ -159,6 +174,9 @@ def period_of(src):
             return f"가축 {p['livestock']} · 농가 {latest(p['farm'])} · 예산 {latest(p['budget'])}"
         if src["id"] == "kepco":
             return f"{read_js('data/power.js')['months'][-1]}까지"
+        if src["id"] == "employ":
+            d = read_js("data/employ.js")
+            return f"월 {d['months'][-1]}까지 · 반기 {d['halves'][-1]}까지"
         if src["id"] == "logistics":
             return f"{read_js('data/logistics.js')['years'][-1]}년까지"
         if src["id"] == "facilities":
@@ -400,6 +418,13 @@ def dataset_period(ds):
         if kind == "kepco":
             y, m = read_js("data/power.js")["months"][-1].split("-")
             return f"{y}년 {int(m)}월"
+        if kind == "employ":
+            d = read_js("data/employ.js")
+            if arg == "m":
+                y, m = d["months"][-1].split("-")
+                return f"{y}년 {int(m)}월"
+            y, h = d["halves"][-1].split("-")
+            return f"{y}년 {'상' if h == '1' else '하'}반기"
         if kind == "agrix":
             import duckdb
             c = duckdb.connect(os.path.join(ROOT, "db", "agrix.duckdb"), read_only=True)

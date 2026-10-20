@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>농업고용</title>
+  <meta name="description" content="경제활동인구조사와 지역별고용조사로 농림어업 취업자의 60년 흐름, 계절, 연령·종사상지위·노동시간, 시군별 분포를 한 화면에서 봅니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/power.css">
+  <link rel="stylesheet" href="assets/employ.css">
+</head>
+<body class="pw em">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="rio">지역산업연관표(농업)</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+          <a href="employ" aria-current="page">농업고용</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+        <label class="select">
+          <span>반기</span>
+          <select id="half"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="규모·흐름·계절">
+        <article class="panel" id="p-size">
+          <header class="panel-head">
+            <h2>농림어업 취업자 <span class="h2-scope" id="size-scope"></span></h2>
+            <span class="chip" id="size-when"></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">취업자</span>
+              <span class="stat-value"><b data-v="cnt"></b><small data-u="cnt"></small></span>
+              <span class="delta" data-d="cnt"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">전체 취업자 중 비중</span>
+              <span class="stat-value"><b data-v="share"></b><small data-u="share"></small></span>
+              <span class="delta" data-d="share"></span>
+            </div>
+          </div>
+          <h3 class="sub-head" id="long-head">긴 흐름 <span id="long-note"></span></h3>
+          <div class="chart em-long" id="chart-long" aria-label="농림어업 취업자와 비중의 긴 흐름"></div>
+          <div class="pw-key" id="long-key"></div>
+          <h3 class="sub-head">무슨 일을 하나 <span id="mix-note"></span></h3>
+          <div class="em-mix" id="mix"></div>
+        </article>
+
+        <article class="panel" id="p-season">
+          <header class="panel-head">
+            <h2>들판의 1년 <span class="h2-scope" id="season-scope"></span></h2>
+            <div class="em-toggle" role="group" aria-label="열지도 값">
+              <button type="button" data-heat="idx" aria-pressed="true">계절 지수</button>
+              <button type="button" data-heat="abs" aria-pressed="false">인원</button>
+            </div>
+          </header>
+          <p class="em-line" id="season-line"></p>
+          <div class="chart em-heat" id="chart-heat" aria-label="연도·월별 농림어업 취업자 열지도"></div>
+          <div class="em-heatkey" id="heat-key"></div>
+          <p class="note" id="season-note"></p>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 농업고용</h1>
+          <ul class="facts em-facts" id="facts"></ul>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="pw-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="누가·어떻게 일하나">
+        <article class="panel" id="p-who">
+          <header class="panel-head">
+            <h2>누가 일하나 <span class="h2-scope">(전국)</span></h2>
+            <span class="chip" id="who-when"></span>
+          </header>
+          <div class="em-waffles">
+            <figure class="em-waffle"><div id="waffle-agri"></div><figcaption id="waffle-agri-cap"></figcaption></figure>
+            <figure class="em-waffle"><div id="waffle-all"></div><figcaption id="waffle-all-cap"></figcaption></figure>
+          </div>
+          <div class="pw-key em-agekey" id="age-key"></div>
+          <h3 class="sub-head">60세 이상 비중 <span id="old-note">반기</span></h3>
+          <div class="chart em-old" id="chart-old" aria-label="60세 이상 비중 추이"></div>
+          <div class="em-cmp" id="cmp-who"></div>
+        </article>
+
+        <article class="panel" id="p-how">
+          <header class="panel-head">
+            <h2>어떻게 일하나 <span class="h2-scope">(전국)</span></h2>
+            <span class="chip" id="how-when"></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">무급가족종사자</span>
+              <span class="stat-value"><b data-v="unpaid"></b><small data-u="unpaid"></small></span>
+              <span class="delta" data-d="unpaid"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">주당 평균 취업시간</span>
+              <span class="stat-value"><b data-v="hrs"></b><small data-u="hrs"></small></span>
+              <span class="delta" data-d="hrs"></span>
+            </div>
+          </div>
+          <div class="em-cmp" id="cmp-how"></div>
+          <h3 class="sub-head">주 36시간 미만 일하는 비중 <span>최근 5년 · 월</span></h3>
+          <div class="chart em-short" id="chart-short" aria-label="주 36시간 미만 취업자 비중"></div>
+          <div class="pw-key" id="short-key"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p title="경제활동인구조사(월, 전국·시도): 산업분류가 바뀔 때마다 나뉜 표(1963~1992, 1992~2000, 2000~2008, 2004~2017, 2013~)를 이어 붙였고 겹치는 시점은 새 표 값을 썼습니다. 산업은 '농업, 임업 및 어업'(농림어업)까지만 나뉩니다. 지역별고용조사(반기, 시군구): 표본이 작은 시군은 상대표준오차(RSE)가 커서 툴팁에 함께 적었습니다. 광역시 구는 시부로 더했습니다. 두 조사는 조사 시기와 표본이 달라 같은 시점이라도 값이 다릅니다.">자료: 국가데이터처 경제활동인구조사(월·전국·시도, 1963~)·지역별고용조사(반기·시군구, 2013~). 두 조사는 조사 시기·표본이 달라 값이 다릅니다. 지도: 국가데이터처 행정경계(2013)를 현행 시군으로 묶음.</p>
+      <p id="built"></p>
+      <p class="foot-link"><a href="status">자료 수집 현황</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/employ.js"></script>
+  <script src="assets/employ.js"></script>
+  <script src="assets/about.js"></script>
+</body>
+</html>

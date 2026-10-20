@@ -8,4 +8,7 @@
   a.textContent = "만든이";
   if (/\/about(\.html)?$/.test(location.pathname)) a.setAttribute("aria-current", "page");
   tabs.after(a);
+  // 좁은 화면에서 탭 줄이 넘치면 지금 화면 탭이 보이게 민다
+  const cur = tabs.querySelector('[aria-current="page"]');
+  if (cur && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = cur.offsetLeft - (tabs.clientWidth - cur.offsetWidth) / 2;
 })();

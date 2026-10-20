@@ -582,6 +582,9 @@ body {
 
 @media (max-width: 760px) {
   .app { padding: 0 16px 24px; }
+  /* 좁은 화면: 탭이 한 줄에 다 들어가지 않으면 옆으로 밀어 본다 (지금 화면 탭은 about.js가 보이게 옮긴다) */
+  .tabs { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
   .grid { grid-template-columns: 1fr; }
   .stat-value b { font-size: 23px; }
   .rank { grid-template-columns: 1fr; }
@@ -593,7 +596,7 @@ body {
   .select select { width: 100%; }
 }
 @media (max-width: 400px) {
-  .tabs a { padding: 3px 7px; } /* 360px 폰에서도 탭 네 개가 한 줄에 들어가게 */
+  .tabs a { padding: 3px 7px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
