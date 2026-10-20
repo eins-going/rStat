@@ -103,45 +103,35 @@
         </div>
       </section>
 
-      <section class="col col-right" aria-label="누가·어떻게 일하나">
-        <article class="panel" id="p-who">
+      <section class="col col-right" aria-label="지역 안의 농업 일자리">
+        <article class="panel" id="p-place">
           <header class="panel-head">
-            <h2>누가 일하나 <span class="h2-scope">(전국)</span></h2>
-            <span class="chip" id="who-when"></span>
+            <h2>지역 안에서 농업의 자리</h2>
+            <span class="chip" id="place-when"></span>
           </header>
-          <div class="em-waffles">
-            <figure class="em-waffle"><figcaption id="waffle-agri-cap"></figcaption><div id="waffle-agri"></div></figure>
-            <figure class="em-waffle"><figcaption id="waffle-all-cap"></figcaption><div id="waffle-all"></div></figure>
-          </div>
-          <div class="pw-key em-agekey" id="age-key"></div>
-          <div class="em-oldrow">
-            <span class="em-oldlab">60세 이상 비중<small id="old-note"></small></span>
-            <div class="em-old" id="chart-old" aria-label="60세 이상 비중 추이 (농업·전체)"></div>
-          </div>
-          <div class="em-cmp" id="cmp-who"></div>
+          <p class="em-line" id="place-line"></p>
+          <div class="chart em-scatter" id="chart-scatter" aria-label="시군별 농림어업 비중과 65세 이상 취업자 비중"></div>
+          <div class="pw-key" id="scatter-key"></div>
+        </article>
+
+        <article class="panel" id="p-flow">
+          <header class="panel-head">
+            <h2>농업 일자리의 흐름 <span class="h2-scope" id="flow-scope"></span></h2>
+            <span class="chip" id="flow-when"></span>
+          </header>
+          <div class="em-flow" id="flow"></div>
         </article>
 
         <article class="panel" id="p-how">
           <header class="panel-head">
-            <h2>어떻게 일하나 <span class="h2-scope">(전국)</span></h2>
+            <h2>일하는 방식 <span class="h2-scope">(전국 참고)</span></h2>
             <span class="chip" id="how-when"></span>
           </header>
-          <div class="stats two">
-            <div class="stat">
-              <span class="stat-label">무급가족종사자</span>
-              <span class="stat-value"><b data-v="unpaid"></b><small data-u="unpaid"></small></span>
-              <span class="delta" data-d="unpaid"></span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">주당 평균 취업시간</span>
-              <span class="stat-value"><b data-v="hrs"></b><small data-u="hrs"></small></span>
-              <span class="delta" data-d="hrs"></span>
-            </div>
-          </div>
           <div class="em-cmp" id="cmp-how"></div>
           <h3 class="sub-head">주 36시간 미만 일하는 비중 <span>최근 5년 · 월</span></h3>
           <div class="chart em-short" id="chart-short" aria-label="주 36시간 미만 취업자 비중"></div>
           <div class="pw-key" id="short-key"></div>
+          <p class="note" id="how-note">농업을 연령·종사상지위·취업시간으로 나눈 공표 표는 전국만 있어 지역을 골라도 바뀌지 않습니다.</p>
         </article>
       </section>
     </main>

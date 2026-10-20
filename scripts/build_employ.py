@@ -9,8 +9,8 @@
 - 산업별 비임금 근로자 DT_1DE6070_11 (2013~, 해마다 8월 부가조사): 자영업자·무급가족종사자
 지역별고용조사 (반기, 시군구까지) — 농업(01)·임업·어업, 작물재배업·축산업까지 나뉜다
 - 시군구/산업별 취업자 DT_1ES3A30S(사는 곳 기준) · DT_1ES3C06S(일하는 곳 기준) · 시군구/직업별 DT_1ES3A31S
-- 시도/산업별 DT_1ES3B05J · 전국 산업/성별(소분류) DT_1ES3B31J · 전국 산업/연령/교육/종사상지위 DT_1ES3B27J
-- 전국 직업/임금수준별 임금근로자 DT_1ES3B20J (농림어업 숙련 종사자)
+- 시군구/연령별 취업자 DT_1ES3A03_A01S (지역 취업자 중 65세 이상, 산업 구분 없음)
+- 시도/산업별 DT_1ES3B05J · 전국 산업/성별(소분류) DT_1ES3B31J · 전국 산업/연령 DT_1ES3B27J
 
 값은 천 명(취업시간은 시간, RSE는 %). 지역 키는 data.js와 같다: '00' 전국, '31' 시도, '31|수원시' 시군.
 광역시의 구는 '○○시부'로 더한다(더한 값의 RSE는 없다). 2026 '전남광주통합특별시' 행은 빼고 광주·전남을 쓴다.
@@ -213,6 +213,8 @@ def regional():
     halves |= set(h)
     occ, h = unit_rows("DT_1ES3A31S", ["00", "60"], ["T1"])
     halves |= set(h)
+    age, h = unit_rows("DT_1ES3A03_A01S", ["000", "040"], ["T00"])  # 지역 취업자 계·65세 이상 (산업 구분 없음)
+    halves |= set(h)
     # 시도: 계·농림어업·농업·임업·어업
     regs = sido_ids("DT_1ES3B05J", "A")
     rows = rows_of("DT_1ES3B05J", "H", {"A": "ALL", "B": "0+A+01+02+03"}, "201301", "210002", "T1")
@@ -232,7 +234,8 @@ def regional():
     for k in sorted(UNIT_KEYS):
         v = {"t": ser(res, (k, "00", "T1")), "a": ser(res, (k, "01", "T1")), "ar": ser(res, (k, "01", "T2")),
              "wt": ser(work, (k, "00", "T1")), "wa": ser(work, (k, "01", "T1")),
-             "ot": ser(occ, (k, "00", "T1")), "oa": ser(occ, (k, "60", "T1"))}
+             "ot": ser(occ, (k, "00", "T1")), "oa": ser(occ, (k, "60", "T1")),
+             "yt": ser(age, (k, "000", "T00")), "yo": ser(age, (k, "040", "T00"))}
         v = {f: s for f, s in v.items() if s and any(x is not None for x in s)}
         if v:
             units[k] = v
@@ -247,35 +250,22 @@ def regional():
 
 
 def national_mix(H):
-    """전국 구성(반기): 농업 소분류·성별, 연령·교육·종사상지위·취업시간, 임금수준."""
+    """전국 구성(반기): 농업 소분류(작물·축산·임업·어업), 농업 연령 (지역 단위 공표 표가 없는 항목)."""
     out = {}
-    # 소분류·성별: 계, 농림어업, 농업(작물·축산·복합·서비스), 임업, 어업
+    # 소분류: 계, 농림어업, 농업(작물·축산·복합·서비스), 임업, 어업
     ids = ["0", "A", "01", "011", "012", "013", "014", "02", "03"]
-    rows = rows_of("DT_1ES3B31J", "H", {"A": "+".join(ids)}, "201301", "210002", "T00+T10+T11")
+    rows = rows_of("DT_1ES3B31J", "H", {"A": "+".join(ids)}, "201301", "210002", "T00")
     acc = {}
     for r in rows:
-        acc.setdefault((r["C1"], r["ITM_ID"]), {})[prd_key("H", r["PRD_DE"])] = num(r["DT"])
-    out["sub"] = {i: [acc.get((i, "T00"), {}).get(h) for h in H] for i in ids}
-    out["sex"] = {i: {"m": [acc.get((i, "T10"), {}).get(h) for h in H], "f": [acc.get((i, "T11"), {}).get(h) for h in H]}
-                  for i in ("0", "01")}
-    # 연령·교육·종사상지위·취업시간: 계, 농업
-    items = ["T00", "T20", "T21", "T22", "T23", "T24", "T30", "T31", "T32", "T41", "T42", "T43", "T50"]
+        acc.setdefault(r["C1"], {})[prd_key("H", r["PRD_DE"])] = num(r["DT"])
+    out["sub"] = {i: [acc.get(i, {}).get(h) for h in H] for i in ids}
+    # 연령: 계, 농업 (15~29 · 30대 · 40대 · 50대 · 60세 이상)
+    items = ["T20", "T21", "T22", "T23", "T24"]
     rows = rows_of("DT_1ES3B27J", "H", {"B": "0+01"}, "201301", "210002", "+".join(items))
     acc = {}
     for r in rows:
         acc.setdefault((r["C1"], r["ITM_ID"]), {})[prd_key("H", r["PRD_DE"])] = num(r["DT"])
-    for i in ("0", "01"):
-        g = lambda its: [[acc.get((i, t), {}).get(h) for t in its] for h in H]  # noqa: E731
-        out.setdefault("age", {})[i] = g(items[1:6])
-        out.setdefault("edu", {})[i] = g(items[6:9])
-        out.setdefault("status", {})[i] = g(items[9:12])
-        out.setdefault("hrs", {})[i] = [acc.get((i, "T50"), {}).get(h) for h in H]
-    # 임금수준: 임금근로자 계, 농림어업 숙련 종사자
-    rows = rows_of("DT_1ES3B20J", "H", {"A": "0+6", "B": "V1+V2+V3+V4+V5+V6"}, "201301", "210002", "T1")
-    acc = {}
-    for r in rows:
-        acc.setdefault((r["C1"], r["C2"]), {})[prd_key("H", r["PRD_DE"])] = num(r["DT"])
-    out["wage"] = {i: [[acc.get((i, f"V{v}"), {}).get(h) for v in range(1, 7)] for h in H] for i in ("0", "6")}
+    out["age"] = {i: [[acc.get((i, t), {}).get(h) for t in items] for h in H] for i in ("0", "01")}
     return out
 
 
@@ -296,7 +286,6 @@ def main():
         "hours": hrs, "nonwage": nw,
         "halves": H, "u": units, "s": sidos, "mix": mix,
     }
-    # 전국 반기 값: 시도 표의 계
     path = os.path.join(ROOT, "data", "employ.js")
     with open(path, "w", encoding="utf-8") as f:
         f.write("// 농업고용: 경제활동인구조사·지역별고용조사 (scripts/build_employ.py)\nwindow.AGRI_EMPLOY = ")

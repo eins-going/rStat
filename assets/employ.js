@@ -495,107 +495,162 @@
     renderSeason();
   }));
 
-  // ---------- 오른쪽: 누가 일하나 (전국 농업) ----------
-  const AGE_NAMES = ["15~29세", "30대", "40대", "50대", "60세 이상"];
-  const AGE_COLORS = ["#454b55", "#5f6672", "#838b97", "#c9b38a", "#f5a524"];
-  // 백분율 → 100칸 (큰 나머지 순으로 반올림)
-  function hundred(vals) {
-    const tot = d3.sum(vals);
-    const raw = vals.map((v) => (v / tot) * 100);
-    const n = raw.map(Math.floor);
-    let left = 100 - d3.sum(n);
-    raw.map((v, i) => [v - n[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { n[i]++; left--; } });
-    return n;
+  // ---------- 오른쪽: 지역 집계 (시군 값을 더한다) ----------
+  // 시도·전국은 그 안 시군 값의 합. 두 값을 짝으로 쓸 때는 둘 다 있는 시군만 더해 분자·분모의 범위를 맞춘다
+  const unitsOf = (k) => (level(k) === 2 ? [k] : level(k) === 1 ? UNITS_BY_SIDO[k] : ALL_UNITS);
+  function aggPair(k, fa, fb, ha, hb = ha) {
+    let a = 0, b = 0, n = 0;
+    for (const u of unitsOf(k)) {
+      const x = uAt(u, fa, ha), y = uAt(u, fb, hb);
+      if (ok(x) && ok(y)) { a += x; b += y; n++; }
+    }
+    return n ? [a, b] : [null, null];
   }
-  // 25×4 격자를 왼쪽 위부터 세로로 채운다: 60세 이상부터 연령대가 왼쪽에서 오른쪽으로 덩어리를 이뤄
-  // 위아래 두 그림(농업·전체)의 같은 연령대 길이를 바로 견줄 수 있다
-  function waffle(el, vals) {
-    const n = hundred(vals);
-    const cells = [4, 3, 2, 1, 0].flatMap((i) => Array(n[i]).fill(i));
-    el.innerHTML = cells.map((i) => `<i style="background:${AGE_COLORS[i]}" title="${AGE_NAMES[i]} ${n[i]}명"></i>`).join("");
+  // 65세 이상 비중이 있는 마지막 반기 (선택 반기 이하)
+  const placeHalf = () => { for (let i = state.h; i >= 0; i--) if (ALL_UNITS.some((u) => ok(uAt(u, "yo", i)))) return i; return -1; };
+
+  // ---------- 오른쪽 1: 지역 안에서 농업의 자리 (산점도) ----------
+  function placePoints(h) {
+    return ALL_UNITS.map((k) => ({ k, x: uShare(k, h), y: share(uAt(k, "yo", h), uAt(k, "yt", h)) })).filter((p) => ok(p.x) && ok(p.y));
   }
-  function renderWho() {
-    const age = E.mix.age;
-    const h = lastHalf(age["01"], state.h);
-    $("#who-when").textContent = h >= 0 ? `${halfShort(h)} · 지역별` : "";
-    if (h < 0) return;
-    const ag = age["01"][h], al = age["0"][h];
-    waffle($("#waffle-agri"), ag);
-    waffle($("#waffle-all"), al);
-    const old = (v) => share(v[4], d3.sum(v));
-    const young = (v) => share(v[0] + v[1], d3.sum(v));
-    const cap = (name, v, dim) => `<b>${name}</b><span class="em-wstat">60세 이상 <em${dim ? ' class="dim"' : ""}>${nf0.format(old(v))}</em>명</span><span class="em-wstat">40세 미만 <em class="dim">${nf0.format(young(v))}</em>명</span>`;
-    $("#waffle-agri-cap").innerHTML = cap("농업 100명", ag, false);
-    $("#waffle-all-cap").innerHTML = cap("전체 산업 100명", al, true);
-    $("#age-key").innerHTML = [4, 3, 2, 1, 0].map((i) => `<span><i style="background:${AGE_COLORS[i]};height:9px;width:9px"></i>${AGE_NAMES[i]}</span>`).join("");
-    drawOld();
-    // 학력·성별 비교
-    const edu = E.mix.edu, sex = E.mix.sex;
-    const rows = [
-      { g: "학력", names: ["중졸 이하", "고졸", "대졸 이상"], colors: ["#f5a524", "#8a6a3a", "#5d636d"], a: edu["01"][h], b: edu["0"][h] },
-      { g: "성별", names: ["남자", "여자"], colors: ["#6b8fb8", "#c47a8a"], a: [sex["01"].m[h], sex["01"].f[h]], b: [sex["0"].m[h], sex["0"].f[h]] },
-    ];
-    $("#cmp-who").innerHTML = cmpHTML(rows, "농업", "전체");
+  function fitLine(pts) {
+    const mx = d3.mean(pts, (p) => p.x), my = d3.mean(pts, (p) => p.y);
+    const sxy = d3.sum(pts, (p) => (p.x - mx) * (p.y - my)), sxx = d3.sum(pts, (p) => (p.x - mx) ** 2), syy = d3.sum(pts, (p) => (p.y - my) ** 2);
+    const b1 = sxx ? sxy / sxx : 0;
+    return { b0: my - b1 * mx, b1, r: sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0 };
   }
-  // 비교 막대 묶음: 묶음마다 농업/전체 두 줄 100% 막대
-  function cmpHTML(rows, la, lb) {
+  const rankOf = (list, k) => list.findIndex((d) => d.k === k) + 1;
+  function renderPlace() {
+    const k = state.key, h = placeHalf(), s = sidoOf(k);
+    $("#place-when").textContent = h >= 0 ? `${halfShort(h)} · 지역별` : "";
+    const pts = h >= 0 ? placePoints(h) : [];
+    const fit = pts.length > 2 ? fitLine(pts) : null;
+    const res = (p) => p.y - (fit.b0 + fit.b1 * p.x); // 추세선보다 몇 %p 높은가
+    const line = $("#place-line");
+    if (!fit) line.textContent = "";
+    else if (level(k) === 2) {
+      const p = pts.find((d) => d.k === k);
+      const peers = pts.filter((d) => sidoOf(d.k) === s);
+      const byX = [...peers].sort((a, b) => b.x - a.x), byY = [...peers].sort((a, b) => b.y - a.y);
+      line.innerHTML = p
+        ? `농림어업 비중 <b>${pct(p.x)}</b> <span class="em-dim">${shortLabel(s)} ${rankOf(byX, k)}위/${peers.length}</span> · 65세 이상 <b>${pct(p.y)}</b> <span class="em-dim">${rankOf(byY, k)}위</span>`
+          + `<span class="em-sub">농업 비중이 비슷한 시군보다 65세 이상이 <b class="${res(p) > 0 ? "em-acc" : "em-cool"}">${pp(res(p))}</b> ${res(p) > 0 ? "많다" : "적다"}</span>`
+        : `${esc(label(k))}은(는) 이 반기 자료가 없습니다.`;
+    } else if (level(k) === 1) {
+      const sid = SIDO_CODES.map((c) => { const [a, t] = aggPair(c, "a", "t", h), [o, ot] = aggPair(c, "yo", "yt", h); return { k: c, x: share(a, t), y: share(o, ot) }; }).filter((d) => ok(d.x) && ok(d.y));
+      const me = sid.find((d) => d.k === k);
+      const peers = pts.filter((d) => sidoOf(d.k) === k);
+      const above = peers.filter((d) => res(d) > 0).length;
+      line.innerHTML = me
+        ? `농림어업 비중 <b>${pct(me.x)}</b> <span class="em-dim">시도 ${rankOf([...sid].sort((a, b) => b.x - a.x), k)}위</span> · 65세 이상 <b>${pct(me.y)}</b> <span class="em-dim">${rankOf([...sid].sort((a, b) => b.y - a.y), k)}위</span>`
+          + `<span class="em-sub">시군 ${peers.length}곳 중 <b>${above}곳</b>이 농업 비중에 비해 더 고령 (추세선 위)</span>`
+        : "";
+    } else {
+      line.innerHTML = `시군 ${pts.length}곳: 농림어업 비중이 높을수록 65세 이상 취업자도 많다 <span class="em-dim">(상관계수 ${fit.r.toFixed(2)})</span>`
+        + `<span class="em-sub">점선(추세)보다 위는 농업 비중에 비해 더 고령. 점을 누르면 그 시군으로</span>`;
+    }
+    drawScatter(pts, fit, res);
+  }
+  function drawScatter(pts, fit, res) {
+    const el = $("#chart-scatter");
+    const { svg, w, h } = frame(el, 200);
+    if (!pts.length) { empty(svg); $("#scatter-key").innerHTML = ""; return; }
+    const k = state.key, s = sidoOf(k);
+    const m = { l: 30, r: 10, t: 8, b: 16 };
+    const x = d3.scaleLinear().domain([0, d3.max(pts, (p) => p.x) * 1.04]).nice(4).range([m.l, w - m.r]);
+    const y = d3.scaleLinear().domain([0, d3.max(pts, (p) => p.y) * 1.06]).nice(4).range([h - m.b, m.t]);
+    gridY(svg, y, y.ticks(4), m.l, w - m.r, (d) => (d ? `${d}%` : ""));
+    svg.append("g").attr("class", "pw-axis").selectAll("text").data(x.ticks(5)).join("text").attr("x", (d) => x(d)).attr("y", h - m.b + 12).attr("text-anchor", "middle").text((d) => `${d}%`);
+    svg.append("text").attr("class", "em-axlab").attr("x", w - m.r).attr("y", h - m.b - 5).attr("text-anchor", "end").text("농림어업 비중 →");
+    svg.append("text").attr("class", "em-axlab").attr("x", m.l + 4).attr("y", m.t + 8).text("↑ 65세 이상 비중");
+    const [x0, x1] = x.domain();
+    svg.append("line").attr("class", "em-fit").attr("x1", x(x0)).attr("x2", x(x1)).attr("y1", y(fit.b0 + fit.b1 * x0)).attr("y2", y(fit.b0 + fit.b1 * x1));
+    const cls = (p) => (p.k === k ? "sel" : s ? (sidoOf(p.k) === s ? "peer" : "ctx") : "all");
+    const order = { ctx: 0, all: 1, peer: 2, sel: 3 };
+    const dots = svg.append("g").selectAll("circle").data([...pts].sort((a, b) => order[cls(a)] - order[cls(b)])).join("circle")
+      .attr("class", (p) => `em-dot ${cls(p)}`).attr("cx", (p) => x(p.x)).attr("cy", (p) => y(p.y)).attr("r", (p) => (cls(p) === "sel" ? 5.5 : cls(p) === "peer" ? 3.6 : 2.8))
+      .on("click", (e, p) => select(p.k));
+    dots.append("title").text((p) => `${fullLabel(p.k)} · 농림어업 ${pct(p.x)} · 65세 이상 ${pct(p.y)} · 추세보다 ${pp(res(p))}`);
+    const sel = pts.find((p) => p.k === k);
+    if (sel) {
+      const right = x(sel.x) > w * 0.7;
+      svg.append("text").attr("class", "em-dotlab").attr("x", x(sel.x) + (right ? -8 : 8)).attr("y", y(sel.y) + 4).attr("text-anchor", right ? "end" : "start").text(label(k));
+    }
+    $("#scatter-key").innerHTML = (s ? `<span><i class="em-k-peer"></i>${shortLabel(s)} 시군</span><span><i class="em-k-ctx"></i>다른 시군</span>` : `<span><i class="em-k-peer"></i>시군</span>`)
+      + (sel ? `<span><i class="em-k-sel"></i>${esc(label(k))}</span>` : "") + `<span><i class="em-k-fit"></i>추세</span><span class="em-k-n">세로: 산업 구분 없는 지역 취업자</span>`;
+  }
+
+  // ---------- 오른쪽 2: 농업 일자리의 흐름 ----------
+  function hbar(v, max, cls = "") { return `<span class="em-hb"><i class="${cls}" style="width:${ok(v) && max ? Math.max(0, (v / max) * 100) : 0}%"></i></span>`; }
+  function renderFlow() {
+    const k = state.key;
+    $("#flow-scope").textContent = `(${fullLabel(k)})`;
+    $("#flow-when").textContent = `${halfShort(state.h)} · 지역별`;
+    const hh = state.h;
+    const out = [];
+    // 들고 남: 사는 곳 기준 주민 vs 일하는 곳 기준 일자리
+    const [a, wa] = aggPair(k, "a", "wa", hh);
+    if (ok(a) && ok(wa)) {
+      const d = wa - a, mx = Math.max(a, wa), rel = (d / a) * 100;
+      const msg = level(k) === 0 ? "전국은 들고 나는 사람이 서로 맞물려 차이가 거의 없습니다. 시도·시군을 고르면 보입니다."
+        : Math.abs(rel) < 2 ? "사는 사람과 일자리가 거의 같습니다."
+        : d > 0 ? `일자리가 주민보다 <b class="em-acc">${peopleText(d)}</b>(${nf0.format(rel)}%) 많다: 다른 곳에서 농사지으러 들어온다`
+        : `주민이 일자리보다 <b class="em-cool">${peopleText(-d)}</b>(${nf0.format(-rel)}%) 많다: 다른 곳 농지로 나간다`;
+      out.push(`<div class="em-fg"><h3>들고 남</h3>
+        <div class="em-fr"><span>사는 주민</span>${hbar(a, mx, "res")}<b>${peopleText(a)}</b></div>
+        <div class="em-fr"><span>이곳 일자리</span>${hbar(wa, mx, "work")}<b>${peopleText(wa)}</b></div>
+        <p class="em-fmsg">${msg}</p></div>`);
+    }
+    // 5년 변화: 농림어업 vs 전체 취업자, 선택 지역 · 상위 · 전국
+    const chain = [k, parentOf(k), parentOf(k) && parentOf(parentOf(k))].filter((x, i, arr) => x && arr.indexOf(x) === i);
+    if (hh - 10 >= 0) {
+      const rows = chain.map((r) => {
+        const [a1, a0] = aggPair(r, "a", "a", hh, hh - 10), [t1, t0] = aggPair(r, "t", "t", hh, hh - 10);
+        return { r, ga: ok(a1) && a0 ? (a1 / a0 - 1) * 100 : null, gt: ok(t1) && t0 ? (t1 / t0 - 1) * 100 : null };
+      });
+      const lim = Math.max(5, ...rows.flatMap((d) => [Math.abs(d.ga ?? 0), Math.abs(d.gt ?? 0)]));
+      const dv = (v, cls) => `<span class="em-dv"><i class="${cls}${v < 0 ? " neg" : ""}" style="width:${ok(v) ? (Math.abs(v) / lim) * 50 : 0}%"></i></span><b class="${ok(v) && v < 0 ? "em-cool" : ""}">${pctS(v)}</b>`;
+      out.push(`<div class="em-fg"><h3>5년 변화 <small>${halfShort(hh - 10)} → ${halfShort(hh)}</small></h3>
+        <div class="em-gr em-gh"><span></span><span>농림어업 취업자</span><span>전체 취업자</span></div>
+        ${rows.map((d) => `<div class="em-gr${d.r === k ? " me" : ""}"><span>${esc(shortLabel(d.r))}</span><span class="em-gc">${dv(d.ga, "agri")}</span><span class="em-gc">${dv(d.gt, "all")}</span></div>`).join("")}</div>`);
+    }
+    // 사람 대 일: 농림어업 산업 취업자 vs 농림어업 숙련 직업 종사자
+    const [oa, ia] = aggPair(k, "oa", "a", hh);
+    if (ok(oa) && ok(ia)) {
+      const mx = Math.max(oa, ia);
+      out.push(`<div class="em-fg"><h3>산업과 직업</h3>
+        <div class="em-fr"><span>농림어업 산업</span>${hbar(ia, mx, "res")}<b>${peopleText(ia)}</b></div>
+        <div class="em-fr"><span>농림어업 숙련직</span>${hbar(oa, mx, "occ")}<b>${peopleText(oa)}</b></div>
+        <p class="em-fmsg">직접 농사·어로 일을 하는 숙련직이 산업 취업자의 <b>${nf0.format(share(oa, ia))}%</b>${share(oa, ia) < 90 ? ": 경영·사무·판매·단순노무 일을 하는 사람이 함께 있다" : ""}</p></div>`);
+    }
+    $("#flow").innerHTML = out.join("") || `<p class="note">이 반기에는 ${esc(fullLabel(k))} 자료가 없습니다.</p>`;
+  }
+
+  // ---------- 오른쪽 3: 일하는 방식 (전국 참고) ----------
+  // 비교 막대 묶음: 묶음마다 농림어업/전체 두 줄 100% 막대
+  function cmpHTML(rows) {
     const bar = (vals, colors, names) => {
       const tot = d3.sum(vals.filter(ok));
       return `<div class="em-bar sm">${vals.map((v, i) => { const s = share(v, tot) ?? 0; return `<span style="flex:${s};background:${colors[i]}" title="${names[i]} ${pct(s)}">${s >= 14 ? `${nf0.format(s)}%` : ""}</span>`; }).join("")}</div>`;
     };
     return rows.map((r) => `<div class="em-cmp-g"><div class="em-cmp-h"><b>${r.g}</b>${r.names.map((n, i) => `<span><i style="background:${r.colors[i]}"></i>${n}</span>`).join("")}</div>`
-      + `<div class="em-cmp-r"><span class="em-cmp-l">${r.la || la}</span>${bar(r.a, r.colors, r.names)}</div>`
-      + `<div class="em-cmp-r"><span class="em-cmp-l dim">${r.lb || lb}</span>${bar(r.b, r.colors, r.names)}</div></div>`).join("");
+      + `<div class="em-cmp-r"><span class="em-cmp-l">${r.la}</span>${bar(r.a, r.colors, r.names)}</div>`
+      + `<div class="em-cmp-r"><span class="em-cmp-l dim">${r.lb}</span>${bar(r.b, r.colors, r.names)}</div></div>`).join("");
   }
-  // 60세 이상 비중: 한 줄 추세선 (농업·전체), 끝 값만 적는다
-  function drawOld() {
-    const el = $("#chart-old");
-    const { svg, w, h } = frame(el, 34);
-    const age = E.mix.age;
-    const ser = (ind) => H.map((_, i) => { const v = age[ind][i]; return v && v.every(ok) ? share(v[4], d3.sum(v)) : null; });
-    const a = ser("01"), b = ser("0");
-    const idx = H.map((_, i) => i).filter((i) => ok(a[i]));
-    if (idx.length < 2) { empty(svg); return; }
-    const m = { l: 2, r: 30, t: 5, b: 5 };
-    const x = d3.scaleLinear().domain(d3.extent(idx)).range([m.l, w - m.r]);
-    const y = d3.scaleLinear().domain([0, 100]).range([h - m.b, m.t]);
-    svg.append("line").attr("class", "em-base").attr("x1", m.l).attr("x2", w - m.r).attr("y1", y(50)).attr("y2", y(50)).style("stroke-dasharray", "2 3");
-    const line = (s) => d3.line().defined((i) => ok(s[i])).x((i) => x(i)).y((i) => y(s[i]))(idx);
-    svg.append("path").attr("class", "em-l-all").attr("d", line(b));
-    svg.append("path").attr("class", "em-l-agri").attr("d", line(a));
-    const li = idx.at(-1), f = idx[0];
-    svg.append("text").attr("class", "em-end agri").attr("x", x(li) + 4).attr("y", y(a[li]) + 4).text(`${nf0.format(a[li])}%`);
-    svg.append("text").attr("class", "em-end").attr("x", x(li) + 4).attr("y", y(b[li]) + 4).text(`${nf0.format(b[li])}%`);
-    svg.append("title").text(`60세 이상 비중 · 농업 ${H[f].slice(0, 4)} ${nf0.format(a[f])}% → ${H[li].slice(0, 4)} ${nf0.format(a[li])}% · 전체 ${nf0.format(b[f])}% → ${nf0.format(b[li])}%`);
-    $("#old-note").textContent = `농업 ${H[f].slice(0, 4)} ${nf0.format(a[f])}% → ${H[li].slice(0, 4)}`;
-  }
-
-  // ---------- 오른쪽: 어떻게 일하나 (전국 농림어업) ----------
   function renderHow() {
     const nw = E.nonwage;
     const yi = nw.years.length - 1;
     const yr = nw.years[yi];
     const mi = M.indexOf(`${yr}-08`);
     const [, , emp, noemp, unpaid] = nw["01"][yi];
-    const unpaidAll = nw["00"][yi][4];
-    const aAug = mAt(NATION, "a", mi), tAug = mAt(NATION, "t", mi);
-    const wageA = ok(aAug) ? aAug - nw["01"][yi][0] : null, wageT = ok(tAug) ? tAug - nw["00"][yi][0] : null;
-    $("#how-when").textContent = `${yr}년 8월 · 경활`;
-    setStat("unpaid", people(unpaid), `<span class="d-lab">전국 무급가족종사자의</span><b class="em-acc">${nf0.format(share(unpaid, unpaidAll))}%</b>`);
-    // 취업시간: 최근 달
-    const hr = E.hours, hi = hr.months.length - 1;
-    setStat("hrs", [ok(hr["01"].avg[hi]) ? nf1.format(hr["01"].avg[hi]) : "–", "시간"], `<span class="d-lab">${+hr.months[hi].slice(5)}월 · 전체 산업</span>${nf1.format(hr["00"].avg[hi])}시간`);
     const all = nw["00"][yi];
-    const wage = E.mix.wage;
-    const wh = lastHalf(wage["6"], state.h);
-    const rows = [
+    const aAug = mAt(NATION, "a", mi), tAug = mAt(NATION, "t", mi);
+    const wageA = ok(aAug) ? aAug - nw["01"][yi][0] : null, wageT = ok(tAug) ? tAug - all[0] : null;
+    $("#how-when").textContent = `${yr}년 8월 · 경활`;
+    $("#cmp-how").innerHTML = cmpHTML([
       { g: "종사상지위", names: ["고용원 있는 자영업", "혼자 하는 자영업", "무급가족종사", "임금근로"], colors: ["#3f7d55", "#72c48d", "#f5a524", "#5d636d"],
         a: [emp, noemp, unpaid, wageA], b: [all[2], all[3], all[4], wageT], la: "농림어업", lb: "전체" },
-    ];
-    if (wh >= 0) rows.push({ g: `월 임금 <small>${halfShort(wh)} · 임금근로자</small>`, names: ["100만 미만", "100~200", "200~300", "300만 이상"], colors: ["#f5a524", "#b98a4a", "#7d8590", "#4f5560"],
-      a: (() => { const v = wage["6"][wh]; return [v[0], v[1], v[2], v[3] + v[4] + v[5]]; })(),
-      b: (() => { const v = wage["0"][wh]; return [v[0], v[1], v[2], v[3] + v[4] + v[5]]; })(), la: "농림어업직", lb: "전체" });
-    $("#cmp-how").innerHTML = cmpHTML(rows, "농림어업", "전체");
+    ]);
     drawShort();
   }
   function drawShort() {
@@ -654,7 +709,8 @@
     renderHero();
     renderSize();
     renderSeason();
-    renderWho();
+    renderPlace();
+    renderFlow();
     renderHow();
     paintMap();
     renderRank();
@@ -680,7 +736,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-long": drawLong, "chart-heat": renderSeason, "chart-old": drawOld, "chart-short": drawShort };
+  const redraw = { "chart-long": drawLong, "chart-heat": renderSeason, "chart-scatter": renderPlace, "chart-short": drawShort };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;
