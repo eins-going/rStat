@@ -386,28 +386,40 @@
   }
 
   // 무슨 일을 하나 (지역별고용조사, 거주지 기준)
-  // ① 전체 산업 중 농림어업: 전국·시도는 대분류 21개, 시군은 공표 묶음 6개
+  // ① 전체 산업 중 농림어업: 시군은 공표 묶음 6개, 전국·시도는 대분류 21개를 그 묶음 색으로
   // ② 농림어업 안: 전국은 작물재배·축산·임업·어업(소분류), 시도는 농업·임업·어업, 시군은 나뉘지 않는다
-  const SIDO_INDS = [["iB", "광업"], ["iC", "제조업"], ["iD", "전기·가스"], ["iE", "수도·하수·폐기물"], ["iF", "건설업"], ["iG", "도소매"],
-    ["iH", "운수·창고"], ["iI", "숙박·음식점"], ["iJ", "정보통신"], ["iK", "금융·보험"], ["iL", "부동산"], ["iM", "전문·과학·기술"],
-    ["iN", "사업시설·지원·임대"], ["iO", "공공행정"], ["iP", "교육"], ["iQ", "보건·복지"], ["iR", "예술·스포츠·여가"], ["iS", "협회·수리·개인"],
-    ["iT", "가구 내 고용"], ["iU", "국제·외국기관"]];
-  const UNIT_INDS = [["i04", "광·제조업"], ["i41", "건설업"], ["i42", "도소매·숙박음식"], ["i43", "전기·운수·통신·금융"], ["i44", "사업·개인·공공서비스"]];
+  // 묶음 순서·색은 고정 (지역을 바꿔도 같은 자리·같은 색). 색은 어두운 바탕에서 이웃 색 구분을 검사했다. short는 범례용
   const AGRI_PART = "농림어업";
-  const OTHER_FILL = ["#626874", "#4b5059"];
-  const MIX_COLORS = ["#72c48d", "#3f7d55", "#8fa79a", "#c9a46a", "#5fa8d9"];
+  const BUNDLES = [
+    { f: "i04", name: "광·제조", short: "광·제조", color: "#3987e5", inds: [["iB", "광업"], ["iC", "제조업"]] },
+    { f: "i41", name: "건설", short: "건설", color: "#d95926", inds: [["iF", "건설업"]] },
+    { f: "i42", name: "도소매·숙박음식", short: "도소매·숙박", color: "#9085e9", inds: [["iG", "도소매"], ["iI", "숙박·음식점"]] },
+    { f: "i43", name: "전기·운수·통신·금융", short: "운수·통신·금융", color: "#d55181", inds: [["iD", "전기·가스"], ["iH", "운수·창고"], ["iJ", "정보통신"], ["iK", "금융·보험"]] },
+    { f: "i44", name: "사업·개인·공공서비스", short: "서비스", color: "#c98500", inds: [["iE", "수도·하수·폐기물"], ["iL", "부동산"], ["iM", "전문·과학·기술"], ["iN", "사업시설·지원·임대"],
+      ["iO", "공공행정"], ["iP", "교육"], ["iQ", "보건·복지"], ["iR", "예술·스포츠·여가"], ["iS", "협회·수리·개인"], ["iT", "가구 내 고용"], ["iU", "국제·외국기관"]] },
+  ];
+  const AGRI_COLOR = "var(--agri)";
+  // 농림어업 안은 초록 계열 (위 막대의 다른 산업 색과 겹치지 않게)
+  const MIX_COLORS = ["#72c48d", "#3f7d55", "#a9d8b8", "#2e6b4f", "#5fbfae"];
   // 세종은 시군 표에 없다 → 시도 값
   const mixKey = (k) => (level(k) === 2 && !E.u[k]?.i04 && UNITS_BY_SIDO[sidoOf(k)].length === 1 ? sidoOf(k) : k);
+  // → { h, unit, groups: [{ name, color, v, parts: [[이름, 값]] }] } (농림어업이 첫 묶음)
   function industryParts(k) {
     const sk = mixKey(k);
     if (level(sk) === 2) {
       const h = lastHalf(E.u[sk]?.i04, state.h);
       if (h < 0) return null;
-      return { h, unit: "묶음", parts: [[AGRI_PART, uAt(sk, "a", h)], ...UNIT_INDS.map(([f, n]) => [n, uAt(sk, f, h)])] };
+      const g = (b, v) => ({ ...b, v, parts: [[b.name, v]] });
+      return { h, unit: "묶음", n: 6, groups: [g({ name: AGRI_PART, color: AGRI_COLOR }, uAt(sk, "a", h)), ...BUNDLES.map((b) => g(b, uAt(sk, b.f, h)))] };
     }
     const h = lastHalf(E.s[sk]?.iC, state.h);
     if (h < 0) return null;
-    return { h, unit: "산업", parts: [[AGRI_PART, sAt(sk, "a", h)], ...SIDO_INDS.map(([f, n]) => [n, sAt(sk, f, h)])] };
+    const a = sAt(sk, "a", h);
+    const groups = [{ name: AGRI_PART, color: AGRI_COLOR, v: a, parts: [[AGRI_PART, a]] }, ...BUNDLES.map((b) => {
+      const parts = b.inds.map(([f, n]) => [n, sAt(sk, f, h)]).filter(([, v]) => ok(v) && v > 0).sort((p, q) => q[1] - p[1]);
+      return { ...b, v: d3.sum(parts, (p) => p[1]), parts };
+    })];
+    return { h, unit: "산업", n: 21, groups };
   }
   function agriParts(k) {
     k = mixKey(k);
@@ -436,18 +448,19 @@
     $("#mix-note").textContent = `${halfShort(h0)} · 지역별`;
     let html = "";
     if (ind) {
-      const parts = ind.parts.filter(([, v]) => ok(v) && v > 0).sort((a, b) => b[1] - a[1]);
-      const tot = d3.sum(parts, (p) => p[1]);
-      const rank = parts.findIndex(([n]) => n === AGRI_PART) + 1;
-      let o = 0;
-      const bar = `<div class="em-bar">${parts.map(([n, v]) => {
-        const fill = n === AGRI_PART ? "var(--agri)" : OTHER_FILL[o++ % 2];
-        return `<span style="flex:${v};background:${fill}" title="${n} ${peopleText(v)} (${pct(share(v, tot))})"></span>`;
-      }).join("")}</div>`;
-      const a = parts.find(([n]) => n === AGRI_PART);
-      const top = parts.filter(([n]) => n !== AGRI_PART).slice(0, ind.unit === "묶음" ? 2 : 3); // 묶음은 이름이 길다
-      const key = (a ? `<span><i style="background:var(--agri)"></i>농림어업 <b>${nf1.format(share(a[1], tot))}%</b> · ${ind.parts.length}개 ${ind.unit} 중 ${rank === 1 ? "가장 많음" : `${rank}번째`}</span>` : "")
-        + `<span class="em-mtop">다른 ${ind.unit} ${top.map(([n, v]) => `${esc(n)} <b>${nf0.format(share(v, tot))}%</b>`).join(" · ")}</span>`;
+      const groups = ind.groups.filter((g) => ok(g.v) && g.v > 0);
+      const tot = d3.sum(groups, (g) => g.v);
+      const all = groups.flatMap((g) => g.parts).sort((p, q) => q[1] - p[1]);
+      const rank = all.findIndex(([n]) => n === AGRI_PART) + 1;
+      // 묶음 사이는 2px, 묶음 안 대분류 사이는 1px
+      const bar = `<div class="em-bar em-ibar">${groups.map((g, gi) => g.parts.map(([n, v], j) => `<span style="flex:${v};background:${g.color}${gi && !j ? ";margin-left:1px" : ""}" title="${n}${g.parts.length > 1 ? ` (${g.name})` : ""} ${peopleText(v)} · ${pct(share(v, tot))}"></span>`).join("")).join("")}</div>`;
+      const a = groups.find((g) => g.name === AGRI_PART);
+      let key = (a ? `<span class="em-mfirst"><i style="background:${AGRI_COLOR}"></i>농림어업 <b>${nf1.format(share(a.v, tot))}%</b> · ${ind.n}개 ${ind.unit} 중 ${rank === 1 ? "가장 많음" : `${rank}번째`}</span>` : "")
+        + groups.filter((g) => g.name !== AGRI_PART).map((g) => `<span title="${g.name}"><i style="background:${g.color}"></i>${g.short} <b>${nf0.format(share(g.v, tot))}%</b></span>`).join("");
+      if (ind.unit === "산업") {
+        const top = all.filter(([n]) => n !== AGRI_PART).slice(0, 3);
+        key += `<span class="em-mtop">큰 산업 ${top.map(([n, v]) => `${esc(n)} <b>${nf0.format(share(v, tot))}%</b>`).join(" · ")}</span>`;
+      }
       html += mixRow("전체 산업", bar, key);
     }
     if (sub) {

@@ -44,6 +44,7 @@
 .em-mkey { margin: 3px 0 0 64px; }
 .em-mwhen { color: var(--faint); }
 .em-barkey .em-mtop { display: block; }
+.em-barkey .em-mfirst { flex-basis: 100%; }
 .em-mnone { margin: 6px 0 0; font-size: 11px; color: var(--faint); }
 .em-mlink { padding: 0; font: inherit; color: var(--muted); background: none; border: 0; border-bottom: 1px dotted currentColor; cursor: pointer; }
 .em-mlink:hover { color: var(--text); }
