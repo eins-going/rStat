@@ -344,7 +344,10 @@
     $("#long-note").textContent = `${pts[0]?.x ?? ""}~${pts.at(-1)?.x ?? ""} · 연평균`;
     if (pts.length < 2) { empty(svg); $("#long-key").innerHTML = ""; return; }
     const m = { l: 38, r: 34, t: 16, b: 16 };
-    const x = d3.scaleLinear().domain(d3.extent(pts, (d) => d.x)).range([m.l, w - m.r]);
+    // 막대가 끝에서 넘치지 않게 양끝을 반 칸씩 띄운다
+    const [x0, x1] = d3.extent(pts, (d) => d.x);
+    const x = d3.scaleLinear().domain([x0 - 0.5, x1 + 0.5]).range([m.l, w - m.r]);
+    const bw = Math.max(1, ((w - m.l - m.r) / (x1 - x0 + 1)) * 0.72);
     const ya = d3.scaleLinear().domain([0, d3.max(pts, (d) => d.a) * 1.08]).nice(3).range([h - m.b, m.t]);
     const ys = d3.scaleLinear().domain([0, Math.max(1, d3.max(pts, (d) => d.s ?? 0) * 1.08)]).nice(3).range([h - m.b, m.t]);
     gridY(svg, ya, ya.ticks(3), m.l, w - m.r, (d) => (d ? `${nf0.format(d / 10)}만` : "0"));
@@ -352,8 +355,8 @@
     // 가로축: 10년 간격
     const xt = pts.map((d) => d.x).filter((v) => v % 10 === 0);
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(xt).join("text").attr("x", (d) => x(d)).attr("y", h - 3).attr("text-anchor", "middle").text((d) => d);
-    svg.append("path").attr("class", "em-area").attr("d", d3.area().x((d) => x(d.x)).y0(h - m.b).y1((d) => ya(d.a)).curve(d3.curveMonotoneX)(pts));
-    svg.append("path").attr("class", "em-aline").attr("d", d3.line().x((d) => x(d.x)).y((d) => ya(d.a)).curve(d3.curveMonotoneX)(pts));
+    const bars = svg.append("g").selectAll("rect").data(pts).join("rect").attr("class", "em-yb")
+      .attr("x", (d) => x(d.x) - bw / 2).attr("width", bw).attr("y", (d) => ya(d.a)).attr("height", (d) => ya(0) - ya(d.a)).attr("rx", Math.min(1.5, bw / 2));
     svg.append("path").attr("class", "em-sline").attr("d", d3.line().defined((d) => ok(d.s)).x((d) => x(d.x)).y((d) => ys(d.s)).curve(d3.curveMonotoneX)(pts));
     // 이야기 점: 비중 처음·끝, 취업자가 가장 많던 해
     const first = pts[0], last = pts.at(-1), peak = pts[d3.maxIndex(pts, (d) => d.a)];
@@ -370,18 +373,17 @@
     const read = svg.append("text").attr("class", "em-readout").attr("x", m.l + 2).attr("y", 10);
     const hv = svg.append("g").attr("class", "em-hover").style("display", "none");
     const ln = hv.append("line").attr("y1", m.t).attr("y2", h - m.b);
-    const dot = hv.append("circle").attr("r", 3).attr("class", "em-hdot");
     svg.append("rect").attr("x", m.l).attr("y", 0).attr("width", w - m.l - m.r).attr("height", h - m.b).attr("fill", "transparent")
       .on("mousemove", (e) => {
         const px = d3.pointer(e)[0];
         const d = pts[d3.minIndex(pts, (p) => Math.abs(x(p.x) - px))];
         hv.style("display", null);
         ln.attr("x1", x(d.x)).attr("x2", x(d.x));
-        dot.attr("cx", x(d.x)).attr("cy", ya(d.a));
+        bars.classed("on", (b) => b === d);
         g.style("opacity", 0.25);
         read.text(`${d.lab} · ${peopleText(d.a)} · 비중 ${pct(d.s)}`);
       })
-      .on("mouseleave", () => { hv.style("display", "none"); g.style("opacity", null); read.text(""); });
+      .on("mouseleave", () => { hv.style("display", "none"); bars.classed("on", false); g.style("opacity", null); read.text(""); });
     $("#long-key").innerHTML = `<span><i class="em-k-a"></i>농림어업 취업자 (왼쪽)</span><span><i class="em-k-s"></i>전체 취업자 중 비중 (오른쪽)</span>`;
   }
 

@@ -13,8 +13,8 @@
 
 /* 긴 흐름 */
 .em-long { height: 130px; margin-top: 4px; }
-.em-area { fill: rgba(114, 196, 141, 0.16); }
-.em-aline { fill: none; stroke: var(--agri); stroke-width: 1.6; }
+.em-yb { fill: rgba(114, 196, 141, 0.55); }
+.em-yb.on { fill: var(--agri); }
 .em-sline { fill: none; stroke: var(--accent); stroke-width: 2; }
 .em-mk.a { fill: var(--agri); }
 .em-mk.s { fill: var(--accent); }
@@ -25,7 +25,7 @@
 .em-readout { fill: var(--text); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .em-hover line { stroke: rgba(255, 255, 255, 0.35); stroke-width: 1; stroke-dasharray: 2 2; }
 .em-hdot { fill: var(--agri); stroke: #14161b; stroke-width: 1.5; }
-.pw-key i.em-k-a { height: 9px; background: rgba(114, 196, 141, 0.45); border-top: 2px solid var(--agri); }
+.pw-key i.em-k-a { width: 7px; height: 10px; border-radius: 1px; background: rgba(114, 196, 141, 0.55); }
 .pw-key i.em-k-s { background: var(--accent); }
 
 /* 무슨 일을 하나: 도넛 둘 (전체 산업 · 농림어업 안) */
