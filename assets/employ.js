@@ -168,14 +168,19 @@
     const pad = 12, bw = BOUNDS.x1 - BOUNDS.x0, bh = BOUNDS.y1 - BOUNDS.y0;
     const s = Math.min((w - pad * 2) / bw, (h - pad * 2) / bh);
     const ox = (w - bw * s) / 2, oy = (h - bh * s) / 2;
-    path = d3.geoPath(d3.geoTransform({ point(lon, lat) { this.stream.point(ox + (drawLon(lon) * KX - BOUNDS.x0) * s, oy + (BOUNDS.y1 - lat) * s); } }));
+    const project = (lon, lat) => [ox + (drawLon(lon) * KX - BOUNDS.x0) * s, oy + (BOUNDS.y1 - lat) * s];
+    path = d3.geoPath(d3.geoTransform({ point(lon, lat) { this.stream.point(...project(lon, lat)); } }));
     mapSvg.attr("viewBox", `0 0 ${w} ${h}`).attr("height", FIT.matches ? null : h);
+    anchor.clear();
+    [...sidoFeatures, ...unitFeatures].forEach((f) => anchor.set(f.properties.key, labelPoint(f)));
+    // 서울을 둘러싼 경기도는 중심점이 서울 안에 찍히므로 이름 위치를 직접 정한다 (경도, 위도)
+    Object.entries(LABEL_AT).forEach(([k, ll]) => anchor.set(k, project(...ll)));
     const world = mapSvg.selectAll("g.world").data([0]).join("g").attr("class", "world");
     world.selectAll("g.units").data([0]).join("g").attr("class", "units")
       .selectAll("path").data(unitFeatures, (d) => d.properties.key).join("path")
       .attr("class", "region unit").attr("d", path).attr("tabindex", 0).attr("role", "button")
-      .on("mousemove", (e, d) => showTip(e, d.properties.key))
-      .on("mouseleave", () => { tip.hidden = true; })
+      .on("mousemove", (e, d) => hoverRegion(e, d.properties.key))
+      .on("mouseleave", leaveRegion)
       .on("click", (e, d) => onRegionClick(d.properties.key))
       .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRegionClick(d.properties.key); } });
     world.selectAll("path.mesh-sido").data([sidoMesh]).join("path").attr("class", "mesh-sido").attr("d", path);
@@ -184,7 +189,47 @@
     world.selectAll("rect.inset-frame").data(ul ? [0] : []).join("rect").attr("class", "inset-frame")
       .attr("x", ux0 - 5).attr("y", uy0 - 5).attr("width", ux1 - ux0 + 10).attr("height", uy1 - uy0 + 10).attr("rx", 3)
       .append("title").text("울릉군: 지도에서 보기 좋게 실제보다 서쪽으로 옮겨 그림");
+    mapSvg.selectAll("g.labels").data([0]).join("g").attr("class", "labels");
     applyView(false);
+  }
+
+  // ---------- 지명 (주요 통계 app.js와 같다) ----------
+  const LABEL_AT = { 31: [127.45, 37.2], 23: [126.5, 37.42], 34: [126.75, 36.5] }; // 경기는 서울 밖, 인천·충남은 서울·세종과 겹치지 않게 서쪽
+  const anchor = new Map(); // 지역키 → 이름 자리 (가장 큰 조각의 중심)
+  // 섬이 많은 지역도 본섬 위에 이름이 오도록 가장 큰 폴리곤의 중심을 쓴다
+  function labelPoint(f) {
+    const g = f.geometry;
+    if (!g) return [NaN, NaN];
+    const polys = g.type === "MultiPolygon" ? g.coordinates : [g.coordinates];
+    let best = null, bestA = -1;
+    for (const c of polys) {
+      const pf = { type: "Polygon", coordinates: c };
+      const a = path.area(pf);
+      if (a > bestA) { bestA = a; best = pf; }
+    }
+    return path.centroid(best);
+  }
+  // 전국은 시도 이름, 시도·시군은 그 시도의 시군 이름 + 화면 안 주변 시도 이름(흐리게). 화면에서 너무 작은 지역은 뺀다
+  function drawLabels(view, animate) {
+    const s = sidoOf(state.key);
+    const keys = s ? UNITS_BY_SIDO[s] : SIDO_CODES;
+    const pos = (k) => { const [x, y] = anchor.get(k) || [NaN, NaN]; return [x * view.k + view.x, y * view.k + view.y]; };
+    const small = (k) => {
+      if (k === state.key) return false;
+      const f = (s ? unitFeatures : sidoFeatures).find((d) => d.properties.key === k);
+      return path.area(f) * view.k * view.k < (s ? 260 : 120);
+    };
+    const name = (k) => (level(k) === 1 ? T.sidos[k].short : (label(k).endsWith("시부") ? "시부" : label(k).replace(/(시|군|구)$/, "")));
+    const inView = (k) => { const [x, y] = pos(k); return x > 20 && x < size.w - 20 && y > 16 && y < size.h - 10; };
+    const ctx = s ? SIDO_CODES.filter((c) => c !== s && inView(c)) : [];
+    const data = [...keys.filter((k) => !small(k) && Number.isFinite(pos(k)[0])), ...ctx];
+    const sel = mapSvg.select("g.labels").selectAll("text").data(data, (k) => k).join("text")
+      .attr("class", (k) => `region-label${level(k) === 1 ? " sido-label" : ""}${s && level(k) === 1 ? " ctx" : ""}${k === state.key ? " sel" : ""}`)
+      .attr("x", (k) => pos(k)[0])
+      .attr("y", (k) => pos(k)[1] + 4)
+      .text(name);
+    if (animate && !reduceMotion) sel.style("opacity", 0).transition().delay(550).duration(300).style("opacity", 1);
+    else sel.interrupt().style("opacity", 1);
   }
 
   function targetView() {
@@ -201,11 +246,26 @@
     const t = targetView();
     if (animate && !reduceMotion) world.transition().duration(700).ease(d3.easeCubicInOut).attr("transform", t);
     else world.interrupt().attr("transform", t);
+    drawLabels(t, animate);
   }
 
+  // 전국 화면이나 다른 시도의 시군을 누르면 그 시도로, 고른 시도 안의 시군은 그 시군으로 (다시 누르면 시도로)
+  const pickSido = (k) => level(state.key) === 0 || sidoOf(k) !== sidoOf(state.key);
   function onRegionClick(k) {
-    if (k === state.key) select(sidoOf(k));
+    if (pickSido(k)) select(sidoOf(k));
+    else if (k === state.key) select(sidoOf(k));
     else select(k);
+  }
+  // 시도로 가는 자리에서는 그 시도 전체를 밝히고 툴팁에 알린다
+  function hoverRegion(e, k) {
+    showTip(e, k);
+    const s = pickSido(k) ? sidoOf(k) : null;
+    mapSvg.selectAll("path.unit").classed("sido-hov", (d) => d.properties.sido === s);
+    if (s) tip.insertAdjacentHTML("beforeend", `<br><span class="tip-hint">누르면 ${esc(T.sidos[s].short)} 보기</span>`);
+  }
+  function leaveRegion() {
+    tip.hidden = true;
+    mapSvg.selectAll("path.unit.sido-hov").classed("sido-hov", false);
   }
 
   function scaleFor(m, vals) {
