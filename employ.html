@@ -43,7 +43,7 @@
     </header>
 
     <main class="grid">
-      <section class="col col-left" aria-label="규모·흐름·계절">
+      <section class="col col-left" aria-label="경제활동인구조사: 월·연, 전국·시도">
         <article class="panel" id="p-size">
           <header class="panel-head">
             <h2>농림어업 취업자 <span class="h2-scope" id="size-scope"></span></h2>
@@ -67,22 +67,16 @@
           <h3 class="sub-head">월별 <span id="band-note"></span></h3>
           <div class="chart em-band" id="chart-band" aria-label="농림어업 취업자 월별: 올해·작년·직전 5년 범위"></div>
           <div class="pw-key" id="band-key"></div>
-          <h3 class="sub-head">무슨 일을 하나 <span id="mix-note"></span></h3>
-          <div class="em-mix" id="mix"></div>
         </article>
 
-        <article class="panel" id="p-season">
+        <article class="panel" id="p-pulse">
           <header class="panel-head">
-            <h2 id="trend-title">시군별 흐름 <span class="h2-scope" id="season-scope"></span></h2>
-            <span class="chip" id="trend-when"></span>
+            <h2>시도별 월별 동향</h2>
+            <span class="chip" id="pulse-when"></span>
           </header>
-          <div class="em-season">
-            <p class="em-line" id="season-line"></p>
-            <div class="em-sprof" id="chart-season" aria-label="월별 계절 지수 (최근 3년 평균)"></div>
-          </div>
-          <div class="em-tiles" id="tiles"></div>
-          <div class="em-detail" id="unit-detail" hidden></div>
-          <p class="note" id="trend-note"></p>
+          <p class="em-line" id="pulse-line"></p>
+          <div class="em-ygrid" id="ygrid"></div>
+          <div class="em-heatkey" id="ygrid-key"></div>
         </article>
       </section>
 
@@ -106,15 +100,27 @@
         </div>
       </section>
 
-      <section class="col col-right" aria-label="지역 안의 농업 일자리">
+      <section class="col col-right" aria-label="지역별고용조사: 반기, 시군까지">
         <article class="panel" id="p-place">
           <header class="panel-head">
-            <h2>지역 안에서 농업의 자리</h2>
+            <h2>지역 안에서 농업의 자리 <span class="h2-scope" id="place-scope"></span></h2>
             <span class="chip" id="place-when"></span>
           </header>
+          <h3 class="sub-head em-mixhead">무슨 일을 하나 <span id="mix-note"></span></h3>
+          <div class="em-mix" id="mix"></div>
           <p class="em-line" id="place-line"></p>
           <div class="chart em-scatter" id="chart-scatter" aria-label="시군별 농림어업 비중과 65세 이상 취업자 비중"></div>
           <div class="pw-key" id="scatter-key"></div>
+        </article>
+
+        <article class="panel" id="p-season">
+          <header class="panel-head">
+            <h2 id="trend-title">시군별 흐름 <span class="h2-scope" id="season-scope"></span></h2>
+            <span class="chip" id="trend-when"></span>
+          </header>
+          <div class="em-tiles" id="tiles"></div>
+          <div class="em-detail" id="unit-detail" hidden></div>
+          <p class="note" id="trend-note"></p>
         </article>
 
         <article class="panel" id="p-flow">
@@ -123,16 +129,6 @@
             <span class="chip" id="flow-when"></span>
           </header>
           <div class="em-flow" id="flow"></div>
-        </article>
-
-        <article class="panel" id="p-pulse">
-          <header class="panel-head">
-            <h2>시도별 월별 동향</h2>
-            <span class="chip" id="pulse-when"></span>
-          </header>
-          <p class="em-line" id="pulse-line"></p>
-          <div class="em-ygrid" id="ygrid"></div>
-          <div class="em-heatkey" id="ygrid-key"></div>
         </article>
       </section>
     </main>
