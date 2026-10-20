@@ -1,0 +1,2 @@
+# 배포에서 뺀다 (git에도 .gitignore로 빠져 있다)
+report/
