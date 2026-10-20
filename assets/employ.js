@@ -500,10 +500,7 @@
   const fullYears = () => [...new Set(H.map((x) => x.slice(0, 4)))].filter((y) => H.includes(`${y}-1`) && H.includes(`${y}-2`));
   const DETAIL = [
     { name: "농림어업 비중", get: (u, h) => uShare(u, h), agg: (s, h) => share(...aggPair(s, "a", "t", h)), fmt: pct, src: "거주지 기준" },
-    { name: "농림어업 취업자", get: (u, h) => uAt(u, "a", h), agg: null, fmt: peopleText, src: "거주지 기준" },
     { name: "근무지 기준 비중", get: (u, h) => share(uAt(u, "wa", h), uAt(u, "wt", h)), agg: (s, h) => share(...aggPair(s, "wa", "wt", h)), fmt: pct, src: "근무지 기준" },
-    { name: "근무지−거주지 차이", get: (u, h) => { const a = uAt(u, "a", h), w = uAt(u, "wa", h); return ok(a) && ok(w) && a >= 1 ? (w / a - 1) * 100 : null; },
-      agg: (s, h) => { const [a, w] = aggPair(s, "a", "wa", h); return ok(a) && a ? (w / a - 1) * 100 : null; }, fmt: pctS, src: "농림어업 취업자" },
     { name: "65세 이상 비중", get: (u, h) => share(uAt(u, "yo", h), uAt(u, "yt", h)), agg: (s, h) => share(...aggPair(s, "yo", "yt", h)), fmt: pct, src: "지역 취업자 전체" },
   ];
   function renderUnitDetail() {
@@ -521,18 +518,15 @@
       return `<div class="em-dr${cls}"><span class="em-dn">${d.name}<small>${d.agg ? `${shortLabel(s)} ${d.fmt(sv)}` : d.src}</small></span>`
         + `<b>${d.fmt(v)}</b>${spark(yearly(d.get))}<span class="em-drk">${rank(d.get)}</span></div>`;
     });
-    // 5년 변화 (추이선 없이)
+    // 5년 변화: 비슷한 시군 목록에만 (오른쪽 '농업 일자리의 흐름'과 겹치지 않게)
     const chg = (p, hh) => { const a1 = uAt(p, "a", hh), a0 = uAt(p, "a", hh - 10); return ok(a1) && a0 ? (a1 / a0 - 1) * 100 : null; };
-    const c = chg(u, h);
-    const [s1, s0] = aggPair(s, "a", "a", h, h - 10);
-    rows.push(`<div class="em-dr${ok(c) && c < 0 ? " neg" : ""}"><span class="em-dn">5년 변화<small>${shortLabel(s)} ${ok(s1) && s0 ? pctS((s1 / s0 - 1) * 100) : "–"}</small></span><b>${pctS(c)}</b><span class="em-drn">${h - 10 >= 0 ? `${halfShort(h - 10)} → ${halfShort(h)}` : ""}</span><span class="em-drk">${rank(chg)}</span></div>`);
     // 농업 비중이 비슷한 시군 (전국)
     const x0 = uShare(u, h);
-    const near = ok(x0) ? ALL_UNITS.filter((p) => p !== u && ok(uShare(p, h))).sort((a, b) => Math.abs(uShare(a, h) - x0) - Math.abs(uShare(b, h) - x0)).slice(0, 5) : [];
+    const near = ok(x0) ? ALL_UNITS.filter((p) => p !== u && ok(uShare(p, h))).sort((a, b) => Math.abs(uShare(a, h) - x0) - Math.abs(uShare(b, h) - x0)).slice(0, 8) : [];
     const old = (p) => share(uAt(p, "yo", h), uAt(p, "yt", h));
     $("#unit-detail").innerHTML = `<div class="em-dhead"><span>지표</span><span>값</span><span>${years[0]}~${years.at(-1)} 추이</span><span>${shortLabel(s)} 안</span></div>${rows.join("")}`
-      + (near.length ? `<h3 class="em-nh">농림어업 비중이 비슷한 시군 <small>전국 · 비중 · 5년 변화 · 65세 이상</small></h3>`
-        + near.map((p) => `<button type="button" class="em-near${ok(chg(p, h)) && chg(p, h) < 0 ? " neg" : ""}" data-k="${p}"><span>${esc(fullLabel(p))}</span><span>${pct(uShare(p, h))}</span><span class="em-tc">${pctS(chg(p, h))}</span><span class="em-dim">${pct(old(p))}</span></button>`).join("") : "");
+      + (near.length ? `<h3 class="em-nh">농림어업 비중이 비슷한 시군 <small>전국 8곳 · 비중 · 5년 변화 · 65세 이상</small></h3>`
+        + near.map((p) => `<button type="button" class="em-near${ok(chg(p, h)) && chg(p, h) < 0 ? " neg" : ""}${sidoOf(p) === s ? " same" : ""}" data-k="${p}"><span>${esc(fullLabel(p))}</span><span>${pct(uShare(p, h))}</span><span class="em-tc">${pctS(chg(p, h))}</span><span class="em-dim">${pct(old(p))}</span></button>`).join("") : "");
     $$("#unit-detail .em-near").forEach((b) => b.addEventListener("click", () => select(b.dataset.k)));
   }
 
@@ -667,7 +661,7 @@
         <div class="em-fr" title="이 지역에 사는 취업자 중 농림어업 (DT_1ES3A30S)"><span>거주지 기준</span>${hbar(a, mx, "res")}<b>${peopleText(a)}</b></div>
         <div class="em-fr" title="이 지역에서 일하는 취업자 중 농림어업 (DT_1ES3C06S)"><span>근무지 기준</span>${hbar(wa, mx, "work")}<b>${peopleText(wa)}</b></div>
         <p class="em-fmsg">${diff}</p>
-        <p class="em-fsrc">지역별고용조사 시군구/산업별 취업자 · 거주지 기준은 이 지역에 사는 사람, 근무지 기준은 이 지역에서 일하는 사람</p></div>`);
+        <p class="em-fsrc" title="거주지 기준: 이 지역에 사는 취업자 · 근무지 기준: 이 지역에서 일하는 취업자">출처: 지역별고용조사 시군구/산업별 취업자 (거주지·근무지 기준)</p></div>`);
     }
     // 5년 변화: 농림어업 vs 전체 취업자, 선택 지역 · 상위 · 전국
     const chain = [k, parentOf(k), parentOf(k) && parentOf(parentOf(k))].filter((x, i, arr) => x && arr.indexOf(x) === i);
@@ -685,54 +679,63 @@
     $("#flow").innerHTML = out.join("") || `<p class="note">이 반기에는 ${esc(fullLabel(k))} 자료가 없습니다.</p>`;
   }
 
-  // ---------- 오른쪽 3: 일하는 방식 (전국 참고) ----------
-  // 비교 막대 묶음: 묶음마다 농림어업/전체 두 줄 100% 막대
-  function cmpHTML(rows) {
-    const bar = (vals, colors, names) => {
-      const tot = d3.sum(vals.filter(ok));
-      return `<div class="em-bar sm">${vals.map((v, i) => { const s = share(v, tot) ?? 0; return `<span style="flex:${s};background:${colors[i]}" title="${names[i]} ${pct(s)}">${s >= 14 ? `${nf0.format(s)}%` : ""}</span>`; }).join("")}</div>`;
-    };
-    return rows.map((r) => `<div class="em-cmp-g"><div class="em-cmp-h"><b>${r.g}</b>${r.names.map((n, i) => `<span><i style="background:${r.colors[i]}"></i>${n}</span>`).join("")}</div>`
-      + `<div class="em-cmp-r"><span class="em-cmp-l">${r.la}</span>${bar(r.a, r.colors, r.names)}</div>`
-      + `<div class="em-cmp-r"><span class="em-cmp-l dim">${r.lb}</span>${bar(r.b, r.colors, r.names)}</div></div>`).join("");
+  // ---------- 오른쪽 3: 월별 동향 (경활, 전국·시도) ----------
+  // 지역별고용조사(반기)보다 자주·최근까지 나오는 경활 월 자료로 '요즘'을 본다. 시군을 고르면 그 시도
+  const pulseKey = () => (level(state.key) === 0 ? NATION : sidoOf(state.key));
+  const mYoy = (k, i) => { const a = mAt(k, "a", i), b = mAt(k, "a", i - 12); return ok(a) && ok(b) && b ? (a / b - 1) * 100 : null; };
+  function renderPulse() {
+    const k = pulseKey(), i = lastMonth(NATION);
+    $("#pulse-when").textContent = i >= 0 ? `경활 · ${monthText(i)}까지` : "경활";
+    $("#pulse-line").innerHTML = `농림어업 취업자, 전년 같은 달 대비 증감 · 최근 12개월 <span class="em-dim">누르면 그 시도로${level(state.key) ? ` · ${shortLabel(k)} 표시` : ""}</span>`;
+    drawBand();
+    renderYoyGrid();
   }
-  function renderHow() {
-    const nw = E.nonwage;
-    const yi = nw.years.length - 1;
-    const yr = nw.years[yi];
-    const mi = M.indexOf(`${yr}-08`);
-    const [, , emp, noemp, unpaid] = nw["01"][yi];
-    const all = nw["00"][yi];
-    const aAug = mAt(NATION, "a", mi), tAug = mAt(NATION, "t", mi);
-    const wageA = ok(aAug) ? aAug - nw["01"][yi][0] : null, wageT = ok(tAug) ? tAug - all[0] : null;
-    $("#how-when").textContent = `${yr}년 8월 · 경활`;
-    $("#cmp-how").innerHTML = cmpHTML([
-      { g: "종사상지위", names: ["고용원 있는 자영업", "혼자 하는 자영업", "무급가족종사", "임금근로"], colors: ["#3f7d55", "#72c48d", "#f5a524", "#5d636d"],
-        a: [emp, noemp, unpaid, wageA], b: [all[2], all[3], all[4], wageT], la: "농림어업", lb: "전체" },
-    ]);
-    drawShort();
-  }
-  function drawShort() {
-    const el = $("#chart-short");
+  // 월별: 올해 · 작년 · 직전 5년 범위
+  function drawBand() {
+    const k = pulseKey(), i = lastMonth(k);
+    const el = $("#chart-band");
     const { svg, w, h } = frame(el, 90);
-    const hr = E.hours, n = hr.months.length;
-    const idx = d3.range(Math.max(0, n - 60), n);
-    const a = hr["01"].short, b = hr["00"].short;
-    const m = { l: 30, r: 8, t: 6, b: 14 };
-    const x = d3.scaleLinear().domain(d3.extent(idx)).range([m.l, w - m.r]);
-    const y = d3.scaleLinear().domain([0, Math.max(80, d3.max(idx, (i) => Math.max(a[i] ?? 0, b[i] ?? 0)))]).nice(3).range([h - m.b, m.t]);
-    gridY(svg, y, y.ticks(3), m.l, w - m.r, (d) => `${d}%`);
-    const jan = idx.filter((i) => hr.months[i].endsWith("-01"));
-    svg.append("g").selectAll("rect").data(jan).join("rect").attr("class", "em-winter")
-      .attr("x", (i) => x(Math.max(idx[0], i - 1))).attr("width", (i) => x(Math.min(idx.at(-1), i + 1)) - x(Math.max(idx[0], i - 1))).attr("y", m.t).attr("height", h - m.t - m.b);
-    svg.append("g").attr("class", "pw-axis").selectAll("text").data(jan).join("text").attr("x", (i) => x(i)).attr("y", h - 2).attr("text-anchor", "middle").text((i) => `'${hr.months[i].slice(2, 4)}.1`);
-    const line = (s) => d3.line().defined((i) => ok(s[i])).x((i) => x(i)).y((i) => y(s[i])).curve(d3.curveMonotoneX)(idx);
-    svg.append("path").attr("class", "em-l-all").attr("d", line(b));
-    svg.append("path").attr("class", "em-l-agri").attr("d", line(a));
-    svg.append("g").selectAll("rect.hit").data(idx).join("rect").attr("x", (i) => x(i) - (w - m.l - m.r) / idx.length / 2).attr("width", (w - m.l - m.r) / idx.length)
-      .attr("y", m.t).attr("height", h - m.t - m.b).attr("fill", "transparent")
-      .append("title").text((i) => `${hr.months[i].replace("-", "년 ")}월 · 농림어업 ${pct(a[i])} · 전체 ${pct(b[i])} · 평균 ${nf1.format(hr["01"].avg[i])}시간`);
-    $("#short-key").innerHTML = `<span><i class="em-k-agri"></i>농림어업</span><span><i class="em-k-all"></i>전체 산업 (튀는 달은 조사 주간 공휴일)</span><span><i class="em-k-win"></i>겨울(12~2월)</span>`;
+    if (i < 0) { empty(svg); return; }
+    const y0 = +M[i].slice(0, 4);
+    const idx = (y, m) => M.indexOf(`${y}-${String(m).padStart(2, "0")}`);
+    const months = d3.range(1, 13);
+    const band = months.map((m) => { const vs = [1, 2, 3, 4, 5].map((d) => mAt(k, "a", idx(y0 - d, m))).filter(ok); return vs.length >= 3 ? [d3.min(vs), d3.max(vs)] : null; });
+    const cur = months.map((m) => { const j = idx(y0, m); return j >= 0 && j <= i ? mAt(k, "a", j) : null; });
+    const prev = months.map((m) => mAt(k, "a", idx(y0 - 1, m)));
+    const all = [...band.flat().filter(ok), ...cur.filter(ok), ...prev.filter(ok)];
+    const m = { l: 38, r: 6, t: 6, b: 14 };
+    const x = d3.scalePoint().domain(months).range([m.l, w - m.r]).padding(0.3);
+    const y = d3.scaleLinear().domain([d3.min(all) * 0.94, d3.max(all) * 1.03]).nice(3).range([h - m.b, m.t]);
+    const yt = y.ticks(3);
+    gridY(svg, y, h < 64 ? [yt[0], yt.at(-1)] : yt, m.l, w - m.r, (d) => (d >= 10 ? `${nf0.format(d / 10)}만` : `${nf0.format(d * 1000)}`)); // 낮은 그림은 눈금 둘만
+    svg.append("g").attr("class", "pw-axis").selectAll("text").data(months).join("text").attr("x", (d) => x(d)).attr("y", h - 2).attr("text-anchor", "middle").text((d) => d);
+    svg.append("path").attr("class", "pw-bandarea").attr("d", d3.area().defined((d) => d).x((d, j) => x(months[j])).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveMonotoneX)(band));
+    const line = d3.line().defined(ok).x((d, j) => x(months[j])).y((d) => y(d)).curve(d3.curveMonotoneX);
+    svg.append("path").attr("class", "pw-prev").attr("d", line(prev));
+    svg.append("path").attr("class", "em-l-agri").attr("d", line(cur));
+    const lm = +M[i].slice(5);
+    svg.append("circle").attr("class", "em-hdot").attr("cx", x(lm)).attr("cy", y(cur[lm - 1])).attr("r", 3.5);
+    svg.append("g").selectAll("rect").data(months).join("rect").attr("x", (d) => x(d) - x.step() / 2).attr("width", x.step()).attr("y", 0).attr("height", h).attr("fill", "transparent")
+      .append("title").text((d) => `${d}월 · ${y0}년 ${peopleText(cur[d - 1])} · ${y0 - 1}년 ${peopleText(prev[d - 1])}${band[d - 1] ? ` · 직전 5년 ${peopleText(band[d - 1][0])}~${peopleText(band[d - 1][1])}` : ""}`);
+    $("#band-key").innerHTML = `<span><i class="em-k-agri"></i>${y0}년</span><span><i class="prev"></i>${y0 - 1}년</span><span><i class="band"></i>${y0 - 5}~${y0 - 1}년 범위</span>`;
+    const past = [1, 2, 3, 4, 5].map((d) => mAt(k, "a", i - 12 * d)).filter(ok);
+    const dev = past.length >= 3 ? (mAt(k, "a", i) / d3.mean(past) - 1) * 100 : null;
+    $("#band-note").textContent = `${level(state.key) === 2 ? `${shortLabel(k)} · ` : ""}경활 · ${+M[i].slice(5)}월은 직전 5년 같은 달 평균보다 ${pctS(dev)}`;
+  }
+  // 시도 × 최근 12개월: 전년 같은 달 대비 증감 색
+  function renderYoyGrid() {
+    const sel = pulseKey();
+    const cols = d3.range(Math.max(12, ML - 11), ML + 1);
+    // 농림어업 취업자가 3천 명도 안 되는 시도(서울)는 증감이 표본 흔들림뿐이라 뺀다
+    const rows = [NATION, ...SIDO_CODES].filter((k) => E.m[k] && mAt(k, "a", lastMonth(k)) >= 3);
+    const lim = 12;
+    const col = d3.scaleDiverging([-lim, 0, lim], d3.interpolateRgbBasis(["#3d7fc4", "#2b3038", "#72c48d"])).clamp(true);
+    const head = `<span></span>${cols.map((j) => `<span class="em-yh${M[j].endsWith("-01") ? " jan" : ""}" title="${monthText(j)}">${+M[j].slice(5)}</span>`).join("")}`;
+    const body = rows.map((k) => `<button type="button" class="em-yr${k === sel ? " sel" : ""}${k === NATION ? " nat" : ""}" data-k="${k}"><span class="em-yl">${shortLabel(k)}</span>`
+      + cols.map((j) => { const v = mYoy(k, j); return `<i style="background:${ok(v) ? col(v) : "transparent"}" title="${shortLabel(k)} ${monthText(j)} · 전년 같은 달 대비 ${pctS(v)} · ${peopleText(mAt(k, "a", j))}"></i>`; }).join("") + `</button>`).join("");
+    $("#ygrid").innerHTML = `<div class="em-yrow em-yhead">${head}</div>${body}`;
+    $("#ygrid-key").innerHTML = `<span>감소</span><i style="background:linear-gradient(90deg,#3d7fc4,#2b3038,#72c48d)"></i><span>증가</span><span class="em-k-n">−${lim}% · 0 · +${lim}%</span>`;
+    $$("#ygrid .em-yr").forEach((b) => b.addEventListener("click", () => select(b.dataset.k)));
   }
 
   // ---------- 가운데: 제목과 요점 ----------
@@ -772,7 +775,7 @@
     renderSeason();
     renderPlace();
     renderFlow();
-    renderHow();
+    renderPulse();
     paintMap();
     renderRank();
     applyView(animate);
@@ -797,7 +800,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-long": drawLong, "chart-season": () => { if (level(state.key) < 2) renderSeasonStrip(state.key); }, "chart-scatter": renderPlace, "chart-short": drawShort };
+  const redraw = { "chart-long": drawLong, "chart-season": () => { if (level(state.key) < 2) renderSeasonStrip(state.key); }, "chart-scatter": renderPlace, "chart-band": drawBand };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;

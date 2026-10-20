@@ -64,6 +64,9 @@
           <h3 class="sub-head" id="long-head">긴 흐름 <span id="long-note"></span></h3>
           <div class="chart em-long" id="chart-long" aria-label="농림어업 취업자와 비중의 긴 흐름"></div>
           <div class="pw-key" id="long-key"></div>
+          <h3 class="sub-head">월별 <span id="band-note"></span></h3>
+          <div class="chart em-band" id="chart-band" aria-label="농림어업 취업자 월별: 올해·작년·직전 5년 범위"></div>
+          <div class="pw-key" id="band-key"></div>
           <h3 class="sub-head">무슨 일을 하나 <span id="mix-note"></span></h3>
           <div class="em-mix" id="mix"></div>
         </article>
@@ -122,16 +125,14 @@
           <div class="em-flow" id="flow"></div>
         </article>
 
-        <article class="panel" id="p-how">
+        <article class="panel" id="p-pulse">
           <header class="panel-head">
-            <h2>일하는 방식 <span class="h2-scope">(전국 참고)</span></h2>
-            <span class="chip" id="how-when"></span>
+            <h2>시도별 월별 동향</h2>
+            <span class="chip" id="pulse-when"></span>
           </header>
-          <div class="em-cmp" id="cmp-how"></div>
-          <h3 class="sub-head">주 36시간 미만 일하는 비중 <span>최근 5년 · 월</span></h3>
-          <div class="chart em-short" id="chart-short" aria-label="주 36시간 미만 취업자 비중"></div>
-          <div class="pw-key" id="short-key"></div>
-          <p class="note" id="how-note">농업을 연령·종사상지위·취업시간으로 나눈 공표 표는 전국만 있어 지역을 골라도 바뀌지 않습니다.</p>
+          <p class="em-line" id="pulse-line"></p>
+          <div class="em-ygrid" id="ygrid"></div>
+          <div class="em-heatkey" id="ygrid-key"></div>
         </article>
       </section>
     </main>
