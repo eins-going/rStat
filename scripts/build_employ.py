@@ -8,7 +8,7 @@
 - 산업/취업시간별 취업자 DT_1DA7E43S_NEW (2013~, 월): 36시간 미만·일시휴직·주당 평균 취업시간
 - 산업별 비임금 근로자 DT_1DE6070_11 (2013~, 해마다 8월 부가조사): 자영업자·무급가족종사자
 지역별고용조사 (반기, 시군구까지) — 농업(01)·임업·어업, 작물재배업·축산업까지 나뉜다
-- 시군구/산업별 취업자 DT_1ES3A30S(사는 곳 기준) · DT_1ES3C06S(일하는 곳 기준) · 시군구/직업별 DT_1ES3A31S
+- 시군구/산업별 취업자 DT_1ES3A30S(사는 곳 기준) · DT_1ES3C06S(일하는 곳 기준)
 - 시군구/연령별 취업자 DT_1ES3A03_A01S (지역 취업자 중 65세 이상, 산업 구분 없음)
 - 시도/산업별 DT_1ES3B05J · 전국 산업/성별(소분류) DT_1ES3B31J · 전국 산업/연령 DT_1ES3B27J
 
@@ -211,8 +211,6 @@ def regional():
     halves |= set(h)
     work, h = unit_rows("DT_1ES3C06S", ["00", "01"], ["T1"])
     halves |= set(h)
-    occ, h = unit_rows("DT_1ES3A31S", ["00", "60"], ["T1"])
-    halves |= set(h)
     age, h = unit_rows("DT_1ES3A03_A01S", ["000", "040"], ["T00"])  # 지역 취업자 계·65세 이상 (산업 구분 없음)
     halves |= set(h)
     # 시도: 계·농림어업·농업·임업·어업
@@ -234,7 +232,6 @@ def regional():
     for k in sorted(UNIT_KEYS):
         v = {"t": ser(res, (k, "00", "T1")), "a": ser(res, (k, "01", "T1")), "ar": ser(res, (k, "01", "T2")),
              "wt": ser(work, (k, "00", "T1")), "wa": ser(work, (k, "01", "T1")),
-             "ot": ser(occ, (k, "00", "T1")), "oa": ser(occ, (k, "60", "T1")),
              "yt": ser(age, (k, "000", "T00")), "yo": ser(age, (k, "040", "T00"))}
         v = {f: s for f, s in v.items() if s and any(x is not None for x in s)}
         if v:

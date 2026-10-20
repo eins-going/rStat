@@ -77,19 +77,17 @@
   // ---------- 지도 지표 (시군, 반기) ----------
   const uShare = (k, h) => share(uAt(k, "a", h), uAt(k, "t", h));
   const METRICS = [
-    { key: "share", group: "사는 곳", chip: "농림어업 비중", label: "취업자 중 농림어업 비중", kind: "seq", get: uShare, fmt: pct,
-      note: "그 시군에 사는 취업자 가운데 농업·임업·어업에서 일하는 사람의 비율 (지역별고용조사)" },
-    { key: "count", group: "사는 곳", chip: "취업자", label: "농림어업 취업자", kind: "seq", get: (k, h) => uAt(k, "a", h), fmt: peopleText,
-      note: "그 시군에 사는 농림어업 취업자 수. 표본조사라 작은 시군은 오차가 크다 (툴팁의 RSE)" },
-    { key: "d5", group: "사는 곳", chip: "5년 전 대비", label: "농림어업 비중 5년 전 대비", kind: "div", get: (k, h) => { const a = uShare(k, h), b = uShare(k, h - 10); return ok(a) && ok(b) ? a - b : null; }, fmt: pp,
+    { key: "share", group: "거주지 기준", chip: "농림어업 비중", label: "취업자 중 농림어업 비중", kind: "seq", get: uShare, fmt: pct,
+      note: "지역별고용조사 시군구/산업별 취업자(거주지 기준): 그 시군에 사는 취업자 중 농업·임업·어업 비율" },
+    { key: "count", group: "거주지 기준", chip: "취업자", label: "농림어업 취업자", kind: "seq", get: (k, h) => uAt(k, "a", h), fmt: peopleText,
+      note: "지역별고용조사(거주지 기준) 농림어업 취업자 수. 표본조사라 작은 시군은 오차가 크다 (툴팁의 RSE)" },
+    { key: "d5", group: "거주지 기준", chip: "5년 전 대비", label: "농림어업 비중 5년 전 대비", kind: "div", get: (k, h) => { const a = uShare(k, h), b = uShare(k, h - 10); return ok(a) && ok(b) ? a - b : null; }, fmt: pp,
       note: "농림어업 비중을 5년 전 같은 반기와 비교 (%p). 한 해 표본 흔들림보다 긴 변화를 본다" },
-    { key: "wshare", group: "일하는 곳", chip: "농림어업 비중", label: "일자리 중 농림어업 비중 (일하는 곳)", kind: "seq", get: (k, h) => share(uAt(k, "wa", h), uAt(k, "wt", h)), fmt: pct,
-      note: "그 시군에서 일하는 취업자(근무지 기준) 가운데 농림어업 비율" },
-    { key: "flow", group: "일하는 곳", chip: "들고 나는 농업인", label: "들고 나는 농업인 (이곳 농림어업 일자리 대비 주민)", kind: "div",
+    { key: "wshare", group: "근무지 기준", chip: "농림어업 비중", label: "취업자 중 농림어업 비중 (근무지 기준)", kind: "seq", get: (k, h) => share(uAt(k, "wa", h), uAt(k, "wt", h)), fmt: pct,
+      note: "지역별고용조사 시군구/산업별 취업자(근무지 기준): 그 시군에서 일하는 취업자 중 농림어업 비율" },
+    { key: "flow", group: "근무지 기준", chip: "거주지와 차이", label: "농림어업 취업자 근무지 기준과 거주지 기준의 차이", kind: "div",
       get: (k, h) => { const a = uAt(k, "a", h), w = uAt(k, "wa", h); return ok(a) && ok(w) && a >= 1 ? (w / a - 1) * 100 : null; }, fmt: pctS,
-      note: "+면 다른 시군에서 농사지으러 들어오는 사람이 많고, −면 이곳 주민이 다른 시군 농지로 나간다 (농림어업 취업 주민 1천 명 이상)" },
-    { key: "occ", group: "직업", chip: "숙련직", label: "취업자 중 농림어업 숙련 종사자 비중", kind: "seq", get: (k, h) => share(uAt(k, "oa", h), uAt(k, "ot", h)), fmt: pct,
-      note: "직업으로 본 농림어업 숙련 종사자(직접 농사·어로 일을 하는 사람) 비율. 농업 법인 사무직 등은 빠진다" },
+      note: "지역별고용조사 농림어업 취업자, 근무지 기준이 거주지 기준보다 몇 % 많은가. +면 근무지 기준이 많음 (거주지 기준 1천 명 이상만)" },
   ];
   const DEFAULT_METRIC = METRICS[0];
   const state = { key: NATION, h: HL, metric: DEFAULT_METRIC };
@@ -250,8 +248,8 @@
     const h = state.h, m = state.metric;
     const a = uAt(k, "a", h), r = uAt(k, "ar", h), w = uAt(k, "wa", h);
     tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${m.label} <b style="display:inline">${m.fmt(m.get(k, h))}</b><br>`
-      + `${halfText(h)} · 농림어업 취업 주민 ${peopleText(a)} (${pct(uShare(k, h))})`
-      + (ok(w) ? `<br>이곳 농림어업 일자리 ${peopleText(w)}` : "")
+      + `${halfText(h)} · 거주지 기준 농림어업 ${peopleText(a)} (${pct(uShare(k, h))})`
+      + (ok(w) ? `<br>근무지 기준 ${peopleText(w)}` : "")
       + (ok(r) ? `<br><span${r >= 25 ? ' style="color:var(--accent)"' : ""}>상대표준오차 ${nf1.format(r)}%${r >= 25 ? " · 표본오차 큼" : ""}</span>` : "");
     const rect = $("#map-wrap").getBoundingClientRect();
     tip.style.left = `${e.clientX - rect.left}px`;
@@ -497,8 +495,61 @@
       })),
     };
   }
+  // ---------- 왼쪽 2 (시군을 골랐을 때): ○○군 자세히 ----------
+  // 지표마다 지금 값 · 2013~ 추이(상·하반기 평균) · 시도 안 순위. 추이선 색은 시도 값보다 높으면 초록, 낮으면 파랑
+  const fullYears = () => [...new Set(H.map((x) => x.slice(0, 4)))].filter((y) => H.includes(`${y}-1`) && H.includes(`${y}-2`));
+  const DETAIL = [
+    { name: "농림어업 비중", get: (u, h) => uShare(u, h), agg: (s, h) => share(...aggPair(s, "a", "t", h)), fmt: pct, src: "거주지 기준" },
+    { name: "농림어업 취업자", get: (u, h) => uAt(u, "a", h), agg: null, fmt: peopleText, src: "거주지 기준" },
+    { name: "근무지 기준 비중", get: (u, h) => share(uAt(u, "wa", h), uAt(u, "wt", h)), agg: (s, h) => share(...aggPair(s, "wa", "wt", h)), fmt: pct, src: "근무지 기준" },
+    { name: "근무지−거주지 차이", get: (u, h) => { const a = uAt(u, "a", h), w = uAt(u, "wa", h); return ok(a) && ok(w) && a >= 1 ? (w / a - 1) * 100 : null; },
+      agg: (s, h) => { const [a, w] = aggPair(s, "a", "wa", h); return ok(a) && a ? (w / a - 1) * 100 : null; }, fmt: pctS, src: "농림어업 취업자" },
+    { name: "65세 이상 비중", get: (u, h) => share(uAt(u, "yo", h), uAt(u, "yt", h)), agg: (s, h) => share(...aggPair(s, "yo", "yt", h)), fmt: pct, src: "지역 취업자 전체" },
+  ];
+  function renderUnitDetail() {
+    const u = state.key, s = sidoOf(u), h = state.h, peers = UNITS_BY_SIDO[s];
+    const years = fullYears();
+    const yearly = (f) => years.map((y) => { const p = f(u, H.indexOf(`${y}-1`)), q = f(u, H.indexOf(`${y}-2`)); return ok(p) && ok(q) ? (p + q) / 2 : null; });
+    const rank = (f) => {
+      const list = peers.map((p) => [p, f(p, h)]).filter(([, v]) => ok(v)).sort((a, b) => b[1] - a[1]);
+      const i = list.findIndex(([p]) => p === u);
+      return i >= 0 ? `${i + 1}/${list.length}` : "–";
+    };
+    const rows = DETAIL.map((d) => {
+      const v = d.get(u, h), sv = d.agg ? d.agg(s, h) : null;
+      const cls = ok(v) && ok(sv) ? (v >= sv ? "" : " neg") : " flat";
+      return `<div class="em-dr${cls}"><span class="em-dn">${d.name}<small>${d.agg ? `${shortLabel(s)} ${d.fmt(sv)}` : d.src}</small></span>`
+        + `<b>${d.fmt(v)}</b>${spark(yearly(d.get))}<span class="em-drk">${rank(d.get)}</span></div>`;
+    });
+    // 5년 변화 (추이선 없이)
+    const chg = (p, hh) => { const a1 = uAt(p, "a", hh), a0 = uAt(p, "a", hh - 10); return ok(a1) && a0 ? (a1 / a0 - 1) * 100 : null; };
+    const c = chg(u, h);
+    const [s1, s0] = aggPair(s, "a", "a", h, h - 10);
+    rows.push(`<div class="em-dr${ok(c) && c < 0 ? " neg" : ""}"><span class="em-dn">5년 변화<small>${shortLabel(s)} ${ok(s1) && s0 ? pctS((s1 / s0 - 1) * 100) : "–"}</small></span><b>${pctS(c)}</b><span class="em-drn">${h - 10 >= 0 ? `${halfShort(h - 10)} → ${halfShort(h)}` : ""}</span><span class="em-drk">${rank(chg)}</span></div>`);
+    // 농업 비중이 비슷한 시군 (전국)
+    const x0 = uShare(u, h);
+    const near = ok(x0) ? ALL_UNITS.filter((p) => p !== u && ok(uShare(p, h))).sort((a, b) => Math.abs(uShare(a, h) - x0) - Math.abs(uShare(b, h) - x0)).slice(0, 5) : [];
+    const old = (p) => share(uAt(p, "yo", h), uAt(p, "yt", h));
+    $("#unit-detail").innerHTML = `<div class="em-dhead"><span>지표</span><span>값</span><span>${years[0]}~${years.at(-1)} 추이</span><span>${shortLabel(s)} 안</span></div>${rows.join("")}`
+      + (near.length ? `<h3 class="em-nh">농림어업 비중이 비슷한 시군 <small>전국 · 비중 · 5년 변화 · 65세 이상</small></h3>`
+        + near.map((p) => `<button type="button" class="em-near${ok(chg(p, h)) && chg(p, h) < 0 ? " neg" : ""}" data-k="${p}"><span>${esc(fullLabel(p))}</span><span>${pct(uShare(p, h))}</span><span class="em-tc">${pctS(chg(p, h))}</span><span class="em-dim">${pct(old(p))}</span></button>`).join("") : "");
+    $$("#unit-detail .em-near").forEach((b) => b.addEventListener("click", () => select(b.dataset.k)));
+  }
+
   function renderSeason() {
     const k = state.key, sk = level(k) === 2 ? sidoOf(k) : k;
+    const unit = level(k) === 2;
+    $(".em-season").hidden = unit; // 월 자료는 시도까지라 시군에서는 계절 줄을 숨긴다
+    $("#tiles").hidden = unit;
+    $("#unit-detail").hidden = !unit;
+    if (unit) {
+      $("#trend-title").firstChild.textContent = `${label(k)} 자세히 `;
+      $("#season-scope").textContent = "";
+      $("#trend-when").textContent = `${halfShort(state.h)} · 지역별`;
+      $("#trend-note").textContent = "지역별고용조사 시군구 표. 추이선은 상·하반기 평균, 색은 시도 값보다 높으면 초록·낮으면 파랑. 순위는 큰 값부터.";
+      renderUnitDetail();
+      return;
+    }
     const T0 = trendItems();
     $("#trend-title").firstChild.textContent = T0.mode === "sido" ? "시도별 흐름 " : "시군별 흐름 ";
     $("#season-scope").textContent = `(${shortLabel(sk)})`;
@@ -606,18 +657,17 @@
     $("#flow-when").textContent = `${halfShort(state.h)} · 지역별`;
     const hh = state.h;
     const out = [];
-    // 들고 남: 사는 곳 기준 주민 vs 일하는 곳 기준 일자리
+    // 거주지·근무지 기준: 지역별고용조사 시군구/산업별 취업자 두 표의 농림어업 값을 나란히 (해석 없이 차이만)
     const [a, wa] = aggPair(k, "a", "wa", hh);
     if (ok(a) && ok(wa)) {
       const d = wa - a, mx = Math.max(a, wa), rel = (d / a) * 100;
-      const msg = level(k) === 0 ? "전국은 들고 나는 사람이 서로 맞물려 차이가 거의 없습니다. 시도·시군을 고르면 보입니다."
-        : Math.abs(rel) < 2 ? "사는 사람과 일자리가 거의 같습니다."
-        : d > 0 ? `일자리가 주민보다 <b class="em-acc">${peopleText(d)}</b>(${nf0.format(rel)}%) 많다: 다른 곳에서 농사지으러 들어온다`
-        : `주민이 일자리보다 <b class="em-cool">${peopleText(-d)}</b>(${nf0.format(-rel)}%) 많다: 다른 곳 농지로 나간다`;
-      out.push(`<div class="em-fg"><h3>들고 남</h3>
-        <div class="em-fr"><span>사는 주민</span>${hbar(a, mx, "res")}<b>${peopleText(a)}</b></div>
-        <div class="em-fr"><span>이곳 일자리</span>${hbar(wa, mx, "work")}<b>${peopleText(wa)}</b></div>
-        <p class="em-fmsg">${msg}</p></div>`);
+      const diff = Math.abs(d) < 0.05 ? "두 기준이 같음"
+        : `근무지 기준이 거주지 기준보다 <b class="${d > 0 ? "em-acc" : "em-cool"}">${peopleText(Math.abs(d))}</b> (${nf0.format(Math.abs(rel))}%) ${d > 0 ? "많음" : "적음"}`;
+      out.push(`<div class="em-fg"><h3>거주지·근무지 기준 <small>농림어업 취업자</small></h3>
+        <div class="em-fr" title="이 지역에 사는 취업자 중 농림어업 (DT_1ES3A30S)"><span>거주지 기준</span>${hbar(a, mx, "res")}<b>${peopleText(a)}</b></div>
+        <div class="em-fr" title="이 지역에서 일하는 취업자 중 농림어업 (DT_1ES3C06S)"><span>근무지 기준</span>${hbar(wa, mx, "work")}<b>${peopleText(wa)}</b></div>
+        <p class="em-fmsg">${diff}</p>
+        <p class="em-fsrc">지역별고용조사 시군구/산업별 취업자 · 거주지 기준은 이 지역에 사는 사람, 근무지 기준은 이 지역에서 일하는 사람</p></div>`);
     }
     // 5년 변화: 농림어업 vs 전체 취업자, 선택 지역 · 상위 · 전국
     const chain = [k, parentOf(k), parentOf(k) && parentOf(parentOf(k))].filter((x, i, arr) => x && arr.indexOf(x) === i);
@@ -628,7 +678,7 @@
       });
       const lim = Math.max(5, ...rows.flatMap((d) => [Math.abs(d.ga ?? 0), Math.abs(d.gt ?? 0)]));
       const dv = (v, cls) => `<span class="em-dv"><i class="${cls}${v < 0 ? " neg" : ""}" style="width:${ok(v) ? (Math.abs(v) / lim) * 50 : 0}%"></i></span><b class="${ok(v) && v < 0 ? "em-cool" : ""}">${pctS(v)}</b>`;
-      out.push(`<div class="em-fg"><h3>5년 변화 <small>${halfShort(hh - 10)} → ${halfShort(hh)}</small></h3>
+      out.push(`<div class="em-fg"><h3>5년 변화 <small>${halfShort(hh - 10)} → ${halfShort(hh)} · 거주지 기준</small></h3>
         <div class="em-gr em-gh"><span></span><span>농림어업 취업자</span><span>전체 취업자</span></div>
         ${rows.map((d) => `<div class="em-gr${d.r === k ? " me" : ""}"><span>${esc(shortLabel(d.r))}</span><span class="em-gc">${dv(d.ga, "agri")}</span><span class="em-gc">${dv(d.gt, "all")}</span></div>`).join("")}</div>`);
     }
@@ -747,7 +797,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-long": drawLong, "chart-season": () => renderSeasonStrip(level(state.key) === 2 ? sidoOf(state.key) : state.key), "chart-scatter": renderPlace, "chart-short": drawShort };
+  const redraw = { "chart-long": drawLong, "chart-season": () => { if (level(state.key) < 2) renderSeasonStrip(state.key); }, "chart-scatter": renderPlace, "chart-short": drawShort };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;
