@@ -10,6 +10,7 @@
 지역별고용조사 (반기, 시군구까지) — 농업(01)·임업·어업, 작물재배업·축산업까지 나뉜다
 - 시군구/산업별 취업자 DT_1ES3A30S(사는 곳 기준) · DT_1ES3C06S(일하는 곳 기준)
 - 시군구/연령별 취업자 DT_1ES3A03_A01S (지역 취업자 중 65세 이상, 산업 구분 없음)
+- 시군구 표는 산업 6묶음(농림어업·광제조·건설·도소매숙박음식·전기운수통신금융·사업개인공공서비스), 시도 표는 대분류 21개
 - 시도/산업별 DT_1ES3B05J · 전국 산업/성별(소분류) DT_1ES3B31J · 전국 산업/연령 DT_1ES3B27J
 
 값은 천 명(취업시간은 시간, RSE는 %). 지역 키는 data.js와 같다: '00' 전국, '31' 시도, '31|수원시' 시군.
@@ -205,17 +206,25 @@ def unit_rows(tbl, ind_ids, items):
     return acc, halves_of(rows)
 
 
+UNIT_INDS = ["04", "41", "42", "43", "44"]  # 시군구 표의 농림어업 밖 산업 묶음 (거주지 기준)
+SIDO_INDS = list("BCDEFGHIJKLMNOPQRSTU")  # 시도 표의 농림어업 밖 대분류
+
+
 def regional():
     halves = set()
     res, h = unit_rows("DT_1ES3A30S", ["00", "01"], ["T1", "T2"])
     halves |= set(h)
+    for ids in (UNIT_INDS[:3], UNIT_INDS[3:]):  # 한 번에 4만 칸까지만 준다
+        more, h = unit_rows("DT_1ES3A30S", ids, ["T1"])
+        res.update(more)
+        halves |= set(h)
     work, h = unit_rows("DT_1ES3C06S", ["00", "01"], ["T1"])
     halves |= set(h)
     age, h = unit_rows("DT_1ES3A03_A01S", ["000", "040"], ["T00"])  # 지역 취업자 계·65세 이상 (산업 구분 없음)
     halves |= set(h)
-    # 시도: 계·농림어업·농업·임업·어업
+    # 시도: 계·농림어업·농업·임업·어업 + 나머지 대분류(B~U)
     regs = sido_ids("DT_1ES3B05J", "A")
-    rows = rows_of("DT_1ES3B05J", "H", {"A": "ALL", "B": "0+A+01+02+03"}, "201301", "210002", "T1")
+    rows = rows_of("DT_1ES3B05J", "H", {"A": "ALL", "B": "+".join(["0", "A", "01", "02", "03"] + SIDO_INDS)}, "201301", "210002", "T1")
     sido = {}
     for r in rows:
         k = regs.get(r["C1"])
@@ -232,14 +241,15 @@ def regional():
     for k in sorted(UNIT_KEYS):
         v = {"t": ser(res, (k, "00", "T1")), "a": ser(res, (k, "01", "T1")), "ar": ser(res, (k, "01", "T2")),
              "wt": ser(work, (k, "00", "T1")), "wa": ser(work, (k, "01", "T1")),
-             "yt": ser(age, (k, "000", "T00")), "yo": ser(age, (k, "040", "T00"))}
+             "yt": ser(age, (k, "000", "T00")), "yo": ser(age, (k, "040", "T00")),
+             **{f"i{i}": ser(res, (k, i, "T1")) for i in UNIT_INDS}}
         v = {f: s for f, s in v.items() if s and any(x is not None for x in s)}
         if v:
             units[k] = v
     sidos = {}
     for k in sorted({k for k, _ in sido}):
         sidos[k] = {f: [sido.get((k, i), {}).get(h) for h in H] for f, i in
-                    (("t", "0"), ("a", "A"), ("n1", "01"), ("n2", "02"), ("n3", "03"))}
+                    (("t", "0"), ("a", "A"), ("n1", "01"), ("n2", "02"), ("n3", "03"), *((f"i{i}", i) for i in SIDO_INDS))}
     # 세종은 시군구 표에 없다 → 시도 값(사는 곳 기준)을 쓴다
     if "29|세종시" in UNIT_KEYS and "29|세종시" not in units and "29" in sidos:
         units["29|세종시"] = {"t": sidos["29"]["t"], "a": sidos["29"]["a"]}

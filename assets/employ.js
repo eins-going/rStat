@@ -399,32 +399,83 @@
     $("#long-key").innerHTML = `<span><i class="em-k-a"></i>농림어업 취업자 (왼쪽)</span><span><i class="em-k-s"></i>전체 취업자 중 비중 (오른쪽)</span>`;
   }
 
-  // 무슨 일을 하나: 전국은 작물재배·축산·임업·어업, 시도는 농업·임업·어업 (지역별고용조사)
+  // 무슨 일을 하나 (지역별고용조사, 거주지 기준)
+  // ① 전체 산업 중 농림어업: 전국·시도는 대분류 21개, 시군은 공표 묶음 6개
+  // ② 농림어업 안: 전국은 작물재배·축산·임업·어업(소분류), 시도는 농업·임업·어업, 시군은 나뉘지 않는다
+  const SIDO_INDS = [["iB", "광업"], ["iC", "제조업"], ["iD", "전기·가스"], ["iE", "수도·하수·폐기물"], ["iF", "건설업"], ["iG", "도소매"],
+    ["iH", "운수·창고"], ["iI", "숙박·음식점"], ["iJ", "정보통신"], ["iK", "금융·보험"], ["iL", "부동산"], ["iM", "전문·과학·기술"],
+    ["iN", "사업시설·지원·임대"], ["iO", "공공행정"], ["iP", "교육"], ["iQ", "보건·복지"], ["iR", "예술·스포츠·여가"], ["iS", "협회·수리·개인"],
+    ["iT", "가구 내 고용"], ["iU", "국제·외국기관"]];
+  const UNIT_INDS = [["i04", "광·제조업"], ["i41", "건설업"], ["i42", "도소매·숙박음식"], ["i43", "전기·운수·통신·금융"], ["i44", "사업·개인·공공서비스"]];
+  const AGRI_PART = "농림어업";
+  const OTHER_FILL = ["#626874", "#4b5059"];
   const MIX_COLORS = ["#72c48d", "#3f7d55", "#8fa79a", "#c9a46a", "#5fa8d9"];
+  // 세종은 시군 표에 없다 → 시도 값
+  const mixKey = (k) => (level(k) === 2 && !E.u[k]?.i04 && UNITS_BY_SIDO[sidoOf(k)].length === 1 ? sidoOf(k) : k);
+  function industryParts(k) {
+    const sk = mixKey(k);
+    if (level(sk) === 2) {
+      const h = lastHalf(E.u[sk]?.i04, state.h);
+      if (h < 0) return null;
+      return { h, unit: "묶음", parts: [[AGRI_PART, uAt(sk, "a", h)], ...UNIT_INDS.map(([f, n]) => [n, uAt(sk, f, h)])] };
+    }
+    const h = lastHalf(E.s[sk]?.iC, state.h);
+    if (h < 0) return null;
+    return { h, unit: "산업", parts: [[AGRI_PART, sAt(sk, "a", h)], ...SIDO_INDS.map(([f, n]) => [n, sAt(sk, f, h)])] };
+  }
+  function agriParts(k) {
+    k = mixKey(k);
+    if (k === NATION) {
+      const sub = E.mix.sub, h = lastHalf(sub.A, state.h);
+      if (h < 0) return null;
+      const crop = sub["011"][h], live = sub["012"][h], farm = sub["01"][h];
+      return { h, parts: [["작물재배업", crop], ["축산업", live], ["복합·농업서비스", farm - crop - live], ["임업", sub["02"][h]], ["어업", sub["03"][h]]] };
+    }
+    if (level(k) === 1) {
+      const h = lastHalf(E.s[k]?.n1, state.h);
+      return h < 0 ? null : { h, parts: [["농업", sAt(k, "n1", h)], ["임업", sAt(k, "n2", h)], ["어업", sAt(k, "n3", h)]] };
+    }
+    return null;
+  }
+  const mixRow = (lab, bar, key) => `<div class="em-mrow"><span class="em-mlab">${lab}</span>${bar}</div><div class="em-barkey em-mkey">${key}</div>`;
   function renderMix() {
     const k = state.key, el = $("#mix");
-    let parts = null, h = -1;
-    if (k === NATION) {
-      const sub = E.mix.sub;
-      h = lastHalf(sub.A, state.h);
-      if (h >= 0) {
-        const crop = sub["011"][h], live = sub["012"][h], farm = sub["01"][h];
-        parts = [["작물재배업", crop], ["축산업", live], ["복합·농업서비스", farm - crop - live], ["임업", sub["02"][h]], ["어업", sub["03"][h]]];
-      }
-    } else if (level(k) === 1) {
-      h = lastHalf(E.s[k]?.a, state.h);
-      if (h >= 0) parts = [["농업", sAt(k, "n1", h)], ["임업", sAt(k, "n2", h)], ["어업", sAt(k, "n3", h)]];
-    }
-    if (!parts) {
+    const ind = industryParts(k), sub = agriParts(k);
+    if (!ind && !sub) {
       $("#mix-note").textContent = "";
-      el.innerHTML = `<p class="note em-mix-none">시군 자료는 농업·임업·어업을 합친 값만 나옵니다. ${esc(shortLabel(sidoOf(k)))} 구성은 시도를 고르면 볼 수 있습니다.</p>`;
+      el.innerHTML = `<p class="note em-mix-none">이 시기 산업별 자료가 없습니다.</p>`;
       return;
     }
-    const colors = parts.length === 3 ? [MIX_COLORS[0], MIX_COLORS[3], MIX_COLORS[4]] : MIX_COLORS;
-    const tot = d3.sum(parts, (p) => p[1] || 0);
-    $("#mix-note").textContent = `${halfShort(h)} · 지역별`;
-    el.innerHTML = `<div class="em-bar">${parts.map(([n, v], i) => `<span style="flex:${Math.max(0, v || 0)};background:${colors[i]}" title="${n} ${peopleText(v)} (${pct(share(v, tot))})"></span>`).join("")}</div>`
-      + `<div class="em-barkey">${parts.map(([n, v], i) => `<span><i style="background:${colors[i]}"></i>${n} <b>${nf0.format(share(v, tot) ?? 0)}%</b></span>`).join("")}</div>`;
+    const h0 = ind ? ind.h : sub.h;
+    $("#mix-note").textContent = `${halfShort(h0)} · 지역별`;
+    let html = "";
+    if (ind) {
+      const parts = ind.parts.filter(([, v]) => ok(v) && v > 0).sort((a, b) => b[1] - a[1]);
+      const tot = d3.sum(parts, (p) => p[1]);
+      const rank = parts.findIndex(([n]) => n === AGRI_PART) + 1;
+      let o = 0;
+      const bar = `<div class="em-bar">${parts.map(([n, v]) => {
+        const fill = n === AGRI_PART ? "var(--agri)" : OTHER_FILL[o++ % 2];
+        return `<span style="flex:${v};background:${fill}" title="${n} ${peopleText(v)} (${pct(share(v, tot))})"></span>`;
+      }).join("")}</div>`;
+      const a = parts.find(([n]) => n === AGRI_PART);
+      const top = parts.filter(([n]) => n !== AGRI_PART).slice(0, ind.unit === "묶음" ? 2 : 3); // 묶음은 이름이 길다
+      const key = (a ? `<span><i style="background:var(--agri)"></i>농림어업 <b>${nf1.format(share(a[1], tot))}%</b> · ${ind.parts.length}개 ${ind.unit} 중 ${rank === 1 ? "가장 많음" : `${rank}번째`}</span>` : "")
+        + `<span class="em-mtop">다른 ${ind.unit} ${top.map(([n, v]) => `${esc(n)} <b>${nf0.format(share(v, tot))}%</b>`).join(" · ")}</span>`;
+      html += mixRow("전체 산업", bar, key);
+    }
+    if (sub) {
+      const parts = sub.parts, tot = d3.sum(parts, (p) => p[1] || 0);
+      const colors = parts.length === 3 ? [MIX_COLORS[0], MIX_COLORS[3], MIX_COLORS[4]] : MIX_COLORS;
+      const bar = `<div class="em-bar">${parts.map(([n, v], i) => `<span style="flex:${Math.max(0, v || 0)};background:${colors[i]}" title="${n} ${peopleText(v)} (${pct(share(v, tot))})"></span>`).join("")}</div>`;
+      const key = parts.map(([n, v], i) => `<span><i style="background:${colors[i]}"></i>${n} <b>${nf0.format(share(v, tot) ?? 0)}%</b></span>`).join("")
+        + (sub.h !== h0 ? `<span class="em-mwhen">${halfShort(sub.h)}</span>` : "");
+      html += mixRow("농림어업 안", bar, key);
+    } else {
+      html += `<p class="em-mnone">농림어업 안의 구성은 시군 단위로 나오지 않습니다 · <button type="button" class="em-mlink" data-k="${sidoOf(k)}">${esc(shortLabel(sidoOf(k)))} 보기</button></p>`;
+    }
+    el.innerHTML = html;
+    $(".em-mlink", el)?.addEventListener("click", (e) => select(e.currentTarget.dataset.k));
   }
 
   // ---------- 왼쪽 2: 시군별 흐름 (계절은 한 줄로) ----------

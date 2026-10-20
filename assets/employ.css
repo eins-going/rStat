@@ -38,6 +38,14 @@
 .em-barkey i { width: 8px; height: 8px; border-radius: 2px; }
 .em-barkey b { color: var(--text); font-variant-numeric: tabular-nums; }
 .em-mix-none { white-space: normal !important; }
+.em-mrow { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 6px; margin-top: 4px; }
+.em-mlab { font-size: 11px; color: var(--faint); white-space: nowrap; }
+.em-mkey { margin: 3px 0 0 64px; }
+.em-mwhen { color: var(--faint); }
+.em-barkey .em-mtop { display: block; }
+.em-mnone { margin: 6px 0 0; font-size: 11px; color: var(--faint); }
+.em-mlink { padding: 0; font: inherit; color: var(--muted); background: none; border: 0; border-bottom: 1px dotted currentColor; cursor: pointer; }
+.em-mlink:hover { color: var(--text); }
 
 /* 시군별 흐름: 계절 한 줄 + 작은 그래프 칸 */
 .em-line { margin: 0 0 4px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
