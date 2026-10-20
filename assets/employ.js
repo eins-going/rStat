@@ -495,7 +495,7 @@
       })),
     };
   }
-  // ---------- 왼쪽 2 (시군을 골랐을 때): ○○군 자세히 ----------
+  // ---------- 왼쪽 2 (시군을 골랐을 때): 그 시군의 지표 ----------
   // 지표마다 지금 값 · 2013~ 추이(상·하반기 평균) · 시도 안 순위. 추이선 색은 시도 값보다 높으면 초록, 낮으면 파랑
   const fullYears = () => [...new Set(H.map((x) => x.slice(0, 4)))].filter((y) => H.includes(`${y}-1`) && H.includes(`${y}-2`));
   const DETAIL = [
@@ -543,7 +543,7 @@
     $("#tiles").hidden = unit;
     $("#unit-detail").hidden = !unit;
     if (unit) {
-      $("#trend-title").firstChild.textContent = `${label(k)} 자세히 `;
+      $("#trend-title").firstChild.textContent = `${label(k)} `;
       $("#season-scope").textContent = "";
       $("#trend-when").textContent = `${halfShort(state.h)} · 지역별`;
       $("#trend-note").textContent = "지역별고용조사 시군구 표. 추이선은 상·하반기 평균, 색은 시도 값보다 높으면 초록·낮으면 파랑. 순위는 큰 값부터.";
