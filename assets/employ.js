@@ -632,15 +632,6 @@
         <div class="em-gr em-gh"><span></span><span>농림어업 취업자</span><span>전체 취업자</span></div>
         ${rows.map((d) => `<div class="em-gr${d.r === k ? " me" : ""}"><span>${esc(shortLabel(d.r))}</span><span class="em-gc">${dv(d.ga, "agri")}</span><span class="em-gc">${dv(d.gt, "all")}</span></div>`).join("")}</div>`);
     }
-    // 사람 대 일: 농림어업 산업 취업자 vs 농림어업 숙련 직업 종사자
-    const [oa, ia] = aggPair(k, "oa", "a", hh);
-    if (ok(oa) && ok(ia)) {
-      const mx = Math.max(oa, ia);
-      out.push(`<div class="em-fg"><h3>산업과 직업</h3>
-        <div class="em-fr"><span>농림어업 산업</span>${hbar(ia, mx, "res")}<b>${peopleText(ia)}</b></div>
-        <div class="em-fr"><span>농림어업 숙련직</span>${hbar(oa, mx, "occ")}<b>${peopleText(oa)}</b></div>
-        <p class="em-fmsg">직접 농사·어로 일을 하는 숙련직이 산업 취업자의 <b>${nf0.format(share(oa, ia))}%</b>${share(oa, ia) < 90 ? ": 경영·사무·판매·단순노무 일을 하는 사람이 함께 있다" : ""}</p></div>`);
-    }
     $("#flow").innerHTML = out.join("") || `<p class="note">이 반기에는 ${esc(fullLabel(k))} 자료가 없습니다.</p>`;
   }
 
