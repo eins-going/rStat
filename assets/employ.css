@@ -39,20 +39,28 @@
 .em-barkey b { color: var(--text); font-variant-numeric: tabular-nums; }
 .em-mix-none { white-space: normal !important; }
 
-/* 계절 */
-.em-toggle { display: inline-flex; background: var(--panel-2); border-radius: 999px; padding: 2px; }
-.em-toggle button { font: inherit; font-size: 11px; color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 1px 9px; cursor: pointer; }
-.em-toggle button[aria-pressed="true"] { color: #14161b; background: var(--agri); font-weight: 700; }
+/* 시군별 흐름: 계절 한 줄 + 작은 그래프 칸 */
 .em-line { margin: 0 0 4px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
 .em-line b { color: var(--text); font-variant-numeric: tabular-nums; }
 .em-line b.em-acc { color: var(--accent); }
 .em-sub { display: block; font-size: 11.5px; color: var(--faint); }
-.em-heat { height: 230px; }
-.em-cell { shape-rendering: crispEdges; }
-.em-cell:hover { stroke: #fff; stroke-width: 1; }
-.em-heatkey { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--muted); }
-.em-heatkey i { flex: 0 1 90px; height: 8px; border-radius: 2px; }
-.em-k-n { margin-left: auto; color: var(--faint); font-variant-numeric: tabular-nums; }
+.em-season { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.em-season .em-line { font-size: 12px; margin: 0; }
+.em-sprof { height: 40px; }
+.em-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; align-content: start; overflow-y: auto; scrollbar-width: thin; min-height: 0; }
+.em-tile { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 22px; column-gap: 6px; align-items: center; padding: 4px 7px 5px;
+  font: inherit; text-align: left; color: var(--text); background: var(--panel-2); border: 1px solid transparent; border-radius: 7px; cursor: pointer; }
+.em-tile:hover { border-color: rgba(114, 196, 141, 0.5); }
+.em-tile.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(245, 165, 36, 0.4); }
+.em-tn { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.em-ts { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.em-tile svg { width: 100%; height: 22px; display: block; }
+.em-sp-l { fill: none; stroke: var(--agri); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.em-sp-a { fill: rgba(114, 196, 141, 0.14); }
+.em-tile.neg .em-sp-l { stroke: #6fa8dc; }
+.em-tile.neg .em-sp-a { fill: rgba(95, 168, 220, 0.12); }
+.em-tc { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--agri); text-align: right; min-width: 46px; }
+.em-tile.neg .em-tc { color: #6fa8dc; }
 
 /* 오른쪽 1: 지역 안에서 농업의 자리 (산점도) */
 .em-dim { color: var(--faint); font-size: 11.5px; }
@@ -126,7 +134,7 @@
   /* 왼쪽: 규모 패널은 내용 높이만큼, 남는 높이는 계절 열지도가 쓴다 */
   .em #p-size { flex: 0 0 auto; }
   .em #p-season { flex: 1 1 0; min-height: 0; }
-  .em #p-season .em-heat { flex: 1 1 0; min-height: 120px; height: auto; }
+  .em #p-season .em-tiles { flex: 1 1 0; }
   /* 오른쪽: 산점도가 남는 높이를 쓰고, 흐름·전국 참고는 내용 높이만큼 */
   .em #p-place { flex: 1 1 0; min-height: 0; }
   .em #p-place .em-scatter { flex: 1 1 0; min-height: 150px; height: auto; }
@@ -136,10 +144,10 @@
   .em-facts li { font-size: 13px; }
 }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 900px) {
-  .em #season-note, .em #how-note { display: none; }
+  .em #trend-note, .em #how-note { display: none; }
 }
-@media (max-width: 760px) {
-  .em-heat { height: 300px; }
+@media (max-width: 1280px) {
+  .em-tiles { max-height: 420px; }
 }
 
 /* 순위 막대는 지도 색(초록)에 맞춘다 */

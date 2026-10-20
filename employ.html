@@ -70,16 +70,15 @@
 
         <article class="panel" id="p-season">
           <header class="panel-head">
-            <h2>들판의 1년 <span class="h2-scope" id="season-scope"></span></h2>
-            <div class="em-toggle" role="group" aria-label="열지도 값">
-              <button type="button" data-heat="idx" aria-pressed="true">계절 지수</button>
-              <button type="button" data-heat="abs" aria-pressed="false">인원</button>
-            </div>
+            <h2 id="trend-title">시군별 흐름 <span class="h2-scope" id="season-scope"></span></h2>
+            <span class="chip" id="trend-when"></span>
           </header>
-          <p class="em-line" id="season-line"></p>
-          <div class="chart em-heat" id="chart-heat" aria-label="연도·월별 농림어업 취업자 열지도"></div>
-          <div class="em-heatkey" id="heat-key"></div>
-          <p class="note" id="season-note"></p>
+          <div class="em-season">
+            <p class="em-line" id="season-line"></p>
+            <div class="em-sprof" id="chart-season" aria-label="월별 계절 지수 (최근 3년 평균)"></div>
+          </div>
+          <div class="em-tiles" id="tiles"></div>
+          <p class="note" id="trend-note"></p>
         </article>
       </section>
 

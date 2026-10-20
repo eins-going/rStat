@@ -92,7 +92,7 @@
       note: "직업으로 본 농림어업 숙련 종사자(직접 농사·어로 일을 하는 사람) 비율. 농업 법인 사무직 등은 빠진다" },
   ];
   const DEFAULT_METRIC = METRICS[0];
-  const state = { key: NATION, h: HL, metric: DEFAULT_METRIC, heat: "idx" };
+  const state = { key: NATION, h: HL, metric: DEFAULT_METRIC };
 
   // ---------- 선택 ----------
   const selSido = $("#sido"), selSgg = $("#sgg"), selHalf = $("#half");
@@ -429,71 +429,89 @@
       + `<div class="em-barkey">${parts.map(([n, v], i) => `<span><i style="background:${colors[i]}"></i>${n} <b>${nf0.format(share(v, tot) ?? 0)}%</b></span>`).join("")}</div>`;
   }
 
-  // ---------- 왼쪽: 계절 열지도 ----------
+  // ---------- 왼쪽 2: 시군별 흐름 (계절은 한 줄로) ----------
   function seasonGrid(k) {
     const a = E.m[k]?.a || [];
     const rows = new Map();
     M.forEach((ym, i) => { if (ok(a[i])) { const [y, mm] = ym.split("-"); (rows.get(+y) || rows.set(+y, Array(12).fill(null)).get(+y))[+mm - 1] = a[i]; } });
-    const years = [...rows.keys()].filter((y) => rows.get(y).filter(ok).length >= 6).sort((p, q) => p - q);
-    // 계절 지수: 그해 평균 = 100. 덜 찬 해(올해)는 최근 12개월 평균으로 나눈다
-    const li = lastMonth(k);
-    const recent = d3.mean(d3.range(Math.max(0, li - 11), li + 1).map((i) => a[i]).filter(ok));
-    return years.map((y) => {
-      const v = rows.get(y);
-      const full = v.every(ok);
-      const base = full ? d3.mean(v) : recent;
-      return { y, v, full, idx: v.map((x) => (ok(x) ? (x / base) * 100 : null)) };
-    });
+    // 계절 지수: 그해 월평균 = 100 (12달이 다 찬 해만)
+    return [...rows.keys()].sort((p, q) => p - q).map((y) => ({ y, v: rows.get(y) })).filter((r) => r.v.every(ok))
+      .map((r) => ({ ...r, idx: r.v.map((x) => (x / d3.mean(r.v)) * 100) }));
+  }
+  // 계절: 최근 3년 평균 계절 지수 선 + 처음 해(점선)
+  function renderSeasonStrip(k) {
+    const grid = seasonGrid(k);
+    const el = $("#chart-season");
+    const { svg, w, h } = frame(el, 40);
+    if (!grid.length) { $("#season-line").textContent = ""; return; }
+    const recent = grid.slice(-3), first = grid[0], last = grid.at(-1);
+    const prof = d3.range(12).map((j) => d3.mean(recent, (r) => r.idx[j]));
+    const all = [...prof, ...first.idx];
+    const x = d3.scalePoint().domain(d3.range(12)).range([14, w - 4]);
+    const y = d3.scaleLinear().domain([d3.min(all) - 2, d3.max(all) + 2]).range([h - 12, 3]);
+    svg.append("line").attr("class", "em-base").attr("x1", 14).attr("x2", w - 4).attr("y1", y(100)).attr("y2", y(100)).style("stroke-dasharray", "2 3");
+    const line = d3.line().x((d, j) => x(j)).y((d) => y(d)).curve(d3.curveMonotoneX);
+    if (first !== last) svg.append("path").attr("class", "em-l-all").attr("d", line(first.idx));
+    svg.append("path").attr("class", "em-l-agri").attr("d", line(prof));
+    svg.append("g").attr("class", "pw-axis").selectAll("text").data([0, 2, 4, 6, 8, 10, 11]).join("text").attr("x", (j) => x(j)).attr("y", h - 1).attr("text-anchor", "middle").text((j) => `${j + 1}`);
+    const rx = (r) => d3.max(r.v) / d3.min(r.v);
+    const hi = d3.maxIndex(prof), lo = d3.minIndex(prof);
+    $("#season-line").innerHTML = `<b>계절</b> ${hi + 1}월에 가장 많고 ${lo + 1}월에 가장 적다 · <b class="em-acc">${nf1.format(rx(last))}배</b>`
+      + (first !== last ? ` <span class="em-dim">(${first.y}년 ${nf1.format(rx(first))}배, 점선)</span>` : "");
+  }
+  // 작은 그래프 하나: 0~100 상자 안 경로 (모양만 본다)
+  function spark(vals) {
+    const pts = vals.map((v, i) => [i, v]).filter(([, v]) => ok(v));
+    if (pts.length < 2) return "";
+    const [lo, hi] = d3.extent(pts, (p) => p[1]);
+    const x = d3.scaleLinear().domain([0, vals.length - 1]).range([1, 99]);
+    const y = d3.scaleLinear().domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]).range([22, 2]);
+    const d = d3.line().x((p) => x(p[0])).y((p) => y(p[1]))(pts);
+    const area = `${d}L${x(pts.at(-1)[0])},24L${x(pts[0][0])},24Z`;
+    return `<svg viewBox="0 0 100 24" preserveAspectRatio="none"><path class="em-sp-a" d="${area}"/><path class="em-sp-l" d="${d}"/></svg>`;
+  }
+  function trendItems() {
+    const k = state.key;
+    if (level(k) === 0) {
+      // 시도: 경활 연평균 (1989~)
+      const yi = E.years.length - 1;
+      const i0 = E.years.indexOf("1989");
+      return {
+        mode: "sido", from: E.years[i0], to: E.years[yi], base: `${E.years[yi - 5]}→${E.years[yi]}`,
+        items: SIDO_CODES.map((c) => ({
+          k: c, name: shortLabel(c), share: share(yAt(c, "a", yi), yAt(c, "t", yi)),
+          chg: ok(yAt(c, "a", yi)) && yAt(c, "a", yi - 5) ? (yAt(c, "a", yi) / yAt(c, "a", yi - 5) - 1) * 100 : null,
+          vals: E.years.slice(i0).map((_, j) => yAt(c, "a", i0 + j)),
+        })),
+      };
+    }
+    // 시군: 지역별고용조사 반기 → 상·하반기가 다 있는 해의 연평균 (표본 흔들림을 줄인다)
+    const s = sidoOf(k), hh = state.h;
+    const years = [...new Set(H.map((x) => x.slice(0, 4)))].filter((y) => H.includes(`${y}-1`) && H.includes(`${y}-2`));
+    return {
+      mode: "unit", from: years[0], to: years.at(-1), base: hh - 10 >= 0 ? `${halfShort(hh - 10)}→${halfShort(hh)}` : "",
+      items: UNITS_BY_SIDO[s].map((u) => ({
+        k: u, name: label(u), share: uShare(u, hh),
+        chg: ok(uAt(u, "a", hh)) && uAt(u, "a", hh - 10) ? (uAt(u, "a", hh) / uAt(u, "a", hh - 10) - 1) * 100 : null,
+        vals: years.map((y) => { const p = uAt(u, "a", H.indexOf(`${y}-1`)), q = uAt(u, "a", H.indexOf(`${y}-2`)); return ok(p) && ok(q) ? (p + q) / 2 : null; }),
+      })),
+    };
   }
   function renderSeason() {
-    const k0 = state.key, k = level(k0) === 2 ? sidoOf(k0) : k0;
-    $("#season-scope").textContent = `(${shortLabel(k)})`;
-    const grid = seasonGrid(k);
-    const fulls = grid.filter((r) => r.full);
-    const lastY = fulls.at(-1), firstY = fulls[0];
-    const amp = (r) => { const hi = d3.maxIndex(r.v), lo = d3.minIndex(r.v); return { hi, lo, d: r.v[hi] - r.v[lo], x: r.v[hi] / r.v[lo] }; };
-    if (lastY) {
-      const L = amp(lastY), F = amp(firstY);
-      $("#season-line").innerHTML = `${lastY.y}년 <b>${L.hi + 1}월 ${peopleText(lastY.v[L.hi])}</b> · ${L.lo + 1}월 ${peopleText(lastY.v[L.lo])}, <b class="em-acc">${peopleText(L.d)}</b> 차이`
-        + (firstY !== lastY ? `<span class="em-sub">가장 많은 달이 적은 달의 ${nf1.format(L.x)}배 (${firstY.y}년 ${nf1.format(F.x)}배)</span>` : "");
-    } else $("#season-line").textContent = "";
-    $("#season-note").textContent = level(k0) === 2 ? `시군은 월 자료가 없어 ${shortLabel(k)} 값입니다.` : "계절 지수: 그해 월평균 = 100. 올해처럼 덜 찬 해는 최근 12개월 평균으로 나눴습니다.";
-    drawHeat(grid);
+    const k = state.key, sk = level(k) === 2 ? sidoOf(k) : k;
+    const T0 = trendItems();
+    $("#trend-title").firstChild.textContent = T0.mode === "sido" ? "시도별 흐름 " : "시군별 흐름 ";
+    $("#season-scope").textContent = `(${shortLabel(sk)})`;
+    $("#trend-when").textContent = `${T0.from}~${T0.to} · ${T0.mode === "sido" ? "경활" : "지역별"} 연평균`;
+    renderSeasonStrip(sk);
+    const items = T0.items.filter((d) => d.vals.filter(ok).length >= 2).sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
+    $("#tiles").innerHTML = items.map((d) => `<button type="button" class="em-tile${d.k === k ? " sel" : ""}${ok(d.chg) && d.chg < 0 ? " neg" : ""}" data-k="${d.k}" title="${esc(d.name)} · 농림어업 취업자 ${T0.from}~${T0.to} 연평균 · 비중 ${pct(d.share)} · ${T0.base} ${pctS(d.chg)}">`
+      + `<span class="em-tn">${esc(d.name)}</span><span class="em-ts">${pct(d.share)}</span>${spark(d.vals)}<span class="em-tc">${pctS(d.chg)}</span></button>`).join("");
+    $$("#tiles .em-tile").forEach((b) => b.addEventListener("click", () => select(b.dataset.k)));
+    $("#trend-note").textContent = T0.mode === "sido"
+      ? `칸: 시도 농림어업 취업자 추이(${T0.from}~${T0.to}), 비중은 ${T0.to}년, 증감은 ${T0.base}. 누르면 그 시도로.`
+      : `칸: 시군 농림어업 취업자 추이(상·하반기 평균), 비중·증감은 ${T0.base}. 표본조사라 작은 시군은 흔들림이 크다.`;
   }
-  function drawHeat(grid) {
-    const el = $("#chart-heat");
-    const { svg, w, h } = frame(el, 220);
-    if (!grid.length) { empty(svg); $("#heat-key").innerHTML = ""; return; }
-    const m = { l: 30, r: 4, t: 12, b: 2 };
-    const x = d3.scaleBand().domain(d3.range(12)).range([m.l, w - m.r]).paddingInner(0.08);
-    const y = d3.scaleBand().domain(grid.map((r) => r.y)).range([m.t, h - m.b]).paddingInner(grid.length > 30 ? 0 : 0.08);
-    let color, keyHTML;
-    if (state.heat === "idx") {
-      const dev = d3.quantile(grid.flatMap((r) => r.idx.filter(ok).map((v) => Math.abs(v - 100))).sort(d3.ascending), 0.97) || 10;
-      color = d3.scaleDiverging([100 - dev, 100, 100 + dev], (t) => d3.interpolateRgbBasis(["#3d7fc4", "#2b3038", "#72c48d"])(t)).clamp(true);
-      keyHTML = `<span>적은 달</span><i style="background:linear-gradient(90deg,#3d7fc4,#2b3038,#72c48d)"></i><span>많은 달</span><span class="em-k-n">${nf0.format(100 - dev)} · 100 · ${nf0.format(100 + dev)}</span>`;
-    } else {
-      const all = grid.flatMap((r) => r.v.filter(ok));
-      color = d3.scaleSequential([d3.min(all), d3.max(all)], d3.interpolateRgbBasis(["#22282a", "#2f4636", "#4f895f", "#a8e0b8"]));
-      keyHTML = `<span>${peopleText(d3.min(all))}</span><i style="background:linear-gradient(90deg,#22282a,#2f4636,#4f895f,#a8e0b8)"></i><span>${peopleText(d3.max(all))}</span>`;
-    }
-    svg.append("g").attr("class", "pw-axis").selectAll("text").data(d3.range(12)).join("text")
-      .attr("x", (d) => x(d) + x.bandwidth() / 2).attr("y", 9).attr("text-anchor", "middle").text((d) => d + 1);
-    const step = grid.length > 30 ? 10 : grid.length > 14 ? 5 : 2;
-    svg.append("g").attr("class", "pw-axis").selectAll("text").data(grid.filter((r) => r.y % step === 0)).join("text")
-      .attr("x", m.l - 4).attr("y", (r) => y(r.y) + y.bandwidth() / 2 + 3.5).attr("text-anchor", "end").text((r) => r.y);
-    const cells = grid.flatMap((r) => r.v.map((v, j) => ({ r, j, v, idx: r.idx[j] }))).filter((c) => ok(c.v));
-    svg.append("g").selectAll("rect").data(cells).join("rect")
-      .attr("class", "em-cell").attr("x", (c) => x(c.j)).attr("y", (c) => y(c.r.y)).attr("width", x.bandwidth()).attr("height", Math.max(1, y.bandwidth()))
-      .attr("fill", (c) => color(state.heat === "idx" ? c.idx : c.v))
-      .append("title").text((c) => `${c.r.y}년 ${c.j + 1}월 · ${peopleText(c.v)} · 계절 지수 ${nf0.format(c.idx)}`);
-    $("#heat-key").innerHTML = keyHTML;
-  }
-  $$("[data-heat]").forEach((b) => b.addEventListener("click", () => {
-    state.heat = b.dataset.heat;
-    $$("[data-heat]").forEach((x) => x.setAttribute("aria-pressed", x === b));
-    renderSeason();
-  }));
 
   // ---------- 오른쪽: 지역 집계 (시군 값을 더한다) ----------
   // 시도·전국은 그 안 시군 값의 합. 두 값을 짝으로 쓸 때는 둘 다 있는 시군만 더해 분자·분모의 범위를 맞춘다
@@ -687,19 +705,21 @@
   }
   $("#reset").addEventListener("click", () => select(parentOf(state.key) ?? NATION));
   function renderFacts() {
-    const yi0 = 0, yi1 = E.years.length - 1;
-    const s0 = share(yAt(NATION, "a", yi0), yAt(NATION, "t", yi0)), s1 = share(yAt(NATION, "a", yi1), yAt(NATION, "t", yi1));
+    const yi1 = E.years.length - 1, yi0 = yi1 - 10; // 10년 전과 견준다
+    const a0 = yAt(NATION, "a", yi0), a1 = yAt(NATION, "a", yi1);
+    const s0 = share(a0, yAt(NATION, "t", yi0)), s1 = share(a1, yAt(NATION, "t", yi1));
     const ah = lastHalf(E.mix.age["01"], HL), ag = E.mix.age["01"][ah];
     const hr = E.hours;
     const ji = hr.months.map((m, i) => [m, i]).filter(([m]) => m.endsWith("-01")).at(-1)?.[1];
     const nw = E.nonwage, ni = nw.years.length - 1;
     const facts = [
-      `<b>${E.years[yi0]}년 ${nf0.format(s0)}%</b> → <b>${E.years[yi1]}년 ${nf1.format(s1)}%</b>, 취업자 중 농림어업 비중`,
+      `<b>${E.years[yi0]}년 ${nf1.format(s0)}%</b> → <b>${E.years[yi1]}년 ${nf1.format(s1)}%</b>, 취업자 중 농림어업 비중|${E.years[yi0]}년 ${peopleText(a0)} → ${E.years[yi1]}년 ${peopleText(a1)}`,
       `농업 취업자 <b class="em-acc">${nf0.format(share(ag[4], d3.sum(ag)))}%</b>가 60세 이상`,
       `${hr.months[ji].slice(0, 4)}년 1월엔 <b>${nf0.format(hr["01"].short[ji])}%</b>가 주 36시간 미만`,
       `무급가족종사자 <b>${peopleText(nw["01"][ni][4])}</b> · 전국의 ${nf0.format(share(nw["01"][ni][4], nw["00"][ni][4]))}%`,
     ];
-    $("#facts").innerHTML = facts.map((f) => `<li><span>${f}</span></li>`).join("");
+    // '본문|툴팁': 줄이 넘치지 않게 덧붙임은 마우스를 올리면 보인다
+    $("#facts").innerHTML = facts.map((f) => { const [t, tip] = f.split("|"); return `<li${tip ? ` title="${esc(tip)}"` : ""}><span>${t}</span></li>`; }).join("");
   }
 
   // ---------- 갱신 ----------
@@ -736,7 +756,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-long": drawLong, "chart-heat": renderSeason, "chart-scatter": renderPlace, "chart-short": drawShort };
+  const redraw = { "chart-long": drawLong, "chart-season": () => renderSeasonStrip(level(state.key) === 2 ? sidoOf(state.key) : state.key), "chart-scatter": renderPlace, "chart-short": drawShort };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;
