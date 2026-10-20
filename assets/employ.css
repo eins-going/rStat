@@ -28,24 +28,27 @@
 .pw-key i.em-k-a { height: 9px; background: rgba(114, 196, 141, 0.45); border-top: 2px solid var(--agri); }
 .pw-key i.em-k-s { background: var(--accent); }
 
-/* 구성 막대 */
-.em-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 1px; background: var(--panel-2); }
-.em-bar span { min-width: 0; font-size: 10px; font-weight: 700; line-height: 14px; color: #14161b; text-align: center; overflow: hidden; white-space: nowrap; }
-.em-bar.sm { height: 13px; }
-.em-bar.sm span { line-height: 13px; }
-.em-barkey { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 5px; font-size: 11px; color: var(--muted); }
-.em-barkey span { display: inline-flex; align-items: center; gap: 4px; }
-.em-barkey i { width: 8px; height: 8px; border-radius: 2px; }
-.em-barkey b { color: var(--text); font-variant-numeric: tabular-nums; }
+/* 무슨 일을 하나: 도넛 둘 (전체 산업 · 농림어업 안) */
+.em-donuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 2px; }
+.em-dnb { min-width: 0; }
+.em-dnh { margin-bottom: 3px; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.em-dnh span { margin-left: 3px; font-size: 10.5px; font-weight: 400; color: var(--faint); }
+.em-dnr { display: flex; align-items: center; gap: 7px; }
+.em-dnr svg { flex: none; width: 64px; height: 64px; overflow: visible; }
+.em-dnp path { stroke: var(--panel); stroke-width: 0.6; }
+.em-dnp path:hover { stroke: var(--text); stroke-width: 1.2; }
+.em-dnv { fill: var(--text); font-size: 12.5px; font-weight: 700; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.em-dnk { fill: var(--faint); font-size: 8.5px; text-anchor: middle; }
+.em-dnl { flex: 1; min-width: 0; display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; font-size: 10.5px; color: var(--muted); }
+.em-dnl li { display: flex; align-items: center; gap: 4px; white-space: nowrap; line-height: 1.25; }
+.em-dnl li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.em-dnl i { flex: none; width: 7px; height: 7px; border-radius: 2px; }
+.em-dnl b { color: var(--text); font-variant-numeric: tabular-nums; }
+.em-dnf { margin: 5px 0 0; font-size: 11px; color: var(--muted); }
+.em-dnf b { color: var(--text); font-variant-numeric: tabular-nums; }
 .em-mix-none { white-space: normal !important; }
 .em #p-place .em-mixhead { margin-top: 0; }
-.em-mrow { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 6px; margin-top: 4px; }
-.em-mlab { font-size: 11px; color: var(--faint); white-space: nowrap; }
-.em-mkey { margin: 3px 0 0 64px; }
-.em-mwhen { color: var(--faint); }
-.em-barkey .em-mtop { display: block; }
-.em-barkey .em-mfirst { flex-basis: 100%; }
-.em-mnone { margin: 6px 0 0; font-size: 11px; color: var(--faint); }
+.em-mnone { margin: 4px 0 0; font-size: 11px; line-height: 1.45; color: var(--faint); }
 .em-mlink { padding: 0; font: inherit; color: var(--muted); background: none; border: 0; border-bottom: 1px dotted currentColor; cursor: pointer; }
 .em-mlink:hover { color: var(--text); }
 

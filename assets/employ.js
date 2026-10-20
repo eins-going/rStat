@@ -398,7 +398,7 @@
     { f: "i44", name: "사업·개인·공공서비스", short: "서비스", color: "#c98500", inds: [["iE", "수도·하수·폐기물"], ["iL", "부동산"], ["iM", "전문·과학·기술"], ["iN", "사업시설·지원·임대"],
       ["iO", "공공행정"], ["iP", "교육"], ["iQ", "보건·복지"], ["iR", "예술·스포츠·여가"], ["iS", "협회·수리·개인"], ["iT", "가구 내 고용"], ["iU", "국제·외국기관"]] },
   ];
-  const AGRI_COLOR = "var(--agri)";
+  const AGRI_COLOR = "var(--agri)", AGRI_HEX = "#72c48d"; // SVG 칠은 hex로
   // 농림어업 안은 초록 계열 (위 막대의 다른 산업 색과 겹치지 않게)
   const MIX_COLORS = ["#72c48d", "#3f7d55", "#a9d8b8", "#2e6b4f", "#5fbfae"];
   // 세종은 시군 표에 없다 → 시도 값
@@ -435,7 +435,19 @@
     }
     return null;
   }
-  const mixRow = (lab, bar, key) => `<div class="em-mrow"><span class="em-mlab">${lab}</span>${bar}</div><div class="em-barkey em-mkey">${key}</div>`;
+  // 도넛 하나: 조각 [[이름, 값, 색, 툴팁 이름]] → 가운데 큰 글씨·작은 글씨, 오른쪽 범례
+  const DONUT = 64;
+  function donut(head, slices, center, legend) {
+    const tot = d3.sum(slices, (d) => d[1]);
+    const r = DONUT / 2;
+    const arc = d3.arc().innerRadius(r * 0.64).outerRadius(r);
+    const arcs = d3.pie().sort(null).value((d) => d[1])(slices);
+    const paths = arcs.map((a) => `<path d="${arc(a)}" style="fill:${a.data[2]}"><title>${esc(a.data[3] ?? a.data[0])} ${peopleText(a.data[1])} · ${pct(share(a.data[1], tot))}</title></path>`).join("");
+    return `<div class="em-dnb"><div class="em-dnh">${head}</div><div class="em-dnr">`
+      + `<svg viewBox="${-r} ${-r} ${DONUT} ${DONUT}" role="img" aria-label="${esc(center[1])} ${esc(center[0])}"><g class="em-dnp">${paths}</g>`
+      + `<text class="em-dnv" y="1">${center[0]}</text><text class="em-dnk" y="12">${center[1]}</text></svg>`
+      + `<ul class="em-dnl">${legend.map(([n, v, c, full]) => `<li${full ? ` title="${esc(full)}"` : ""}><i style="background:${c}"></i><span>${n}</span><b>${v}</b></li>`).join("")}</ul></div></div>`;
+  }
   function renderMix() {
     const k = state.key, el = $("#mix");
     const ind = industryParts(k), sub = agriParts(k);
@@ -446,34 +458,35 @@
     }
     const h0 = ind ? ind.h : sub.h;
     $("#mix-note").textContent = `${halfShort(h0)} · 지역별`;
-    let html = "";
+    let html = "", foot = "";
     if (ind) {
       const groups = ind.groups.filter((g) => ok(g.v) && g.v > 0);
       const tot = d3.sum(groups, (g) => g.v);
       const all = groups.flatMap((g) => g.parts).sort((p, q) => q[1] - p[1]);
       const rank = all.findIndex(([n]) => n === AGRI_PART) + 1;
-      // 묶음 사이는 2px, 묶음 안 대분류 사이는 1px
-      const bar = `<div class="em-bar em-ibar">${groups.map((g, gi) => g.parts.map(([n, v], j) => `<span style="flex:${v};background:${g.color}${gi && !j ? ";margin-left:1px" : ""}" title="${n}${g.parts.length > 1 ? ` (${g.name})` : ""} ${peopleText(v)} · ${pct(share(v, tot))}"></span>`).join("")).join("")}</div>`;
       const a = groups.find((g) => g.name === AGRI_PART);
-      let key = (a ? `<span class="em-mfirst"><i style="background:${AGRI_COLOR}"></i>농림어업 <b>${nf1.format(share(a.v, tot))}%</b> · ${ind.n}개 ${ind.unit} 중 ${rank === 1 ? "가장 많음" : `${rank}번째`}</span>` : "")
-        + groups.filter((g) => g.name !== AGRI_PART).map((g) => `<span title="${g.name}"><i style="background:${g.color}"></i>${g.short} <b>${nf0.format(share(g.v, tot))}%</b></span>`).join("");
+      // 조각은 대분류(시군은 묶음) 하나씩, 색은 묶음 색. 농림어업이 12시에서 시작
+      const slices = groups.flatMap((g) => g.parts.map(([n, v]) => [n, v, g.color === AGRI_COLOR ? AGRI_HEX : g.color, g.parts.length > 1 ? `${n} (${g.name})` : n]));
+      const legend = groups.map((g) => [g.name === AGRI_PART ? AGRI_PART : g.short, `${(g.name === AGRI_PART ? nf1 : nf0).format(share(g.v, tot))}%`, g.color === AGRI_COLOR ? AGRI_HEX : g.color, g.name === AGRI_PART ? "" : g.name]);
+      const head = `전체 산업 <span>${ind.n}개 ${ind.unit} 중 ${rank === 1 ? "1위" : `${rank}위`}</span>`;
+      html += donut(head, slices, [a ? `${nf1.format(share(a.v, tot))}%` : "–", "농림어업"], legend);
       if (ind.unit === "산업") {
         const top = all.filter(([n]) => n !== AGRI_PART).slice(0, 3);
-        key += `<span class="em-mtop">큰 산업 ${top.map(([n, v]) => `${esc(n)} <b>${nf0.format(share(v, tot))}%</b>`).join(" · ")}</span>`;
+        foot = `<p class="em-dnf">큰 산업 ${top.map(([n, v]) => `${esc(n)} <b>${nf0.format(share(v, tot))}%</b>`).join(" · ")}</p>`;
       }
-      html += mixRow("전체 산업", bar, key);
     }
     if (sub) {
-      const parts = sub.parts, tot = d3.sum(parts, (p) => p[1] || 0);
+      const parts = sub.parts.filter(([, v]) => ok(v) && v > 0), tot = d3.sum(parts, (p) => p[1]);
       const colors = parts.length === 3 ? [MIX_COLORS[0], MIX_COLORS[3], MIX_COLORS[4]] : MIX_COLORS;
-      const bar = `<div class="em-bar">${parts.map(([n, v], i) => `<span style="flex:${Math.max(0, v || 0)};background:${colors[i]}" title="${n} ${peopleText(v)} (${pct(share(v, tot))})"></span>`).join("")}</div>`;
-      const key = parts.map(([n, v], i) => `<span><i style="background:${colors[i]}"></i>${n} <b>${nf0.format(share(v, tot) ?? 0)}%</b></span>`).join("")
-        + (sub.h !== h0 ? `<span class="em-mwhen">${halfShort(sub.h)}</span>` : "");
-      html += mixRow("농림어업 안", bar, key);
+      const slices = parts.map(([n, v], i) => [n, v, colors[i]]);
+      const legend = parts.map(([n, v], i) => [n, `${nf0.format(share(v, tot))}%`, colors[i]]);
+      const [n0, v0] = parts[0];
+      const head = `농림어업 안${sub.h !== h0 ? ` <span>${halfShort(sub.h)}</span>` : ""}`;
+      html += donut(head, slices, [`${nf0.format(share(v0, tot))}%`, n0.replace(/업$/, "")], legend);
     } else {
-      html += `<p class="em-mnone">농림어업 안의 구성은 시군 단위로 나오지 않습니다 · <button type="button" class="em-mlink" data-k="${sidoOf(k)}">${esc(shortLabel(sidoOf(k)))} 보기</button></p>`;
+      html += `<div class="em-dnb"><div class="em-dnh">농림어업 안</div><p class="em-mnone">시군 단위로는 나오지 않습니다 · <button type="button" class="em-mlink" data-k="${sidoOf(k)}">${esc(shortLabel(sidoOf(k)))} 보기</button></p></div>`;
     }
-    el.innerHTML = html;
+    el.innerHTML = `<div class="em-donuts">${html}</div>${foot}`;
     $(".em-mlink", el)?.addEventListener("click", (e) => select(e.currentTarget.dataset.k));
   }
 
@@ -743,18 +756,20 @@
     $("#band-note").textContent = `${+M[i].slice(5)}월은 직전 5년 같은 달 평균보다 ${pctS(dev)}`;
   }
   // 시도 × 최근 12개월: 전년 같은 달 대비 증감 색
+  // 감소 파랑 · 0 회색 · 증가 빨강 (지도 증감 색과 같은 계열)
+  const YOY_RAMP = ["#3d7fc4", "#2b3038", "#e0574c"];
   function renderYoyGrid() {
     const sel = pulseKey();
     const cols = d3.range(Math.max(12, ML - 11), ML + 1);
     // 농림어업 취업자가 3천 명도 안 되는 시도(서울)는 증감이 표본 흔들림뿐이라 뺀다
     const rows = [NATION, ...SIDO_CODES].filter((k) => E.m[k] && mAt(k, "a", lastMonth(k)) >= 3);
     const lim = 12;
-    const col = d3.scaleDiverging([-lim, 0, lim], d3.interpolateRgbBasis(["#3d7fc4", "#2b3038", "#72c48d"])).clamp(true);
+    const col = d3.scaleDiverging([-lim, 0, lim], d3.interpolateRgbBasis(YOY_RAMP)).clamp(true);
     const head = `<span></span>${cols.map((j) => `<span class="em-yh${M[j].endsWith("-01") ? " jan" : ""}" title="${monthText(j)}">${+M[j].slice(5)}</span>`).join("")}`;
     const body = rows.map((k) => `<button type="button" class="em-yr${k === sel ? " sel" : ""}${k === NATION ? " nat" : ""}" data-k="${k}"><span class="em-yl">${shortLabel(k)}</span>`
       + cols.map((j) => { const v = mYoy(k, j); return `<i style="background:${ok(v) ? col(v) : "transparent"}" title="${shortLabel(k)} ${monthText(j)} · 전년 같은 달 대비 ${pctS(v)} · ${peopleText(mAt(k, "a", j))}"></i>`; }).join("") + `</button>`).join("");
     $("#ygrid").innerHTML = `<div class="em-yrow em-yhead">${head}</div>${body}`;
-    $("#ygrid-key").innerHTML = `<span>감소</span><i style="background:linear-gradient(90deg,#3d7fc4,#2b3038,#72c48d)"></i><span>증가</span><span class="em-k-n">−${lim}% · 0 · +${lim}%</span>`;
+    $("#ygrid-key").innerHTML = `<span>감소</span><i style="background:linear-gradient(90deg,${YOY_RAMP.join(",")})"></i><span>증가</span><span class="em-k-n">−${lim}% · 0 · +${lim}%</span>`;
     $$("#ygrid .em-yr").forEach((b) => b.addEventListener("click", () => select(b.dataset.k)));
   }
 
