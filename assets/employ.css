@@ -70,29 +70,20 @@
 .em-tile.neg .em-tc { color: #6fa8dc; }
 
 /* 시군 자세히 */
-.em-detail { display: grid; align-content: start; gap: 2px; overflow-y: auto; scrollbar-width: thin; min-height: 0; }
+.em-detail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; min-height: 0; }
 .em-detail[hidden], .em-tiles[hidden] { display: none; }
-.em-dhead, .em-dr { display: grid; grid-template-columns: 96px 58px 1fr 40px; align-items: center; gap: 8px; }
-.em-dhead { font-size: 10.5px; color: var(--faint); padding: 0 6px 2px; }
-.em-dhead span:nth-child(2), .em-dhead span:nth-child(4) { text-align: right; }
-.em-dr { padding: 5px 6px; background: var(--panel-2); border-radius: 7px; }
-.em-dn { font-size: 12px; font-weight: 600; line-height: 1.2; }
-.em-dn small { display: block; font-size: 10.5px; font-weight: 400; color: var(--faint); }
-.em-dr > b { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
-.em-dr svg { width: 100%; height: 22px; display: block; }
-.em-dr.neg .em-sp-l { stroke: #6fa8dc; }
-.em-dr.neg .em-sp-a { fill: rgba(95, 168, 220, 0.12); }
-.em-dr.flat .em-sp-l { stroke: var(--all); }
-.em-dr.flat .em-sp-a { fill: rgba(154, 161, 173, 0.12); }
-.em-drk { font-size: 11px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-.em-drn { font-size: 10.5px; color: var(--faint); }
-.em-nh { margin: 10px 0 3px; font-size: 12px; font-weight: 600; }
-.em-nh small { margin-left: 4px; font-size: 10.5px; font-weight: 400; color: var(--faint); }
-.em-near { display: grid; grid-template-columns: 1fr 50px 52px 44px; gap: 6px; align-items: center; padding: 3px 6px; font: inherit; font-size: 11.5px;
-  text-align: left; color: var(--text); background: none; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-variant-numeric: tabular-nums; }
-.em-near:hover { background: var(--panel-2); border-color: rgba(114, 196, 141, 0.4); }
-.em-near span:not(:first-child) { text-align: right; }
-.em-near.neg .em-tc { color: #6fa8dc; }
+.em-dc { display: flex; flex-direction: column; min-width: 0; padding: 6px 8px 6px; background: var(--panel-2); border-radius: 7px; }
+.em-dn { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.em-dvr { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+.em-dval { font-size: 17px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.em-drk { font-size: 10.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.em-dsub { font-size: 10.5px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.em-dsp { position: relative; height: 30px; margin-top: 4px; }
+.em-dsp svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.em-dc.neg .em-sp-l { stroke: #6fa8dc; }
+.em-dc.neg .em-sp-a { fill: rgba(95, 168, 220, 0.12); }
+.em-dc.flat .em-sp-l { stroke: var(--all); }
+.em-dc.flat .em-sp-a { fill: rgba(154, 161, 173, 0.12); }
 
 /* 오른쪽 1: 지역 안에서 농업의 자리 (산점도) */
 .em-dim { color: var(--faint); font-size: 11.5px; }
@@ -160,7 +151,6 @@
 .em-yh.jan { color: var(--muted); font-weight: 700; }
 .em-heatkey { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--muted); }
 .em-heatkey i { flex: 0 1 80px; height: 7px; border-radius: 2px; }
-.em-near.same span:first-child { color: var(--agri); }
 
 /* 한 화면 맞춤: 그림이 남는 높이를 나눠 쓴다 */
 @media (min-width: 1281px) and (min-height: 720px) {
@@ -175,6 +165,7 @@
   .em #p-place .em-line { margin-top: 8px; }
   .em #p-season { flex: 1 1 0; min-height: 118px; }
   .em #p-season .em-tiles, .em #p-season .em-detail { flex: 1 1 0; }
+  .em #p-season .em-dsp { flex: 1 1 0; height: auto; min-height: 18px; max-height: 90px; }
   .em #p-flow { flex: 0 0 auto; }
   .em-facts li { font-size: 13px; }
 }

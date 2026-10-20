@@ -526,7 +526,7 @@
     return { mode: "unit", from: years[0], to: years.at(-1), base, items: UNITS_BY_SIDO[sidoOf(k)].map((u) => item(u, label(u), uShare(u, hh))) };
   }
   // ---------- 오른쪽 2 (시군을 골랐을 때): 그 시군의 지표 ----------
-  // 지표마다 지금 값 · 2013~ 추이(상·하반기 평균) · 시도 안 순위. 추이선 색은 시도 값보다 높으면 초록, 낮으면 파랑
+  // 지표마다 지금 값 · 시도 값과 시도 안 순위 · 2013~ 추이(상·하반기 평균)
   function fullYears() { return [...new Set(H.map((x) => x.slice(0, 4)))].filter((y) => H.includes(`${y}-1`) && H.includes(`${y}-2`)); }
   const DETAIL = [
     { name: "농림어업 비중", get: (u, h) => uShare(u, h), agg: (s, h) => share(...aggPair(s, "a", "t", h)), fmt: pct, src: "거주지 기준" },
@@ -540,24 +540,15 @@
     const rank = (f) => {
       const list = peers.map((p) => [p, f(p, h)]).filter(([, v]) => ok(v)).sort((a, b) => b[1] - a[1]);
       const i = list.findIndex(([p]) => p === u);
-      return i >= 0 ? `${i + 1}/${list.length}` : "–";
+      return i >= 0 ? `${i + 1}위/${list.length}` : "";
     };
-    const rows = DETAIL.map((d) => {
-      const v = d.get(u, h), sv = d.agg ? d.agg(s, h) : null;
+    // 지표 카드 셋: 값 · 시도 값과 시도 안 순위 · 추이 (선 색은 시도 값보다 높으면 초록, 낮으면 파랑)
+    $("#unit-detail").innerHTML = DETAIL.map((d) => {
+      const v = d.get(u, h), sv = d.agg(s, h);
       const cls = ok(v) && ok(sv) ? (v >= sv ? "" : " neg") : " flat";
-      return `<div class="em-dr${cls}"><span class="em-dn">${d.name}<small>${d.agg ? `${shortLabel(s)} ${d.fmt(sv)}` : d.src}</small></span>`
-        + `<b>${d.fmt(v)}</b>${spark(yearly(d.get))}<span class="em-drk">${rank(d.get)}</span></div>`;
-    });
-    // 5년 변화: 비슷한 시군 목록에만 (오른쪽 '농업 일자리의 흐름'과 겹치지 않게)
-    const chg = (p, hh) => { const a1 = uAt(p, "a", hh), a0 = uAt(p, "a", hh - 10); return ok(a1) && a0 ? (a1 / a0 - 1) * 100 : null; };
-    // 농업 비중이 비슷한 시군 (전국)
-    const x0 = uShare(u, h);
-    const near = ok(x0) ? ALL_UNITS.filter((p) => p !== u && ok(uShare(p, h))).sort((a, b) => Math.abs(uShare(a, h) - x0) - Math.abs(uShare(b, h) - x0)).slice(0, 8) : [];
-    const old = (p) => share(uAt(p, "yo", h), uAt(p, "yt", h));
-    $("#unit-detail").innerHTML = `<div class="em-dhead"><span>지표</span><span>값</span><span>${years[0]}~${years.at(-1)} 추이</span><span>${shortLabel(s)} 안</span></div>${rows.join("")}`
-      + (near.length ? `<h3 class="em-nh">농림어업 비중이 비슷한 시군 <small>전국 8곳 · 비중 · 5년 변화 · 65세 이상</small></h3>`
-        + near.map((p) => `<button type="button" class="em-near${ok(chg(p, h)) && chg(p, h) < 0 ? " neg" : ""}${sidoOf(p) === s ? " same" : ""}" data-k="${p}"><span>${esc(fullLabel(p))}</span><span>${pct(uShare(p, h))}</span><span class="em-tc">${pctS(chg(p, h))}</span><span class="em-dim">${pct(old(p))}</span></button>`).join("") : "");
-    $$("#unit-detail .em-near").forEach((b) => b.addEventListener("click", () => select(b.dataset.k)));
+      return `<div class="em-dc${cls}" title="${d.name} · ${d.src} · 추이 ${years[0]}~${years.at(-1)} (상·하반기 평균)"><span class="em-dn">${d.name}</span><span class="em-dvr"><b class="em-dval">${d.fmt(v)}</b><span class="em-drk">${rank(d.get)}</span></span>`
+        + `<span class="em-dsub">${shortLabel(s)} ${d.fmt(sv)}</span><div class="em-dsp">${spark(yearly(d.get))}</div></div>`;
+    }).join("");
   }
 
   function renderSeason() {
@@ -569,7 +560,7 @@
       $("#trend-title").firstChild.textContent = `${label(k)} `;
       $("#season-scope").textContent = "";
       $("#trend-when").textContent = `${halfShort(state.h)} · 지역별`;
-      $("#trend-note").textContent = "지역별고용조사 시군구 표. 추이선은 상·하반기 평균, 색은 시도 값보다 높으면 초록·낮으면 파랑. 순위는 큰 값부터.";
+      $("#trend-note").textContent = `지역별고용조사 시군구 표. 추이는 ${fullYears()[0]}~${fullYears().at(-1)} 상·하반기 평균, 선 색은 시도 값보다 높으면 초록·낮으면 파랑. 순위는 큰 값부터.`;
       renderUnitDetail();
       return;
     }
