@@ -6,6 +6,8 @@
 
 /* 지도: 고른 시도 밖의 시군은 흐리게 */
 .pw #map .unit.pw-ctx { opacity: 0.22; }
+.pw .mesh-sido-bg { fill: none; stroke: rgba(10, 11, 14, 0.9); stroke-width: 2.6; pointer-events: none; }
+.pw .mesh-sido { stroke: rgba(255, 255, 255, 0.6); stroke-width: 1; }
 .pw #map .unit.sido-hov { filter: brightness(1.3); }
 .pw #map .unit.pw-ctx.sido-hov { opacity: 0.45; }
 .pw .tip .tip-hint { color: var(--faint); font-size: 11px; }

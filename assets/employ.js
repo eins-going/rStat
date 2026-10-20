@@ -183,6 +183,8 @@
       .on("mouseleave", leaveRegion)
       .on("click", (e, d) => onRegionClick(d.properties.key))
       .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRegionClick(d.properties.key); } });
+    // 시도 경계: 시군마다 색이 달라 묻히지 않게 어두운 굵은 선 위에 밝은 가는 선을 겹친다
+    world.selectAll("path.mesh-sido-bg").data([sidoMesh]).join("path").attr("class", "mesh-sido-bg").attr("d", path);
     world.selectAll("path.mesh-sido").data([sidoMesh]).join("path").attr("class", "mesh-sido").attr("d", path);
     const ul = unitFeatures.find((f) => f.properties.key === ULLEUNG.key);
     const [[ux0, uy0], [ux1, uy1]] = ul ? path.bounds(ul) : [[0, 0], [0, 0]];
