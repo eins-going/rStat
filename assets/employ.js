@@ -77,18 +77,18 @@
   // ---------- 지도 지표 (시군, 반기) ----------
   const uShare = (k, h) => share(uAt(k, "a", h), uAt(k, "t", h));
   const METRICS = [
-    { key: "share", group: "사는 곳 기준", chip: "농림어업 비중", label: "취업자 중 농림어업 비중", kind: "seq", get: uShare, fmt: pct,
+    { key: "share", group: "사는 곳", chip: "농림어업 비중", label: "취업자 중 농림어업 비중", kind: "seq", get: uShare, fmt: pct,
       note: "그 시군에 사는 취업자 가운데 농업·임업·어업에서 일하는 사람의 비율 (지역별고용조사)" },
-    { key: "count", group: "사는 곳 기준", chip: "농림어업 취업자", label: "농림어업 취업자", kind: "seq", get: (k, h) => uAt(k, "a", h), fmt: peopleText,
+    { key: "count", group: "사는 곳", chip: "취업자", label: "농림어업 취업자", kind: "seq", get: (k, h) => uAt(k, "a", h), fmt: peopleText,
       note: "그 시군에 사는 농림어업 취업자 수. 표본조사라 작은 시군은 오차가 크다 (툴팁의 RSE)" },
-    { key: "d5", group: "사는 곳 기준", chip: "5년 전 대비", label: "농림어업 비중 5년 전 대비", kind: "div", get: (k, h) => { const a = uShare(k, h), b = uShare(k, h - 10); return ok(a) && ok(b) ? a - b : null; }, fmt: pp,
+    { key: "d5", group: "사는 곳", chip: "5년 전 대비", label: "농림어업 비중 5년 전 대비", kind: "div", get: (k, h) => { const a = uShare(k, h), b = uShare(k, h - 10); return ok(a) && ok(b) ? a - b : null; }, fmt: pp,
       note: "농림어업 비중을 5년 전 같은 반기와 비교 (%p). 한 해 표본 흔들림보다 긴 변화를 본다" },
-    { key: "wshare", group: "일하는 곳 기준", chip: "농림어업 비중", label: "일자리 중 농림어업 비중 (일하는 곳)", kind: "seq", get: (k, h) => share(uAt(k, "wa", h), uAt(k, "wt", h)), fmt: pct,
+    { key: "wshare", group: "일하는 곳", chip: "농림어업 비중", label: "일자리 중 농림어업 비중 (일하는 곳)", kind: "seq", get: (k, h) => share(uAt(k, "wa", h), uAt(k, "wt", h)), fmt: pct,
       note: "그 시군에서 일하는 취업자(근무지 기준) 가운데 농림어업 비율" },
-    { key: "flow", group: "일하는 곳 기준", chip: "들고 나는 농업인", label: "들고 나는 농업인 (이곳 농림어업 일자리 대비 주민)", kind: "div",
+    { key: "flow", group: "일하는 곳", chip: "들고 나는 농업인", label: "들고 나는 농업인 (이곳 농림어업 일자리 대비 주민)", kind: "div",
       get: (k, h) => { const a = uAt(k, "a", h), w = uAt(k, "wa", h); return ok(a) && ok(w) && a >= 1 ? (w / a - 1) * 100 : null; }, fmt: pctS,
       note: "+면 다른 시군에서 농사지으러 들어오는 사람이 많고, −면 이곳 주민이 다른 시군 농지로 나간다 (농림어업 취업 주민 1천 명 이상)" },
-    { key: "occ", group: "직업", chip: "농림어업 숙련직", label: "취업자 중 농림어업 숙련 종사자 비중", kind: "seq", get: (k, h) => share(uAt(k, "oa", h), uAt(k, "ot", h)), fmt: pct,
+    { key: "occ", group: "직업", chip: "숙련직", label: "취업자 중 농림어업 숙련 종사자 비중", kind: "seq", get: (k, h) => share(uAt(k, "oa", h), uAt(k, "ot", h)), fmt: pct,
       note: "직업으로 본 농림어업 숙련 종사자(직접 농사·어로 일을 하는 사람) 비율. 농업 법인 사무직 등은 빠진다" },
   ];
   const DEFAULT_METRIC = METRICS[0];
@@ -497,7 +497,7 @@
 
   // ---------- 오른쪽: 누가 일하나 (전국 농업) ----------
   const AGE_NAMES = ["15~29세", "30대", "40대", "50대", "60세 이상"];
-  const AGE_COLORS = ["#4a505b", "#646b77", "#8b929e", "#b98a4a", "#f5a524"];
+  const AGE_COLORS = ["#454b55", "#5f6672", "#838b97", "#c9b38a", "#f5a524"];
   // 백분율 → 100칸 (큰 나머지 순으로 반올림)
   function hundred(vals) {
     const tot = d3.sum(vals);
@@ -507,11 +507,11 @@
     raw.map((v, i) => [v - n[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { n[i]++; left--; } });
     return n;
   }
+  // 25×4 격자를 왼쪽 위부터 세로로 채운다: 60세 이상부터 연령대가 왼쪽에서 오른쪽으로 덩어리를 이뤄
+  // 위아래 두 그림(농업·전체)의 같은 연령대 길이를 바로 견줄 수 있다
   function waffle(el, vals) {
     const n = hundred(vals);
-    // 60세 이상부터 채운다 (위 왼쪽에서 오른쪽으로)
-    const order = [4, 3, 2, 1, 0];
-    const cells = order.flatMap((i) => Array(n[i]).fill(i));
+    const cells = [4, 3, 2, 1, 0].flatMap((i) => Array(n[i]).fill(i));
     el.innerHTML = cells.map((i) => `<i style="background:${AGE_COLORS[i]}" title="${AGE_NAMES[i]} ${n[i]}명"></i>`).join("");
   }
   function renderWho() {
@@ -524,10 +524,11 @@
     waffle($("#waffle-all"), al);
     const old = (v) => share(v[4], d3.sum(v));
     const young = (v) => share(v[0] + v[1], d3.sum(v));
-    $("#waffle-agri-cap").innerHTML = `<b>농업</b> 100명 중 <em>${nf0.format(old(ag))}명</em>이 60세 이상<span>40세 미만 ${nf0.format(young(ag))}명</span>`;
-    $("#waffle-all-cap").innerHTML = `<b>전체 산업</b> 100명 중 <em class="dim">${nf0.format(old(al))}명</em><span>40세 미만 ${nf0.format(young(al))}명</span>`;
+    const cap = (name, v, dim) => `<b>${name}</b><span class="em-wstat">60세 이상 <em${dim ? ' class="dim"' : ""}>${nf0.format(old(v))}</em>명</span><span class="em-wstat">40세 미만 <em class="dim">${nf0.format(young(v))}</em>명</span>`;
+    $("#waffle-agri-cap").innerHTML = cap("농업 100명", ag, false);
+    $("#waffle-all-cap").innerHTML = cap("전체 산업 100명", al, true);
     $("#age-key").innerHTML = [4, 3, 2, 1, 0].map((i) => `<span><i style="background:${AGE_COLORS[i]};height:9px;width:9px"></i>${AGE_NAMES[i]}</span>`).join("");
-    drawOld(h);
+    drawOld();
     // 학력·성별 비교
     const edu = E.mix.edu, sex = E.mix.sex;
     const rows = [
@@ -546,30 +547,27 @@
       + `<div class="em-cmp-r"><span class="em-cmp-l">${r.la || la}</span>${bar(r.a, r.colors, r.names)}</div>`
       + `<div class="em-cmp-r"><span class="em-cmp-l dim">${r.lb || lb}</span>${bar(r.b, r.colors, r.names)}</div></div>`).join("");
   }
-  function drawOld(hSel) {
+  // 60세 이상 비중: 한 줄 추세선 (농업·전체), 끝 값만 적는다
+  function drawOld() {
     const el = $("#chart-old");
-    const { svg, w, h } = frame(el, 70);
+    const { svg, w, h } = frame(el, 34);
     const age = E.mix.age;
     const ser = (ind) => H.map((_, i) => { const v = age[ind][i]; return v && v.every(ok) ? share(v[4], d3.sum(v)) : null; });
     const a = ser("01"), b = ser("0");
     const idx = H.map((_, i) => i).filter((i) => ok(a[i]));
     if (idx.length < 2) { empty(svg); return; }
-    const m = { l: 30, r: 34, t: 6, b: 14 };
+    const m = { l: 2, r: 30, t: 5, b: 5 };
     const x = d3.scaleLinear().domain(d3.extent(idx)).range([m.l, w - m.r]);
     const y = d3.scaleLinear().domain([0, 100]).range([h - m.b, m.t]);
-    gridY(svg, y, [50, 100], m.l, w - m.r, (d) => `${d}%`);
-    svg.append("line").attr("class", "em-base").attr("x1", m.l).attr("x2", w - m.r).attr("y1", y(0)).attr("y2", y(0));
-    const yrs = idx.filter((i) => H[i].endsWith("-1") && +H[i].slice(0, 4) % 4 === 1);
-    svg.append("g").attr("class", "pw-axis").selectAll("text").data(yrs).join("text").attr("x", (i) => x(i)).attr("y", h - 2).attr("text-anchor", "middle").text((i) => H[i].slice(0, 4));
+    svg.append("line").attr("class", "em-base").attr("x1", m.l).attr("x2", w - m.r).attr("y1", y(50)).attr("y2", y(50)).style("stroke-dasharray", "2 3");
     const line = (s) => d3.line().defined((i) => ok(s[i])).x((i) => x(i)).y((i) => y(s[i]))(idx);
     svg.append("path").attr("class", "em-l-all").attr("d", line(b));
     svg.append("path").attr("class", "em-l-agri").attr("d", line(a));
-    const li = idx.at(-1);
+    const li = idx.at(-1), f = idx[0];
     svg.append("text").attr("class", "em-end agri").attr("x", x(li) + 4).attr("y", y(a[li]) + 4).text(`${nf0.format(a[li])}%`);
     svg.append("text").attr("class", "em-end").attr("x", x(li) + 4).attr("y", y(b[li]) + 4).text(`${nf0.format(b[li])}%`);
-    if (hSel !== li && ok(a[hSel])) svg.append("circle").attr("class", "em-hdot").attr("cx", x(hSel)).attr("cy", y(a[hSel])).attr("r", 3);
-    const f = idx[0];
-    $("#old-note").textContent = `${H[f].slice(0, 4)} ${nf0.format(a[f])}% → ${H[li].slice(0, 4)} ${nf0.format(a[li])}% · 반기`;
+    svg.append("title").text(`60세 이상 비중 · 농업 ${H[f].slice(0, 4)} ${nf0.format(a[f])}% → ${H[li].slice(0, 4)} ${nf0.format(a[li])}% · 전체 ${nf0.format(b[f])}% → ${nf0.format(b[li])}%`);
+    $("#old-note").textContent = `농업 ${H[f].slice(0, 4)} ${nf0.format(a[f])}% → ${H[li].slice(0, 4)}`;
   }
 
   // ---------- 오른쪽: 어떻게 일하나 (전국 농림어업) ----------
@@ -682,7 +680,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-long": drawLong, "chart-heat": renderSeason, "chart-old": () => drawOld(lastHalf(E.mix.age["01"], state.h)), "chart-short": drawShort };
+  const redraw = { "chart-long": drawLong, "chart-heat": renderSeason, "chart-old": drawOld, "chart-short": drawShort };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;

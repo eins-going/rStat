@@ -54,18 +54,20 @@
 .em-heatkey i { flex: 0 1 90px; height: 8px; border-radius: 2px; }
 .em-k-n { margin-left: auto; color: var(--faint); font-variant-numeric: tabular-nums; }
 
-/* 누가: 100명 그림 */
-.em-waffles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* 누가: 100명 그림 (25×4, 세로로 채움) */
+.em-waffles { display: grid; gap: 8px; }
 .em-waffle { margin: 0; }
-.em-waffle > div { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; }
-.em-waffle i { aspect-ratio: 1; border-radius: 50%; }
-.em-waffle figcaption { margin-top: 5px; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
-.em-waffle figcaption b { color: var(--text); margin-right: 3px; }
-.em-waffle figcaption em { font-style: normal; font-weight: 700; color: var(--accent); }
-.em-waffle figcaption em.dim { color: var(--text); }
-.em-waffle figcaption span { display: block; color: var(--faint); font-size: 11px; }
+.em-waffle > div { display: grid; grid-template-columns: repeat(25, 1fr); grid-template-rows: repeat(4, auto); grid-auto-flow: column; gap: 2px; }
+.em-waffle i { aspect-ratio: 1; border-radius: 2px; }
+.em-waffle figcaption { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; font-size: 11.5px; color: var(--muted); }
+.em-waffle figcaption b { flex: 1; color: var(--text); font-size: 12px; }
+.em-wstat em { font-style: normal; font-weight: 750; font-size: 14px; color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 1px; }
+.em-wstat em.dim { color: var(--text); }
 .em-agekey { margin-top: 6px; }
-.em-old { height: 70px; margin-top: 2px; }
+.em-oldrow { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; margin-top: 10px; }
+.em-oldlab { font-size: 12px; font-weight: 600; line-height: 1.25; }
+.em-oldlab small { display: block; font-size: 11px; font-weight: 400; color: var(--faint); }
+.em-old { height: 34px; min-width: 0; }
 .em-l-agri { fill: none; stroke: var(--agri); stroke-width: 2; }
 .em-l-all { fill: none; stroke: var(--all); stroke-width: 1.3; stroke-dasharray: 4 3; }
 .em-end { fill: var(--all); font-size: 10.5px; font-variant-numeric: tabular-nums; }
@@ -91,21 +93,18 @@
 /* 한 화면 맞춤: 그림이 남는 높이를 나눠 쓴다 */
 @media (min-width: 1281px) and (min-height: 720px) {
   .em #p-size, .em #p-season, .em #p-who, .em #p-how { display: flex; flex-direction: column; }
-  .em #p-size { flex: 1 1 0; }
-  .em #p-size .em-long { flex: 1 1 0; min-height: 90px; height: auto; }
-  .em #p-season { flex: 1.25 1 0; }
+  /* 왼쪽: 규모 패널은 내용 높이만큼, 남는 높이는 계절 열지도가 쓴다 */
+  .em #p-size { flex: 0 0 auto; }
+  .em #p-season { flex: 1 1 0; min-height: 0; }
   .em #p-season .em-heat { flex: 1 1 0; min-height: 120px; height: auto; }
-  .em #p-who { flex: 1 1 0; }
-  .em #p-who .em-old { flex: 1 1 0; min-height: 54px; height: auto; }
+  .em #p-who { flex: 0 0 auto; } /* 내용 높이만큼, 남는 높이는 아래 패널의 그림이 쓴다 */
   .em #p-how { flex: 1 1 0; }
   .em #p-how .em-short { flex: 1 1 0; min-height: 60px; height: auto; }
   .em .em-cmp { gap: 6px; margin-top: 8px; }
   .em-facts li { font-size: 13px; }
 }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 900px) {
-  .em .em-waffles { grid-template-columns: 1fr 1fr; gap: 10px; }
   .em .em-waffle > div { gap: 1.5px; }
-  .em .em-waffle figcaption span { display: none; }
   .em #season-note { display: none; }
 }
 @media (max-width: 760px) {
@@ -117,16 +116,21 @@
 .em .rank-row .fill.neg { background: var(--down); }
 .em-base { stroke: var(--line); }
 
-/* 한 화면: 100명 그림은 높이를 아껴 작게 */
-@media (min-width: 1281px) and (min-height: 720px) {
-  .em .em-waffle > div { width: min(100%, 132px); gap: 1.5px; }
-  .em .em-waffles { gap: 8px; }
-}
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 900px) {
-  .em .em-waffle > div { width: min(100%, 104px); }
-  .em .em-waffle figcaption { font-size: 11px; }
+  .em .em-long { height: 104px; }
 }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
-  .em .em-waffle > div { width: min(100%, 90px); }
-  .em #cmp-who .em-cmp-g + .em-cmp-g { display: none; } /* 낮은 화면: 성별 줄은 접는다 */
+  /* 낮은 화면: 성별·월 임금 줄은 접는다 (화면이 높으면 보인다) */
+  .em #cmp-who .em-cmp-g + .em-cmp-g, .em #cmp-how .em-cmp-g + .em-cmp-g { display: none; }
+  .em .em-line .em-sub { display: none; }
+}
+
+/* 지도 지표 칩은 한 줄: 줄바꿈하지 않고 칩·묶음 이름을 좁힌다 (그래도 넘치면 옆으로 민다) */
+.em .chips { flex-wrap: nowrap; overflow-x: auto; gap: 3px; }
+.em .chips button { padding: 4px 9px; font-size: 12px; }
+.em .pw-chip-g { padding-left: 9px; font-size: 11px; color: var(--faint); }
+.em .pw-chip-g:first-child { padding-left: 0; }
+@media (max-width: 1520px) {
+  .em .chips button { padding: 3px 7px; font-size: 11.5px; }
+  .em .pw-chip-g { padding-left: 6px; }
 }
