@@ -7,9 +7,10 @@
   조합 코드 없이 한꺼번에 받을 수는 없다(오류 100) → 조합 수 × 통계표 수만큼 부른다.
   FISIS의 [폐] 표시는 믿을 수 없다(합병된 조합도 남아 있다) → 영업 여부는 자료가 있는지로 본다.
 - 받은 파일은 다시 받지 않는다(끊기면 이어 받는다). 일일 허용 횟수를 넘으면(오류 020) 멈추고 다음 날 잇는다.
+- 본점 좌표: 누리집 주소를 VWorld 주소 검색(도로명 → 지번 순)으로 찾아 geo.json에 둔다(지도의 조합 점). 키는 .env VWORLD_API_KEY.
 
-실행: python scripts/fetch_nhcoop.py [--list] [--fisis] [--start 202312] [--end 202606] [--refresh]
-      (둘 다 빼면 둘 다 받는다)
+실행: python scripts/fetch_nhcoop.py [--list] [--fisis] [--geo] [--start 202312] [--end 202606] [--refresh]
+      (모두 빼면 모두 받는다)
 """
 import argparse
 import json
@@ -25,8 +26,9 @@ RAW = os.path.join(ROOT, "db", "raw", "nhcoop")
 NH_URL = "https://www.nonghyup.com/introduce/organization/nhInfo.do"
 FISIS = "https://fisis.fss.or.kr/openapi"
 # 임직원현황(조합원 B·총임직원 A), 자산(자산총계 A), 부채·자본(예수부채 A1·자본총계 AA),
-# 손익(당기순이익 A, 반기 누계), 여신건전성(총여신 A·고정이하여신 B), 유동성(예대율 대출금 C1·예수금 C2)
-TABLES = ["SQ001", "SQ003", "SQ004", "SQ005", "SQ007", "SQ009"]
+# 손익(당기순이익 A, 반기 누계), 여신건전성(총여신 A·고정이하여신 B·비율 C), 유동성(예대율 C), 수익성(ROA C),
+# 대출채권 구성(정책자금 A2), 유형별 대출(조합원 A1·준조합원 A2·비조합원 A3)
+TABLES = ["SQ001", "SQ003", "SQ004", "SQ005", "SQ007", "SQ009", "SQ008", "SQ014", "SQ021"]
 UA = {"user-agent": "Mozilla/5.0"}
 
 
@@ -135,20 +137,67 @@ def fetch_fisis(start, end, refresh):
     print(f"FISIS {len(companies)}개 코드 · {win} · 이번 호출 {calls}번 → {os.path.join(RAW, 'fisis', win)}")
 
 
+# ---------- 본점 좌표 ----------
+def fetch_geo():
+    key = env()["VWORLD_API_KEY"]
+    with open(os.path.join(RAW, "nh_list.json"), encoding="utf-8") as f:
+        rows = json.load(f)["rows"]
+    path = os.path.join(RAW, "geo.json")
+    geo = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+    new = 0
+    for r in rows:
+        addr = r["addr"]
+        if addr in geo:
+            continue
+        clean = re.sub(r"\(.*?\)|,", " ", addr).split()
+        # 번지 뒤의 건물명·층(○○빌딩 3층, 본점 등)은 떼어 낸다
+        cut = next((i for i, t in enumerate(clean) if re.fullmatch(r"\d+(-\d+)?", t)), len(clean) - 1)
+        q = " ".join(clean[:cut + 1])
+        geo[addr] = None
+        for typ in ("road", "parcel"):
+            params = {"service": "address", "request": "getcoord", "version": "2.0", "crs": "epsg:4326", "address": q,
+                      "refine": "true", "simple": "false", "format": "json", "type": typ, "key": key,
+                      "domain": "http://ag-rstat.vercel.app"}
+            d = {}
+            for attempt in range(3):
+                try:
+                    with urllib.request.urlopen(f"https://api.vworld.kr/req/address?{urllib.parse.urlencode(params)}", timeout=20) as res:
+                        d = json.loads(res.read().decode("utf-8"))["response"]
+                    break
+                except (OSError, ValueError):
+                    time.sleep(3)
+            if d.get("status") == "OK":
+                pt = d["result"]["point"]
+                geo[addr] = [round(float(pt["x"]), 5), round(float(pt["y"]), 5)]
+                break
+        new += 1
+        if new % 100 == 0:  # 끊겨도 이어 받게 중간에 저장
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(geo, f, ensure_ascii=False, indent=0)
+        time.sleep(0.1)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(geo, f, ensure_ascii=False, indent=0)
+    miss = [a for a, v in geo.items() if v is None]
+    print(f"좌표 {len(geo)}곳 (이번 {new}) · 못 찾음 {len(miss)}" + "".join(f"\n  {a}" for a in miss[:30]))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true", help="농협중앙회 조합 목록만")
+    ap.add_argument("--geo", action="store_true", help="본점 좌표만")
     ap.add_argument("--fisis", action="store_true", help="FISIS 재무만")
     s0, e0 = default_window()
     ap.add_argument("--start", default=s0)
     ap.add_argument("--end", default=e0)
     ap.add_argument("--refresh", action="store_true", help="받아 둔 FISIS 파일도 다시 받는다")
     a = ap.parse_args()
-    both = not a.list and not a.fisis
-    if a.list or both:
+    every = not (a.list or a.fisis or a.geo)
+    if a.list or every:
         fetch_list()
-    if a.fisis or both:
+    if a.fisis or every:
         fetch_fisis(a.start, a.end, a.refresh)
+    if a.geo or every:
+        fetch_geo()
 
 
 if __name__ == "__main__":

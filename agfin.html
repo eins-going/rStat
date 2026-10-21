@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>농업금융보험</title>
+  <meta name="description" content="지역 농·축협의 공시 재무(금감원 금융통계정보시스템)와 농작물재해보험 실적(농업정책보험금융원)을 공시된 값 그대로 시군·조합 단위로 봅니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/power.css">
+  <link rel="stylesheet" href="assets/agfin.css">
+</head>
+<body class="pw af">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="rio">지역산업연관표(농업)</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+          <a href="employ">농업고용</a>
+          <a href="agfin" aria-current="page">농업금융보험</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+        <label class="select">
+          <span>보험</span>
+          <select id="year"></select>
+        </label>
+        <label class="select">
+          <span>농협</span>
+          <select id="half"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="농작물재해보험">
+        <article class="panel" id="p-ins">
+          <header class="panel-head">
+            <h2>농작물재해보험 <span class="h2-scope" id="ins-scope"></span></h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">가입건수</span>
+              <span class="stat-value"><b data-v="cnt"></b><small data-u="cnt"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">가입금액</span>
+              <span class="stat-value"><b data-v="amt"></b><small data-u="amt"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">가입면적</span>
+              <span class="stat-value"><b data-v="area"></b><small data-u="area"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">가입률</span>
+              <span class="stat-value"><b data-v="rate"></b><small data-u="rate"></small></span>
+            </div>
+          </div>
+          <h3 class="sub-head">낸 보험료와 받은 보험금 <span>공시값 그대로</span></h3>
+          <div class="af-pair" id="ins-pair"></div>
+          <p class="note" id="ins-note"></p>
+        </article>
+
+        <article class="panel" id="p-cat">
+          <header class="panel-head">
+            <h2>품목별</h2>
+            <span class="seg af-seg" id="cat-seg" role="group" aria-label="품목별로 볼 값"></span>
+          </header>
+          <div class="af-bars" id="cat-bars"></div>
+        </article>
+
+        <article class="panel" id="p-years">
+          <header class="panel-head">
+            <h2>연도별 보험료·보험금</h2>
+            <span class="chip" id="years-range"></span>
+          </header>
+          <div class="chart af-years" id="chart-years" aria-label="연도별 순보험료와 지급보험금"></div>
+          <div class="pw-key" id="years-key"></div>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 농업금융보험</h1>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="pw-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="지역 농·축협">
+        <article class="panel" id="p-coop">
+          <header class="panel-head">
+            <h2 id="coop-title">조합</h2>
+            <span class="chip" data-half></span>
+          </header>
+          <div class="af-coop" id="coop-card"></div>
+        </article>
+
+        <article class="panel" id="p-list">
+          <header class="panel-head">
+            <h2>농·축협 <span class="h2-scope" id="list-scope"></span></h2>
+            <span class="chip" id="list-count"></span>
+          </header>
+          <div class="af-table-wrap">
+            <table class="af-table" id="coop-table"></table>
+          </div>
+          <p class="note" id="list-note"></p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p title="농협: 금융감독원 금융통계정보시스템(FISIS) OpenAPI 농협단위조합 공시값(반기). 조합 목록·본점 주소는 농협중앙회 누리집. 지역농협은 본점 시군에, 축협·품목농협은 FISIS 시도에 놓습니다. 보험: 농업정책보험금융원 농작물재해보험 실적 통계(품목별) 공시값. 합계·비율·증감은 따로 계산하지 않습니다.">자료: 금융감독원 금융통계정보시스템(농협 조합별 공시, 반기) · 농협중앙회 조합 목록 · 농업정책보험금융원 농작물재해보험 실적. 공시된 값을 그대로 보여 줍니다(합계·비율을 따로 계산하지 않음).</p>
+      <p id="built"></p>
+      <p class="foot-link"><a href="status">자료 수집 현황</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/apfs.js"></script>
+  <script src="data/nhcoop.js"></script>
+  <script src="assets/agfin.js"></script>
+  <script src="assets/about.js"></script>
+</body>
+</html>

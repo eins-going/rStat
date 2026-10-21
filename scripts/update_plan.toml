@@ -491,6 +491,45 @@ period = "static:2013 경계"
 where = "개편 때 경계 규칙을 고친다 (2026년 7월 인천 개편 미반영)"
 
 [[source]]
+id = "nhcoop"
+name = "지역 농·축협 공시 재무 (금감원 FISIS · 농협중앙회 조합 목록)"
+page = "농업금융보험"
+method = "auto"
+schedule = { kind = "yearly", months = [3, 9], day = 15 }
+retry_days = 60
+commands = [["scripts/fetch_nhcoop.py"], ["scripts/build_nhcoop.py"]]
+outputs = ["data/nhcoop.js"]
+check = "nhcoop"
+keys = ["FISIS_API_KEY", "VWORLD_API_KEY"]
+note = "반기(6월·12월 말) 공시가 약 3개월 뒤 나온다. 최근 반기 6개를 조합 코드마다 받는다(조합 1,190개 × 표 9개, 하루 허용 횟수를 넘으면 다음 날 잇는다). 조합 목록·주소는 농협중앙회 누리집을 함께 다시 받아 짝짓는다. 합병·이름 변경은 build_nhcoop.py의 ALIAS와 코드 묶음으로 처리하고, 짝이 없는 조합은 db/clean/nhcoop/<기간>/match.json에 남는다."
+
+[[source.dataset]]
+name = "농·축협 조합별 재무·건전성 (조합원, 자산, 예수부채, 대출, 고정이하여신비율, 예대율, ROA, 당기순이익)"
+origin = "금융감독원 금융통계정보시스템 OpenAPI (농협단위조합)"
+freq = "반기"
+cadence = "6월·12월 말 기준, 약 3개월 뒤"
+period = "nhcoop"
+
+[[source]]
+id = "apfs"
+name = "농작물재해보험 실적 (농업정책보험금융원)"
+page = "농업금융보험"
+method = "auto"
+schedule = { kind = "monthly", day = 25 }
+commands = [["scripts/fetch_apfs.py"], ["scripts/build_apfs.py"]]
+outputs = ["data/apfs.js"]
+check = "apfs"
+keys = []
+note = "공개 API가 없어 누리집 '실적 통계 > 품목별' 조회 화면을 시도·시군구마다 읽는다(1초 간격). 올해는 매달 누계가 바뀌어 매달 다시 받고, 지난 연도 12월 확정값은 한 번만 받는다. 시군 가입률은 공시되지 않는다."
+
+[[source.dataset]]
+name = "농작물재해보험 가입건수·가입금액·가입면적·순보험료·지급보험금 (품목별, 시군구)"
+origin = "농업정책보험금융원 농작물재해보험 실적 통계"
+freq = "연 (올해는 월 누계)"
+cadence = "매달 누계, 연말 확정"
+period = "apfs"
+
+[[source]]
 id = "live"
 name = "팜맵 필지·VWorld 지도 (자세히 보기)"
 page = "주요 통계 > 자세히 보기"

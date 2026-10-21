@@ -160,8 +160,36 @@ def check_employ(old, new):
     return not problems, changes, problems
 
 
+def check_nhcoop(old, new):
+    changes, problems = [], []
+    a, b = (old["periods"][-1] if old else ""), new["periods"][-1]
+    if b < a:
+        problems.append(f"마지막 반기가 뒤로 갔다 ({a} → {b})")
+    elif a != b:
+        changes.append(f"농협 공시 {a or '–'} → {b}")
+    alive = sum(1 for c in new["coops"] if c["p"][-1])
+    if alive < 1000:
+        problems.append(f"마지막 반기 자료가 있는 조합이 {alive}곳뿐이다")
+    return not problems, changes, problems
+
+
+def check_apfs(old, new):
+    changes, problems = [], []
+    tag = lambda d: f"{d['periods'][-1]['y']}.{d['periods'][-1]['m']:02d}" if d and d["periods"] else ""  # noqa: E731
+    a, b = tag(old), tag(new)
+    if b < a:
+        problems.append(f"마지막 시점이 뒤로 갔다 ({a} → {b})")
+    elif a != b:
+        changes.append(f"재해보험 {a or '–'} → {b}")
+    units = sum(1 for k, v in new["regions"].items() if "|" in k and v[-1])
+    if units < 150:
+        problems.append(f"마지막 시점 시군이 {units}곳뿐이다")
+    return not problems, changes, problems
+
+
 CHECKS = {"kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
-          "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities)}
+          "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities),
+          "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs)}
 
 
 def period_of(src):
@@ -188,6 +216,12 @@ def period_of(src):
             return f"{c.sql('SELECT max(year) FROM corp_sgg').fetchone()[0]}년까지"
         if src["id"] == "geo":
             return "2013 경계 + 현행 시군 규칙"
+        if src["id"] == "nhcoop":
+            h = read_js("data/nhcoop.js")["periods"][-1]
+            return f"{h[:4]}년 {int(h[4:])}월 말까지"
+        if src["id"] == "apfs":
+            p = read_js("data/apfs.js")["periods"][-1]
+            return f"{p['y']}년" + ("" if p["m"] == 12 else f" {p['m']}월 누계") + "까지"
     except Exception as e:  # 자료가 없거나 읽지 못하면 비워 둔다
         return f"(읽지 못함: {type(e).__name__})"
     return ""
@@ -434,6 +468,14 @@ def dataset_period(ds):
         if kind == "fac":
             d = read_js("data/facilities.js")
             return f"{sum(1 for r in d['rows'] if r[0] == int(arg)):,}곳"
+        if kind == "nhcoop":
+            h = read_js("data/nhcoop.js")["periods"][-1]
+            return f"{h[:4]}년 {int(h[4:])}월 말"
+        if kind == "apfs":
+            p = read_js("data/apfs.js")["periods"]
+            done = [x for x in p if x["m"] == 12]
+            cur = p[-1]
+            return (f"{done[-1]['y']}년" if done else "") + ("" if cur["m"] == 12 else f" (올해 {cur['m']}월 누계)")
         if kind == "static":
             return arg
     except Exception as e:

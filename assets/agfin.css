@@ -1,0 +1,95 @@
+/* 농업금융보험 (agfin.html, assets/agfin.js) — 지도·순위·칩은 style.css·power.css를 그대로 쓴다 */
+
+.af-empty { margin: 4px 0; font-size: 12px; color: var(--faint); }
+.af-neg { color: var(--down); }
+
+/* 보험: 낸 보험료와 받은 보험금 */
+.af-pair { display: grid; gap: 5px; margin-top: 2px; }
+.af-pair-row, .af-bar-row { display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 8px; font-size: 12px; }
+.af-pair-row b, .af-bar-row b { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; min-width: 56px; }
+.af-pair-l, .af-bar-l { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.af-bar-l em { font-style: normal; color: var(--faint); font-size: 10.5px; margin-left: 4px; }
+.af-track { height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.af-track i { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.5s cubic-bezier(.2, .8, .2, 1); }
+.af-track i.af-prem, rect.af-prem { background: var(--accent); fill: var(--accent); }
+.af-track i.af-paid, rect.af-paid { background: #5fb3ff; fill: #5fb3ff; }
+rect.af-partial { opacity: 0.45; }
+rect.af-ysel { fill: rgba(255, 255, 255, 0.05); stroke: rgba(245, 165, 36, 0.45); stroke-width: 1; rx: 4; }
+.pw-key i.af-k-paid { height: 9px; background: #5fb3ff; }
+.af-bars { display: grid; gap: 5px; }
+.af-bar-row { grid-template-columns: 92px 1fr auto; }
+.af-seg button { font-size: 11px; padding: 1px 7px; }
+.af-years { height: 120px; margin-top: 4px; }
+.af-mini { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.af-mini th { color: var(--faint); font-weight: 500; text-align: right; padding: 0 0 3px; }
+.af-mini th:first-child, .af-mini td:first-child { text-align: left; }
+.af-mini td { text-align: right; padding: 2px 0; border-top: 1px solid var(--line); }
+
+/* 지도: 조합 점 */
+.af-dot { stroke: #14161b; cursor: pointer; }
+.af-dot.ctx { opacity: 0.3; }
+.af-dot.out { opacity: 0.35; }
+.af-dot.sel { stroke: #fff; }
+.af-dot:hover { stroke: #fff; }
+
+/* 조합 카드 */
+.af-place { margin: 0 0 6px; font-size: 11.5px; color: var(--faint); }
+.af-kind { display: inline-block; margin-left: 4px; font-size: 10.5px; font-weight: 600; color: #14161b; border-radius: 5px; padding: 0 6px; vertical-align: 2px; }
+.af-kL, .af-dotk.af-kL { background: #f5a524; }
+.af-kX, .af-dotk.af-kX { background: #5fb37c; }
+.af-kI, .af-dotk.af-kI { background: #b48cff; }
+.af-dotk { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.af-stack { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--panel-2); gap: 2px; }
+.af-stack i { display: block; flex-basis: 0; min-width: 2px; }
+.af-sm, .af-stack-key i.af-sm { background: #f5a524; }
+.af-sa, .af-stack-key i.af-sa { background: #c9a46a; }
+.af-sn, .af-stack-key i.af-sn { background: #6d7380; }
+.af-stack-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+.af-stack-key span { display: inline-flex; align-items: center; gap: 5px; }
+.af-stack-key i { width: 9px; height: 9px; border-radius: 2px; }
+.af-stack-key b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.af-line { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.af-line b { color: var(--text); font-variant-numeric: tabular-nums; }
+.af-ratios { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+.af-ratios div { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 12px; color: var(--muted); padding: 3px 0; border-top: 1px solid var(--line); }
+.af-ratios b { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+.af-ratios em, .af-sb em { font-style: normal; font-size: 10px; color: var(--faint); }
+.af-sparks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.af-spark { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; height: 54px; }
+.af-sb { display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 2px; min-width: 0; }
+.af-sb i { display: block; background: #4a4f59; border-radius: 2px 2px 0 0; }
+.af-sb.cur i { background: var(--accent); }
+.af-sb.neg i { background: var(--down); }
+.af-sb em { text-align: center; line-height: 1; }
+
+/* 조합 목록 */
+.af-table-wrap { max-height: 260px; overflow-y: auto; scrollbar-width: thin; border: 1px solid var(--line); border-radius: 8px; }
+.af-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.af-table th { position: sticky; top: 0; background: var(--panel); z-index: 1; padding: 0; border-bottom: 1px solid var(--line); }
+.af-table th button { font: inherit; font-size: 11px; color: var(--faint); background: none; border: 0; padding: 5px 6px; width: 100%; text-align: right; cursor: pointer; }
+.af-table th:first-child button, .af-table td:first-child { text-align: left; }
+.af-table th button[aria-pressed="true"] { color: var(--accent); font-weight: 700; }
+.af-table td { padding: 3px 6px; text-align: right; border-top: 1px solid rgba(255, 255, 255, 0.04); white-space: nowrap; }
+.af-table td:first-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.af-table tbody tr { cursor: pointer; }
+.af-table tbody tr:hover { background: var(--panel-2); }
+.af-table tbody tr.sel { background: var(--accent-soft); }
+.af-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* 한 화면 맞춤: 조합 목록이 남는 높이를 쓴다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .af #p-list { flex: 1 1 0; display: flex; flex-direction: column; }
+  .af #p-list .af-table-wrap { flex: 1 1 0; max-height: none; min-height: 80px; }
+  .af #p-years { flex: 1 1 0; }
+  .af #p-years .af-years { flex: 1 1 0; min-height: 80px; height: auto; }
+}
+
+/* 지표 칩은 한 줄 (묶음 이름 + 짧은 칩) */
+.af .chips { flex-wrap: nowrap; overflow-x: auto; }
+
+/* 폰: 선택 상자 넷을 2×2로 (한 줄에 몰리면 이름이 잘린다) */
+@media (max-width: 760px) {
+  .af .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+  .af .controls .select { min-width: 0; }
+  .af .controls .select select { min-width: 0; width: 100%; }
+}

@@ -1,4 +1,4 @@
-"""db/raw/nhcoop/(scripts/fetch_nhcoop.py) → 시군·시도별 농협 지표 data/nhcoop.js.
+"""db/raw/nhcoop/(scripts/fetch_nhcoop.py) → 조합별 공시값 data/nhcoop.js (농업금융보험 탭).
 
 조합 → 지역
 - FISIS는 조합마다 시도('농협(충남)', 농협 지역본부 관할)를 정해 둔다. 축협·품목농협은 이 시도에 넣는다.
@@ -8,12 +8,12 @@
   지역농협의 시도 합계는 주소 시군이 속한 시도로 간다(시군 합이 시도와 맞게).
 - 같은 이름이 여럿이면(송악·대산 등) FISIS 코드 앞 10자리(농협 시군지부 묶음)에서 다수인 시군을 고른다.
   목록에 없는 코드(합병돼 이름이 바뀐 조합 등)도 그 묶음의 시군으로 둔다(묶음이 한 시군일 때만).
-- 영업 여부는 그 반기에 임직원 자료(SQ001)가 있는지로 본다. 조합 수도 반기마다 자료가 있는 코드 수다.
+- 영업 여부는 그 반기에 임직원 자료(SQ001)가 있는지로 본다.
 
-집계
-- 시군: 지역농협만. 시도·전국: 지역농협 + 축협(지역·품목) + 품목농협(원예·인삼·낙농·양돈 등).
-  축협·품목농협은 사업 구역이 여러 시군에 걸쳐 시군에 넣지 않는다(본점 시도에만 더한다).
-- 금액은 억원. 당기순이익은 반기 누계(6월은 상반기, 12월은 1년)다.
+값
+- 공시된 값을 그대로 싣는다. 합계·비율·증감은 만들지 않는다(화면도 계산하지 않는다). 금액만 원 → 억원으로 바꾼다.
+- 지역농협은 시군에, 축협·품목농협(원예·인삼·낙농·양돈 등)은 시도에만 놓는다(사업 구역이 여러 시군에 걸친다).
+- 당기순이익은 반기 누계(6월은 상반기, 12월은 1년), ROA는 12월에만 공시된다.
 
 출력: data/nhcoop.js, db/clean/nhcoop/<기간>/match.json(코드별 짝짓기 결과)
 실행: python scripts/build_nhcoop.py [--start 202312] [--end 202606]
@@ -40,17 +40,22 @@ ALIAS = {"중부농협": "남한산성농협", "예산능금농협": "예당사�
 BONBU_EXTRA = {"34": {"29"}, "22": {"37"}, "11": {"31"}, "23": {"31"}, "37": {"22"}}
 ITEM = re.compile(r"원예|인삼|사과|능금|감귤|채소|화훼|단감|참외|양돈|낙농|우유|양계|양봉|양토|치즈")
 LIVESTOCK_GROUPS = {f"0010027{n}" for n in range(170, 179)}  # 전국 축협 코드 묶음
-# (필드, 통계표, 계정, 값 열, 억원으로 나눔)
+# (필드, 통계표, 계정, 억원으로 나눔) — 값 열은 a(금액·비율), a가 없는 표(손익)는 b
 FIELDS = [
-    ("members", "SQ001", "B", "a", False),   # 조합원 수
-    ("staff", "SQ001", "A", "a", False),     # 총임직원
-    ("assets", "SQ003", "A", "a", True),     # 자산총계
-    ("deposits", "SQ004", "A1", "a", True),  # 예수부채
-    ("equity", "SQ004", "AA", "a", True),    # 자본총계
-    ("income", "SQ005", "A", "b", True),     # 당기순이익 (반기 누계)
-    ("loans", "SQ007", "A", "a", True),      # 총여신
-    ("npl", "SQ007", "B", "a", True),        # 고정이하여신
+    ("members", "SQ001", "B", False),   # 조합원 (명)
+    ("assets", "SQ003", "A", True),     # 자산총계
+    ("deposits", "SQ004", "A1", True),  # 예수부채
+    ("loans", "SQ021", "A", True),      # 총대출
+    ("loanM", "SQ021", "A1", True),     # 조합원 대출
+    ("loanA", "SQ021", "A2", True),     # 준조합원 대출
+    ("loanN", "SQ021", "A3", True),     # 비조합원 대출
+    ("policy", "SQ014", "A2", True),    # 정책자금대출금
+    ("income", "SQ005", "A", True),     # 당기순이익 (반기 누계)
+    ("npl", "SQ007", "C", False),       # 고정이하여신비율 (%)
+    ("roa", "SQ008", "C", False),       # 총자산순이익률 (%, 12월)
+    ("ldr", "SQ009", "C", False),       # 예대율 (%)
 ]
+KIND_CODE = {"지역농협": "L", "축협": "X", "품목": "I"}
 
 
 def norm(s):
@@ -162,8 +167,9 @@ def main():
     coops, res = match(nh, companies, active)
 
     periods = sorted({row["base_month"] for t in stats.values() for row in t.get("SQ001", [])})
-    regions = collections.defaultdict(lambda: collections.defaultdict(lambda: [0.0] * len(periods)))
-    report, problems = [], []
+    with open(os.path.join(RAW, "geo.json"), encoding="utf-8") as f:
+        geo = json.load(f)
+    report, problems, out = [], [], []
     for c in companies:
         cd = c["finance_cd"]
         if cd not in active:
@@ -178,25 +184,24 @@ def main():
         if not key or (kind == "지역농협" and key not in UNIT_KEYS):
             problems.append(f"{cd} {c['finance_nm']} ({kind}) → {key or '지역 못 정함'}")
             continue
-        sido = key.split("|")[0]
-        targets = ([key] if kind == "지역농협" else []) + [sido, "00"]
-        vals = {}
-        for f, t, acc, col, money in FIELDS:
+        vals = []  # FIELDS 순서. 금액은 억원(정수, 작은 값인 당기순이익·정책자금은 소수 한 자리)
+        for f, t, acc, money in FIELDS:
+            arr = [None] * len(periods)
             for row in stats[cd].get(t, []):
                 if row["account_cd"] == acc and row["base_month"] in periods:
-                    v = num(row.get(col))
+                    v = num(row.get("a", row.get("b")))
                     if v is not None:
-                        vals[(f, row["base_month"])] = v / 1e8 if money else v
+                        x = v / 1e8 if money else v
+                        arr[periods.index(row["base_month"])] = (round(x, 1) if f in ("income", "policy") else round(x)) if money else (int(v) if f == "members" else v)
+            vals.append(arr if any(x is not None for x in arr) else None)
         alive = {row["base_month"] for row in stats[cd]["SQ001"]}
-        for tk in targets:
-            r = regions[tk]
-            for i, p in enumerate(periods):
-                if p not in alive:
-                    continue
-                r[{"지역농협": "n_local", "축협": "n_livestock", "품목": "n_item"}[kind]][i] += 1
-                for f, *_ in FIELDS:
-                    if (f, p) in vals:
-                        r[f][i] += vals[(f, p)]
+        rec = {"c": cd, "n": c["finance_nm"], "k": KIND_CODE[kind], "r": key, "p": [int(p in alive) for p in periods], "v": vals}
+        if hit and hit["name"] and norm(hit["name"]) != norm(c["finance_nm"]):
+            rec["h"] = hit["name"]  # 누리집 이름 (이름이 바뀐 조합)
+        xy = hit and hit["addr"] and geo.get(hit["addr"])
+        if xy:
+            rec["xy"] = xy
+        out.append(rec)
 
     out_dir = os.path.join(OUT, f"{a.start}-{a.end}")
     os.makedirs(out_dir, exist_ok=True)
@@ -206,22 +211,17 @@ def main():
         json.dump({"built": time.strftime("%Y-%m-%d"), "codes": report, "problems": problems, "nh_unmatched": nh_unmatched},
                   f, ensure_ascii=False, indent=1)
 
-    def pack(r):
-        o = {}
-        for f, arr in r.items():
-            o[f] = [round(v, 1) if f not in ("members", "staff") and not f.startswith("n_") else int(v) for v in arr]
-        return o
-
     data = {"built": time.strftime("%Y-%m-%d"), "periods": periods, "nh_list": nh["fetched"],
-            "regions": {k: pack(v) for k, v in sorted(regions.items())}}
+            "fields": [f for f, *_ in FIELDS], "coops": out}
     with open(JS, "w", encoding="utf-8") as f:
-        f.write("// 지역 농·축협 (scripts/fetch_nhcoop.py → scripts/build_nhcoop.py). 시군은 지역농협만, 시도·전국은 축협·품목농협 포함. 금액 억원\n")
+        f.write("// 조합별 공시값 (금감원 FISIS · 농협중앙회 조합 목록, scripts/build_nhcoop.py). 금액 억원, 비율 %. k: L 지역농협·X 축협·I 품목농협\n")
         f.write("window.AGRI_NHCOOP = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
     kinds = collections.Counter(r["kind"] for r in report)
     hows = collections.Counter(r["how"] for r in report)
     print(f"자료가 있는 코드 {len(report)} {dict(kinds)} · 짝짓기 {dict(hows)}")
     print(f"지역 못 정함 {len(problems)}" + ("".join(f"\n  {p}" for p in problems)))
     print(f"누리집 조합 {len(coops)} 중 짝이 없는 곳 {len(nh_unmatched)}" + "".join(f"\n  {r['name']} | {r['addr']}" for r in nh_unmatched))
+    print(f"좌표 없는 조합 {sum(1 for r in out if 'xy' not in r)}")
     print("→", JS, f"{os.path.getsize(JS) / 1e3:.0f}KB · 반기 {periods}")
 
 
