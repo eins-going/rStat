@@ -1,6 +1,6 @@
 # 자료 수집 현황
 
-`python scripts/update.py status`가 2026-10-21 07:36에 만든 문서입니다. 계획은 `scripts/update_plan.toml`, 실행은 이 PC의 systemd 사용자 타이머(`rstat-update.timer`, 매일)입니다.
+`python scripts/update.py status`가 2026-10-21 09:20에 만든 문서입니다. 계획은 `scripts/update_plan.toml`, 실행은 이 PC의 systemd 사용자 타이머(`rstat-update.timer`, 매일)입니다.
 
 | 자료 | 화면 | 방식 | 자료 시점 | 마지막 성공 | 상태 | 다음 |
 |---|---|---|---|---|---|---|
@@ -60,6 +60,7 @@
 
 ### 팜맵 필지·VWorld 지도 (자세히 보기) (실시간)
 - 화면이 api/farmmap을 거쳐 실시간으로 부른다. 수집할 것은 없고, 인증키 만료(공공데이터포털 활용신청 기간)만 확인한다.
+- 필지 지표와 확대한 지도의 필지 경계는 팜맵 새 판(1년에 한 번)이 나오면 직접 다시 만든다: fetch_farmmap.py(전국 WFS 수집) → build_farmmap.py(지표·시도 타일) → upload_farmmap_tiles.py(전국 타일을 R2 rstat-tiles에 올림). 새 판이면 assets/farm.js의 TILES 주소의 연도도 바꾼다.
 
 ## 자동 수집
 

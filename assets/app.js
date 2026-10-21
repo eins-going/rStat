@@ -259,7 +259,8 @@
 
   // ---------- 자세히 보기 (시군에서만, 처음 고를 때 Leaflet·시설 자료와 함께 불러온다) ----------
   const FARM_CSS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css", "assets/farm.css"];
-  const FARM_JS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js", "data/facilities.js", "assets/farm.js"];
+  const FARM_JS = ["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js", "https://cdn.jsdelivr.net/npm/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js",
+    "data/facilities.js", "assets/farm.js"];
   let farmWarm = false;
   let farmReady = null;
 

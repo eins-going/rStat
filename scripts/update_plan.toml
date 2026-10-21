@@ -496,7 +496,8 @@ name = "팜맵 필지·VWorld 지도 (자세히 보기)"
 page = "주요 통계 > 자세히 보기"
 method = "live"
 keys = ["DATA_PORTAL_API_KEY", "VWORLD_API_KEY (Vercel 환경변수)"]
-how = ["화면이 api/farmmap을 거쳐 실시간으로 부른다. 수집할 것은 없고, 인증키 만료(공공데이터포털 활용신청 기간)만 확인한다."]
+how = ["화면이 api/farmmap을 거쳐 실시간으로 부른다. 수집할 것은 없고, 인증키 만료(공공데이터포털 활용신청 기간)만 확인한다.",
+       "필지 지표와 확대한 지도의 필지 경계는 팜맵 새 판(1년에 한 번)이 나오면 직접 다시 만든다: fetch_farmmap.py(전국 WFS 수집) → build_farmmap.py(지표·시도 타일) → upload_farmmap_tiles.py(전국 타일을 R2 rstat-tiles에 올림). 새 판이면 assets/farm.js의 TILES 주소의 연도도 바꾼다."]
 
 [[source.dataset]]
 name = "팜맵 필지·주변 농경지"
@@ -505,6 +506,14 @@ freq = "실시간"
 cadence = "화면이 그때그때 조회"
 period = "static:실시간"
 where = "수집 없음 · 인증키 활용기간만 확인"
+
+[[source.dataset]]
+name = "팜맵 필지 지표·필지 경계 타일"
+origin = "농림수산식품교육문화정보원 팜맵 오픈API (WFS, 전국 1,118만 필지)"
+freq = "1년"
+cadence = "팜맵 새 판이 나올 때 직접 다시 수집"
+period = "static:2025년 판"
+where = "경지면적 카드·지도 지표(data/farmmap.js), 자세히 보기 확대 지도(R2 타일)"
 
 [[source.dataset]]
 name = "위성·일반 지도, 주소 검색"

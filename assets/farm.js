@@ -6,6 +6,9 @@
   const OTHER = "#e8e8e8";
   const KINDS = Object.keys(KIND_COLOR);
   const QUERY_ZOOM = 15; // 이보다 멀리서 누르면 필지를 묻지 않고 그 지점으로 확대한다
+  // 전국 필지 타일 (scripts/upload_farmmap_tiles.py가 R2에 올린다). QUERY_ZOOM부터 분류별 색으로 경계를 그린다
+  const TILES = "https://pub-6a32610bd1414a8d8dc3adc9eecd3632.r2.dev/farmmap/2025/kr.pmtiles";
+  const TILE_KIND = { 1: "논", 2: "밭", 3: "과수", 4: "시설", 6: "인삼" };
   const nf = new Intl.NumberFormat("ko-KR");
   const nf1 = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 1 });
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -103,7 +106,7 @@
       sat: L.tileLayer(wmts("Satellite", "jpeg"), { ...opt, className: "fv-sat" }),
       map: L.tileLayer(wmts("Base", "png"), opt),
     };
-    labels = L.tileLayer(wmts("Hybrid", "png"), opt);
+    labels = L.tileLayer(wmts("Hybrid", "png"), { ...opt, zIndex: 3 });
     map = L.map(ui.map, {
       minZoom: 7,
       maxZoom: 20,
@@ -120,6 +123,7 @@
         if (++st.tileErrors >= 6 && !st.tileLoads) hint("VWorld 영상을 불러오지 못했습니다. 인증키에 등록한 서비스 URL을 확인해 주세요.", true);
       }));
     regionLayer = L.layerGroup().addTo(map);
+    tileParcels()?.addTo(map);
     parcelLayer = L.featureGroup().addTo(map);
     map.createPane("fv-facs").style.zIndex = 450; // 필지(400) 위, 툴팁 아래
     facLayer = L.layerGroup().addTo(map);
@@ -139,6 +143,24 @@
       map.invalidateSize({ pan: false });
       if (st.fitted) fitRegion();
     }).observe(ui.map);
+  }
+
+  // 확대한 지도의 필지 경계 (영상 위, 지명 아래). 누르면 지금처럼 팜맵 조회로 그 필지를 고른다
+  function tileParcels() {
+    if (!window.protomapsL) return null;
+    const P = window.protomapsL;
+    const color = (z, f) => colorOf(TILE_KIND[f.props.c]);
+    return P.leafletLayer({
+      url: TILES,
+      maxDataZoom: 15,
+      minZoom: QUERY_ZOOM,
+      zIndex: 2,
+      attribution: "",
+      paintRules: [
+        { dataLayer: "p", symbolizer: new P.PolygonSymbolizer({ fill: color, opacity: 0.12 }) },
+        { dataLayer: "p", symbolizer: new P.LineSymbolizer({ color, width: (z) => (z >= 17 ? 1.4 : 1), opacity: 0.9 }) },
+      ],
+    });
   }
 
   function fitRegion() {
@@ -214,7 +236,7 @@
     const far = !map || map.getZoom() < QUERY_ZOOM;
     ui.parcel.innerHTML = `
       <div class="fv-sec-head"><h3>팜맵 필지</h3></div>
-      <p class="fv-empty"><b>${far ? "지도를 누르거나 확대해 농경지를 찾아보세요" : "논·밭·하우스를 누르면 필지 정보가 나옵니다"}</b>위쪽 검색창에서 주소·지번으로 바로 찾을 수도 있습니다.${coarse.matches ? " 카드 안에서는 두 손가락으로 지도를 움직입니다." : ""}</p>`;
+      <p class="fv-empty"><b>${far ? "지도를 확대하면 팜맵 필지 경계가 보입니다" : "논·밭·하우스를 누르면 필지 정보가 나옵니다"}</b>위쪽 검색창에서 주소·지번으로 바로 찾을 수도 있습니다.${coarse.matches ? " 카드 안에서는 두 손가락으로 지도를 움직입니다." : ""}</p>`;
     ui.near.innerHTML = "";
   }
 
