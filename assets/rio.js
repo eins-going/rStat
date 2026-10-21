@@ -651,22 +651,21 @@
     const svg = $("#partners .ri-dn svg");
     box.classList.remove("ri-pt-big");
     if (svg && spare() > 8) {
-      // 많이 남으면 범례를 도넛 아래로 내리고(두 줄 칸) 도넛을 칸 너비까지 키운다. 조금 남으면 범례는 옆에 두고 조금만 키운다
+      // 많이 남으면 범례를 숨기고 조각 위에 이름·비중을 쓴 도넛을 칸 너비까지 키운다. 조금 남으면 범례는 옆에 두고 조금만 키운다
       const cur = svg.getBoundingClientRect().height;
       if (spare() > 60) {
         ptN = 5;
         renderPartners();
         box.classList.add("ri-pt-big");
         const cellW = $("#partners .ri-dn").clientWidth;
-        const keyH = $("#partners .ri-dn-k").getBoundingClientRect().height;
-        box.style.setProperty("--dn", `${Math.floor(Math.max(cur, Math.min(150, cellW - 8, cur + spare() - keyH - 6)))}px`);
+        box.style.setProperty("--dn", `${Math.floor(Math.max(cur, Math.min(170, cellW - 8, cur + spare())))}px`);
       } else {
         const size = Math.floor(Math.min(96, cur + spare()));
         box.style.setProperty("--dn", `${size}px`);
       }
     }
     const empty = $("#partners .ri-pt-empty");  // 전국 안내 상자는 그림을 다시 그린 뒤에 키운다 (다시 그리면 새로 만들어진다)
-    if (empty && spare() > 8) empty.style.minHeight = `${Math.floor(Math.min(130, empty.getBoundingClientRect().height + spare()))}px`;
+    if (empty && spare() > 8) empty.style.minHeight = `${Math.floor(empty.getBoundingClientRect().height + spare())}px`; // 남는 높이를 모두 채운다
     const rest = Math.floor(spare()), open = gaps.filter((g) => !g.hidden);
     if (rest > 8) open.forEach((g) => { g.style.marginTop = `${Math.min(28, Math.floor(rest / open.length)) + parseFloat(getComputedStyle(g).marginTop)}px`; });
   }

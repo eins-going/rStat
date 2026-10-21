@@ -130,9 +130,9 @@
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
   .ri-tiles3 .tile b { font-size: 15.5px; }
 }
-/* 교역 상대 도넛이 크게 남을 때: 범례를 도넛 아래 두 줄 칸으로 (rio.js growLeft) */
-.ri-pt-big .ri-dn-b { flex-direction: column; align-items: center; gap: 6px; }
-.ri-pt-big .ri-dn-k { width: 100%; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+/* 교역 상대 도넛이 크게 남을 때: 범례를 숨기고 조각 위 글자로 읽는다 (rio.js growLeft) */
+.ri-pt-big .ri-dn-b { justify-content: center; }
+.ri-pt-big .ri-dn-k { display: none; }
 /* 도넛 조각 위 글자: 도넛이 커졌을 때만 (작은 도넛에서는 글자가 너무 작다) */
 .ri-dn-t { display: none; text-anchor: middle; font-size: 5.4px; font-weight: 700; fill: #fff; paint-order: stroke; stroke: rgba(10, 14, 22, 0.55); stroke-width: 1.2px; pointer-events: none; }
 .ri-dn-tp { font-size: 4.8px; font-weight: 600; }
