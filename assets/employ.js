@@ -585,6 +585,19 @@
     const area = `${d}L${x(pts.at(-1)[0])},24L${x(pts[0][0])},24Z`;
     return `<svg viewBox="0 0 100 24" preserveAspectRatio="none"><path class="em-sp-a" d="${area}"/><path class="em-sp-l" d="${d}"/></svg>`;
   }
+  // 시군 상세 카드의 추이: 선 양 끝에 첫해·마지막 해 값, 아래에 연도, 해마다 마우스를 올리면 그해 값 (선은 늘어나는 SVG라 글자는 HTML로 얹는다)
+  function detailSpark(vals, years, fmt) {
+    const pts = vals.map((v, i) => [i, v]).filter(([, v]) => ok(v));
+    if (pts.length < 2) return "";
+    const [lo, hi] = d3.extent(pts, (p) => p[1]);
+    const yPct = (v) => (lo === hi ? 50 : ((2 + (20 * (hi - v)) / (hi - lo)) / 24) * 100);
+    const [i0, v0] = pts[0], [i1, v1] = pts.at(-1);
+    const lab = (v, side) => `<span class="em-spv ${side}${yPct(v) < 30 ? " low" : ""}" style="top:${yPct(v)}%">${fmt(v)}</span>`;
+    const w = 100 / vals.length;
+    return spark(vals) + lab(v0, "l") + lab(v1, "r")
+      + `<span class="em-spy l">${years[i0]}</span><span class="em-spy r">${years[i1]}</span>`
+      + `<div class="em-sph">${vals.map((v, i) => `<i style="left:${i * w}%;width:${w}%" title="${years[i]}년 ${ok(v) ? fmt(v) : "자료 없음"}"></i>`).join("")}</div>`;
+  }
   // 지역별고용조사 반기 → 상·하반기가 다 있는 해의 연평균 (표본 흔들림을 줄인다). 시도 값은 그 안 시군의 합
   function trendItems() {
     const k = state.key, hh = state.h;
@@ -624,7 +637,7 @@
       const v = d.get(u, h), sv = d.agg(s, h);
       const cls = ok(v) && ok(sv) ? (v >= sv ? "" : " neg") : " flat";
       return `<div class="em-dc${cls}" title="${d.name} · ${d.src} · 추이 ${years[0]}~${years.at(-1)} (상·하반기 평균)"><span class="em-dn">${d.name}</span><span class="em-dvr"><b class="em-dval">${d.fmt(v)}</b><span class="em-drk">${rank(d.get)}</span></span>`
-        + `<span class="em-dsub">${shortLabel(s)} ${d.fmt(sv)}</span><div class="em-dsp">${spark(yearly(d.get))}</div></div>`;
+        + `<span class="em-dsub">${shortLabel(s)} ${d.fmt(sv)}</span><div class="em-dsp em-dsp-v">${detailSpark(yearly(d.get), years, d.fmt)}</div></div>`;
     }).join("");
   }
 
