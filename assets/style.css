@@ -989,3 +989,28 @@ body {
   .about-btn { order: 1; margin-left: auto; height: 28px; padding: 0 10px; font-size: 12px; } /* 폰: 제목 줄 오른쪽에 */
   .brand-wrap .tabs { order: 2; }
 }
+
+/* 한 화면 모드: 칸이 모자라면 그래프가 줄어든다 (한쪽 열만 넘쳐 길어지지 않게, 좌우 끝을 맞춘다).
+   그림은 칸에 겹쳐 그려 그림 크기가 칸의 최소 높이를 밀어 올리지 않게 한다 (#p-return .spark와 같은 방식) */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .col > .panel { flex-shrink: 1; }
+  #p-farm .chart, #p-crop .spark.tall, #p-crop .bars, #p-grdp .spark.tall, #p-budget .spark.tall { position: relative; height: auto; min-height: 30px; flex-shrink: 1; }
+  #p-farm .chart svg, #p-crop .spark.tall svg, #p-crop .bars svg, #p-grdp .spark.tall svg, #p-budget .spark.tall svg { position: absolute; inset: 0; }
+  /* 크롬은 세로 flex 칸의 최소 높이를 그래프의 기준 높이(flex-basis)로 잡으므로, 기준을 최소 높이로 두고 남는 높이만큼 키운다 */
+  #p-farm .chart { flex: 1 1 30px; }
+  #p-crop .spark.tall { flex: 1 1 30px; max-height: 80px; }
+  #p-crop .bars { flex: 1 1 44px; min-height: 44px; max-height: 110px; }
+  #p-grdp .spark.tall, #p-budget .spark.tall { flex: 1 1 30px; }
+  #p-budget .duo { flex-shrink: 1; }
+  #p-return .stats.two { flex-shrink: 1; min-height: 0; }
+  #p-return .spark { min-height: 30px; }
+}
+/* 높이가 900px 이하이면 카드 간격·여백을 조금 더 줄인다 (내용이 많은 왼쪽 열이 넘치지 않게) */
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 900px) {
+  :root { --gap: 8px; }
+  .panel { padding: 8px 13px 7px; }
+  .split { margin-top: 5px; }
+  .split-legend { margin-top: 3px; }
+  .live-table td { padding: 1px 0; }
+  .live-table th { padding-bottom: 1px; }
+}
