@@ -226,3 +226,15 @@
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 820px) {
   .em #p-season { min-height: 300px; }
 }
+
+/* 시군을 고르면: 위 행에 농림어업 비중(가로 전체), 아래 행에 근무지 기준·65세 이상. 추이 선은 칸 높이를 채운다 */
+.em-detail { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); gap: 6px; }
+.em-detail .em-dc:first-child { grid-column: 1 / -1; }
+.em-detail .em-dc:first-child .em-dval { font-size: 20px; }
+@media (min-width: 1281px) and (min-height: 720px) {
+  .em #p-season .em-detail .em-dsp { max-height: none; min-height: 28px; }
+}
+@media (max-width: 1280px) {
+  .em-detail .em-dsp { height: 48px; }
+  .em-detail .em-dc:first-child .em-dsp { height: 64px; }
+}
