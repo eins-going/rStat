@@ -490,12 +490,19 @@
       + sides.map((d) => `<div class="ri-dn"><div class="ri-dn-h">${d.label} <b>${won(d.tot)}</b></div><div class="ri-dn-b"><svg viewBox="-32 -32 64 64" aria-hidden="true"></svg>`
         + `<div class="ri-dn-k">${d.parts.map((p) => `<span title="${esc(p.full)} ${won(p.v)} (${pct(p.v / d.tot)})"><i style="background:${p.c}"></i><b>${p.nm}</b><em>${pct0(p.v / d.tot)}</em></span>`).join("")}</div></div></div>`).join("")
       + `</div>`;
-    const arc = d3.arc().innerRadius(19).outerRadius(31).padAngle(0.025).cornerRadius(1.5);
+    // 고리를 두껍게 해 큰 조각(약 9% 이상)에는 시도 이름과 비중을 조각 위에 쓴다 (도넛이 커졌을 때만 보인다, rio.css)
+    const arc = d3.arc().innerRadius(14).outerRadius(31).padAngle(0.025).cornerRadius(1.5);
+    const mid = d3.arc().innerRadius(22.5).outerRadius(22.5);
     $$("#partners .ri-dn svg").forEach((node, i) => {
       const d = sides[i];
-      d3.select(node).selectAll("path").data(d3.pie().sort(null).value((p) => p.v)(d.parts)).join("path")
+      const arcs = d3.pie().sort(null).value((p) => p.v)(d.parts);
+      d3.select(node).selectAll("path").data(arcs).join("path")
         .attr("d", arc).attr("fill", (a) => a.data.c)
         .append("title").text((a) => `${a.data.full} ${won(a.data.v)} (${pct(a.data.v / d.tot)})`);
+      const lab = d3.select(node).selectAll("text").data(arcs.filter((a) => a.endAngle - a.startAngle > 0.55)).join("text")
+        .attr("class", "ri-dn-t").attr("transform", (a) => `translate(${mid.centroid(a)})`);
+      lab.append("tspan").attr("x", 0).attr("dy", "-0.15em").text((a) => a.data.nm);
+      lab.append("tspan").attr("x", 0).attr("dy", "1.05em").attr("class", "ri-dn-tp").text((a) => pct0(a.data.v / d.tot));
     });
   }
 
