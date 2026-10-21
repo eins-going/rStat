@@ -316,7 +316,7 @@
       viewSeg.title = "";
       window.FarmView.show(
         { card: $("#map-card"), bar: $("#sat-bar"), map: $("#sat-map"), info: $("#sat-info") },
-        { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, unit: label(k), geometry: unitFeatures.find((f) => f.properties.key === k).geometry },
+        { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, unit: label(k), key: k, geometry: unitFeatures.find((f) => f.properties.key === k).geometry },
       );
     } catch {
       viewSeg.title = "자세히 보기를 불러오지 못했습니다. 다시 눌러 주세요.";

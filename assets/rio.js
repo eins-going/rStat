@@ -67,7 +67,7 @@
     { key: "leak", group: "파급", label: "역외 누출", get: (k) => leak(k), fmt: pct,
       note: "생산유발 가운데 다른 시도에서 일어나는 몫. 높을수록 효과가 도 밖으로 샌다" },
   ];
-  let flowExtra = 0, ptN = 3; // 한 화면 맞춤에서 남는 높이를 쓰는 값 (growLeft)
+  let ptN = 3; // 교역 상대 도넛에 보일 시도 수 (한 화면 맞춤에서 도넛이 커지면 5, growLeft)
   const state = { sido: NATION, item: "농축산물", metric: METRICS.find((m) => m.key === "x"), view: "map" };
 
   const selSido = $("#sido"), selItem = $("#item");
@@ -433,11 +433,12 @@
       ? `국내에서 쓰는 ${esc(itemLabel())}의 <b>${pct0(own / dT)}</b>는 국산, <b>${pct0(r0.imp / dT)}</b>는 수입입니다.`
       : `도내에서 쓰는 ${esc(itemLabel())}의 <b>${pct0(r0.own / dT)}</b>를 도내에서 대고(자급률), 도내 생산의 <b>${pct0(r0.out / pT)}</b>는 다른 시도로 나갑니다(이출률).`;
     const el = $("#supply-flow");
-    const w = el.clientWidth || 300, h = 112 + flowExtra; // flowExtra: 한 화면 맞춤에서 남는 높이 (growLeft)
+    const w = el.clientWidth || 300, h = 96;
     const svg = d3.select(el).selectAll("svg").data([0]).join("svg").attr("viewBox", `0 0 ${w} ${h}`);
     svg.selectAll("*").remove();
     // 생산·수요를 같은 금액 축으로 왼쪽에 맞춰 그리고 막대 끝에 총액. 도내(국내) 몫 띠는 두 막대에서 같은 금액이다
-    const L = 46, TW = 62, U = w - L - TW, bh = 18 + Math.round(Math.min(10, flowExtra * 0.12)), yP = 16, yD = yP + bh + 46 + flowExtra - 2 * (bh - 18);
+    // 생산·수요 사이는 띠 설명 한 줄이 들어갈 만큼만 (남는 높이는 아래 교역 상대 도넛이 쓴다)
+    const L = 46, TW = 62, U = w - L - TW, bh = 18, yP = 16, yD = yP + bh + 30;
     const ty = (y) => y + bh / 2 + 4;
     const sc = U / Math.max(pT, dT, 1);
     const xP = L, xD = L;
@@ -628,11 +629,11 @@
   // 한 화면 맞춤에서 옆 열이 넘치면 그 열에서 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
   const oneScreen = matchMedia("(min-width: 1281px) and (min-height: 720px)");
   const TRIM = [[".col-left", [["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
-  // 한 화면 맞춤에서 왼쪽 열 아래가 남으면: 먼저 교역 상대 도넛을 키우고(최대 120px, 96px 이상이면 상위 5개 시도),
-  // 그래도 남으면 수급 구조 그림을 키우고(막대를 굵게, 생산·수요 사이를 길게, 최대 +50px), 나머지는 그림·범례·교역 상대 위 간격으로 나눈다(한 곳 28px까지)
+  // 한 화면 맞춤에서 왼쪽 열 아래가 남으면: 교역 상대 도넛을 키우고(최대 150px, 96px 이상이면 상위 5개 시도),
+  // 나머지는 그림·범례·교역 상대 위 간격으로 나눈다(한 곳 28px까지). 수급 구조 그림(생산·수요 막대)은 키우지 않는다
   function growLeft() {
     const box = $("#partners"), panel = $("#p-supply");
-    flowExtra = 0; ptN = 3;
+    ptN = 3;
     box.style.removeProperty("--dn");
     const gaps = ["#supply-flow", "#supply-key", "#partners"].map((q) => $(q));
     gaps.forEach((g) => { g.style.marginTop = ""; });
@@ -641,12 +642,22 @@
     const spare = () => panel.getBoundingClientRect().bottom - parseFloat(getComputedStyle(panel).paddingBottom)
       - [...panel.children].filter((c) => !c.hidden).at(-1).getBoundingClientRect().bottom - 6;
     const svg = $("#partners .ri-dn svg");
+    box.classList.remove("ri-pt-big");
     if (svg && spare() > 8) {
-      const cur = svg.getBoundingClientRect().height, size = Math.floor(Math.min(120, cur + spare()));
-      box.style.setProperty("--dn", `${size}px`);
-      if (size >= 96) { ptN = 5; renderPartners(); }
+      // 많이 남으면 범례를 도넛 아래로 내리고(두 줄 칸) 도넛을 칸 너비까지 키운다. 조금 남으면 범례는 옆에 두고 조금만 키운다
+      const cur = svg.getBoundingClientRect().height;
+      if (spare() > 60) {
+        ptN = 5;
+        renderPartners();
+        box.classList.add("ri-pt-big");
+        const cellW = $("#partners .ri-dn").clientWidth;
+        const keyH = $("#partners .ri-dn-k").getBoundingClientRect().height;
+        box.style.setProperty("--dn", `${Math.floor(Math.max(cur, Math.min(150, cellW - 8, cur + spare() - keyH - 6)))}px`);
+      } else {
+        const size = Math.floor(Math.min(96, cur + spare()));
+        box.style.setProperty("--dn", `${size}px`);
+      }
     }
-    if (spare() > 8) { flowExtra = Math.min(50, Math.floor(spare())); renderSupply(); }
     const empty = $("#partners .ri-pt-empty");  // 전국 안내 상자는 그림을 다시 그린 뒤에 키운다 (다시 그리면 새로 만들어진다)
     if (empty && spare() > 8) empty.style.minHeight = `${Math.floor(Math.min(130, empty.getBoundingClientRect().height + spare()))}px`;
     const rest = Math.floor(spare()), open = gaps.filter((g) => !g.hidden);

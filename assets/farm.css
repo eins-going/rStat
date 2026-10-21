@@ -140,7 +140,7 @@
 .fv-sec { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; }
 .fv-sec:empty { display: none; }
 /* 필지와 주변 농경지는 한 상자: 주변 농경지는 줄을 그어 아래에 붙인다 */
-.fv-near:not(:empty) { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.fv-near:not(:empty) { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
 .fv-pick .fv-parcel { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
 .fv-pick .fv-area { margin: 0; }
 .fv-pick .fv-area b { font-size: 16px; }
@@ -271,3 +271,8 @@ html.fv-lock, html.fv-lock body { overflow: hidden; }
 .fv-flist span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fv-flist em { flex: none; margin-left: auto; font-style: normal; font-size: 11px; color: var(--faint); }
 .fv-ftip { font-size: 12px; }
+
+/* 필지 카드: 모양(직사각형도)·경지정리(필지 타일 속성)와 그 시군 중앙값 */
+.fv-pdl { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 3px; font-size: 12px; color: var(--muted); }
+.fv-pdl b { color: var(--text); font-variant-numeric: tabular-nums; }
+.fv-pcmp { flex-basis: 100%; margin: 1px 0 0; font-size: 11px; color: var(--faint); }

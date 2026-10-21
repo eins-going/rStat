@@ -101,6 +101,16 @@
       </section>
 
       <section class="col col-right" aria-label="지역별고용조사: 반기, 시군까지">
+        <article class="panel" id="p-season">
+          <header class="panel-head">
+            <h2 id="trend-title">시군별 흐름 <span class="h2-scope" id="season-scope"></span></h2>
+            <span class="chip" id="trend-when"></span>
+          </header>
+          <div class="em-tiles" id="tiles"></div>
+          <div class="em-detail" id="unit-detail" hidden></div>
+          <p class="note" id="trend-note"></p>
+        </article>
+
         <article class="panel" id="p-place">
           <header class="panel-head">
             <h2>지역 안에서 농업의 자리 <span class="h2-scope" id="place-scope"></span></h2>
@@ -111,16 +121,6 @@
           <p class="em-line" id="place-line"></p>
           <div class="chart em-scatter" id="chart-scatter" aria-label="시군별 농림어업 비중과 65세 이상 취업자 비중"></div>
           <div class="pw-key" id="scatter-key"></div>
-        </article>
-
-        <article class="panel" id="p-season">
-          <header class="panel-head">
-            <h2 id="trend-title">시군별 흐름 <span class="h2-scope" id="season-scope"></span></h2>
-            <span class="chip" id="trend-when"></span>
-          </header>
-          <div class="em-tiles" id="tiles"></div>
-          <div class="em-detail" id="unit-detail" hidden></div>
-          <p class="note" id="trend-note"></p>
         </article>
 
         <article class="panel" id="p-flow">

@@ -36,7 +36,7 @@
   }
 
   let H = null; // 지도 카드 안의 자리: { card, bar, map, info }
-  let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle, facLayer;
+  let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle, facLayer, tiles;
   const ui = {};
   const drawn = new Map(); // 팜맵 ID → 그려 둔 필지 레이어
   const st = { base: "sat", labels: false, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, full: false, tileErrors: 0, tileLoads: 0 };
@@ -125,7 +125,8 @@
         if (++st.tileErrors >= 6 && !st.tileLoads) hint("VWorld 영상을 불러오지 못했습니다. 인증키에 등록한 서비스 URL을 확인해 주세요.", true);
       }));
     regionLayer = L.layerGroup().addTo(map);
-    tileParcels()?.addTo(map);
+    tiles = tileParcels();
+    tiles?.addTo(map);
     parcelLayer = L.featureGroup().addTo(map);
     map.createPane("fv-facs").style.zIndex = 450; // 필지(400) 위, 툴팁 아래
     facLayer = L.layerGroup().addTo(map);
@@ -163,6 +164,25 @@
         { dataLayer: "p", symbolizer: new P.LineSymbolizer({ color, width: (z) => (z >= 17 ? 1.4 : 1), opacity: 0.9 }) },
       ],
     });
+  }
+
+  // 누른 지점을 덮는 필지 타일의 속성 {c 분류, a 면적, r 직사각형도, y 경지정리 1/0} (scripts/build_farmmap.py가 계산)
+  // 타일 경계는 확대 15단계에 맞춰 단순화되어 실제 경계와 1m 안팎 어긋난다 → 누른 점과 둘레(2·4m) 점에서 찾고,
+  // 팜맵 조회 면적(areaHint)이 있으면 면적이 가장 가까운 필지(15% 안)를 고른다
+  function tileAt(ll, areaHint = null) {
+    if (!tiles || map.getZoom() < QUERY_ZOOM) return null;
+    const dLat = 1 / 111000, dLng = dLat / Math.cos((ll.lat * Math.PI) / 180);
+    const pts = [[0, 0], ...[2, 4].flatMap((m) => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => [m * Math.cos((i * Math.PI) / 4), m * Math.sin((i * Math.PI) / 4)]))];
+    const hits = [];
+    for (const [dx, dy] of pts) {
+      const f = [...tiles.queryTileFeaturesDebug(ll.lng + dx * dLng, ll.lat + dy * dLat, 0).values()].flat().find((x) => x.layerName === "p");
+      if (f) hits.push(f.feature.props);
+      if (f && !areaHint && hits.length === 1 && dx === 0 && dy === 0) break; // 누른 점 안의 필지
+    }
+    if (!hits.length) return null;
+    if (!areaHint) return hits[0];
+    const best = hits.reduce((a, b) => (Math.abs(b.a - areaHint) < Math.abs(a.a - areaHint) ? b : a));
+    return Math.abs(best.a - areaHint) <= areaHint * 0.15 ? best : null;
   }
 
   function fitRegion() {
@@ -250,7 +270,7 @@
       const layer = L.geoJSON(f, { style: { color: c, weight: 2, fillColor: c, fillOpacity: 0.18 } });
       layer.on("click", (e) => {
         L.DomEvent.stopPropagation(e);
-        select([f]);
+        select([f], tileAt(e.latlng, f.properties.area));
         loadNear(e.latlng);
         marker.setLatLng(e.latlng).addTo(map);
       });
@@ -268,9 +288,9 @@
     }
   }
 
-  function select(features) {
+  function select(features, tp = null) {
     highlight(features.map((f) => f.properties.id));
-    renderParcels(features);
+    renderParcels(features, tp);
   }
 
   async function inspect(ll, pnu = "") {
@@ -285,7 +305,7 @@
       if (pnu && !features.length) ({ features } = await api({ op: "point", lat, lon }));
       if (my !== st.seq) return;
       drawParcels(features);
-      select(features);
+      select(features, features.length === 1 ? tileAt(ll, features[0].properties.area) : null);
     } catch (err) {
       if (my === st.seq) ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 필지</h3></div><p class="fv-error">${esc(err.message)}</p>`;
     }
@@ -295,22 +315,35 @@
   const ha = (m2) => (m2 < 10000 ? nf2 : nf1).format(m2 / 10000);
   const area = (m2) => `<b>${nf.format(m2)}</b>㎡ <span>${nf.format(Math.round(m2 / 3.3058))}평 · ${ha(m2)}ha</span>`;
 
-  // 분류·지번·면적만 보여 준다 (판독 영상·변경 구분·지번코드·팜맵 ID는 싣지 않는다)
-  function parcelCard(p) {
+  // 분류·지번·면적 (팜맵 조회). 누른 필지의 모양·경지정리(필지 타일)와 그 시군 필지 지표(data/farmmap.js)를 덧붙인다.
+  // 판독 영상·변경 구분·지번코드·팜맵 ID는 싣지 않는다
+  const FMR = window.AGRI_FARMMAP?.regions || {};
+  const shapeWord = (r) => (r >= 0.9 ? "반듯함" : r >= 0.75 ? "대체로 반듯함" : "모양이 고르지 않음");
+  function parcelExtra(p, tp) {
+    if (!tp) return "";
+    const g = p.kind === "논" || p.kind === "밭" ? p.kind : "전체";
+    const reg = FMR[st.key]?.[g];
+    const cmp = [reg?.med != null && `면적 ${nf.format(reg.med)}㎡`, reg?.rect != null && `직사각형도 ${nf2.format(reg.rect)}`,
+      g === "논" && reg?.armt != null && `경지정리율 ${nf1.format(reg.armt * 100)}%`].filter(Boolean);
+    return `<div class="fv-pdl">${tp.r != null ? `<span>모양 <b>${nf2.format(tp.r)}</b> ${shapeWord(tp.r)}</span>` : ""}<span>경지정리 <b>${tp.y ? "됨" : "안 됨"}</b></span></div>`
+      + (cmp.length ? `<p class="fv-pcmp">${esc(st.unit)} ${g === "전체" ? "필지" : g} 중앙값 · ${cmp.join(" · ")}</p>` : "");
+  }
+  function parcelCard(p, tp = null) {
     return `
       <article class="fv-parcel">
         <div class="fv-p-head"><span class="fv-kind" style="--c:${colorOf(p.kind)}">${esc(p.kind || "기타")}</span><h4>${esc(p.emd)} ${esc(p.lnm)}</h4></div>
         <p class="fv-area">${area(p.area)}</p>
+        ${parcelExtra(p, tp)}
       </article>`;
   }
 
-  function renderParcels(features) {
+  function renderParcels(features, tp = null) {
     const head = `<div class="fv-sec-head"><h3>팜맵 필지</h3><button type="button" class="fv-link" data-act="clear">지우기</button></div>`;
     let body;
     if (!features.length) {
       body = `<p class="fv-empty"><b>팜맵 농경지가 아닙니다</b>이 지점은 팜맵에 농경지로 구획되어 있지 않습니다. 논·밭·하우스를 눌러 보세요.</p>`;
     } else if (features.length === 1) {
-      body = parcelCard(features[0].properties);
+      body = parcelCard(features[0].properties, tp);
     } else {
       const sum = features.reduce((s, f) => s + f.properties.area, 0);
       body = `<p class="fv-multi">이 지번에 걸친 필지 <b>${features.length}</b>개 · 합계 ${area(sum)}</p>${features.map((f) => parcelCard(f.properties)).join("")}`;
@@ -534,7 +567,7 @@
     H.bar.hidden = H.map.hidden = H.info.hidden = !on;
   }
 
-  async function show(hosts, { title, unit, geometry }) {
+  async function show(hosts, { title, unit, key, geometry }) {
     if (!H) build(hosts);
     toggleHosts(true);
     if (!map) {
@@ -553,6 +586,7 @@
       if (st.region) clearAll();
       st.region = title;
       st.unit = unit;
+      st.key = key;
       setRegion(geometry);
     }
   }

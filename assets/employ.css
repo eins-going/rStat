@@ -210,3 +210,19 @@
 /* 월별 범례 끝의 계절 한 줄 */
 .em .pw-key .em-k-n { color: var(--faint); }
 .em .pw-key .em-k-n b { color: var(--accent); font-weight: 700; }
+
+/* 한 화면 배치 조정(2026-10): 오른쪽은 시군별 흐름을 맨 위에서 크게, 왼쪽은 긴 흐름을 줄이고 월별을 키운다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .em #p-size .em-long { flex: 0 0 auto; height: 92px; min-height: 0; }
+  .em #p-size .em-band { flex: 1 1 0; height: auto; min-height: 70px; }
+  .em #p-season { flex: 1 1 0; min-height: 260px; }
+  .em #p-place .em-scatter { flex: 0 0 auto; height: 96px; min-height: 0; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 1000px) {
+  /* 시군별 흐름에 높이를 주려고 산점도는 접는다 (높은 화면에서는 보인다) */
+  .em #chart-scatter, .em #scatter-key { display: none; }
+  .em #p-season { min-height: 380px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 820px) {
+  .em #p-season { min-height: 300px; }
+}
