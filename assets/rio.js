@@ -468,7 +468,8 @@
 
   // 주요 교역 상대: 이출(보내는 곳)·이입(받는 곳)을 도넛으로. 상위 n개 시도(파랑 단계) + 기타(회색)
   // 한 화면 맞춤에서 왼쪽 열 아래가 남으면 fitCols가 도넛을 키우고 n을 5로 늘린다
-  const PT_COL = ["#3987e5", "#5a9bea", "#7eb1ef", "#a3c8f4", "#c6ddf8"], PT_REST = "#4a4f59";
+  // 시도마다 다른 색 (두 도넛에 같은 시도가 나오면 같은 색). 도내(주황)·수입(초록)과 헷갈리지 않는 색들
+  const PT_COL = ["#3987e5", "#9b7be8", "#2fb5c4", "#e06c9f", "#c9b03a", "#6fbf4a", "#8fa6ff", "#c77b54", "#4fd1a1", "#d78be0"], PT_REST = "#4a4f59";
   function renderPartners(n = ptN) {
     const s = state.sido, el = $("#partners");
     const head = `<h3 class="sub-head">주요 교역 상대 <span>다른 시도와 거래한 금액 중 비중</span></h3>`;
@@ -476,11 +477,12 @@
       el.innerHTML = head + `<div class="ri-pt-empty"><b>지도에서 시도를 눌러 보세요</b><span>그 시도가 다른 시도로 어디에 많이 보내고, 어디서 많이 받는지 보여 드립니다.</span></div>`;
       return;
     }
+    const colorOf = new Map();
+    const pick = (k) => { if (!colorOf.has(k)) colorOf.set(k, PT_COL[colorOf.size % PT_COL.length]); return colorOf.get(k); };
     const side = (obj, label) => {
       const list = Object.entries(obj).filter(([k, v]) => k !== s && v > 0).sort((a, b) => b[1] - a[1]);
       const tot = d3.sum(list, (d) => d[1]) || 1;
-      const cols = n === 3 ? [PT_COL[0], PT_COL[2], PT_COL[4]] : PT_COL;
-      const parts = list.slice(0, n).map(([k, v], i) => ({ nm: short(k), full: name(k), v, c: cols[i] }));
+      const parts = list.slice(0, n).map(([k, v]) => ({ nm: short(k), full: name(k), v, c: pick(k) }));
       const rest = d3.sum(list.slice(n), (d) => d[1]);
       if (rest > 0) parts.push({ nm: "기타", full: `그 밖의 ${list.length - n}개 시도`, v: rest, c: PT_REST });
       return { label, tot, parts };
@@ -575,6 +577,7 @@
   function renderMult() {
     const s = state.sido, r0 = R(s), nat = s === NATION;
     $("#mult-bar").hidden = nat;
+    $("#mult-where-h").hidden = $("#mult-where").hidden = nat;
     $("#mult-tiles").style.display = nat ? "none" : ""; // .tiles의 display:grid가 hidden을 덮어쓴다
     if (nat) {
       $("#mult-lead").innerHTML = "파급효과는 시도별 표에서 계산합니다. <b>시도를 고르면</b> 이 품목 수요 10억 원이 도내와 다른 시도에 만드는 생산·부가가치·일자리를 봅니다.";
@@ -608,6 +611,13 @@
     svg.append("line").attr("class", "ri-ten").attr("x1", L + 10 * sc).attr("x2", L + 10 * sc).attr("y1", 2).attr("y2", 34);
     svg.append("text").attr("class", "ri-ten-t").attr("x", L + 10 * sc).attr("y", 46).attr("text-anchor", 10 * sc > W - 60 ? "end" : "middle").text("최초 수요 10억");
     svg.append("text").attr("class", "ri-ten-t").attr("x", W).attr("y", 46).attr("text-anchor", "end").text(10 * sc > W - 90 ? "" : `총 ${eok(tot)}`);
+    $("#m-prod").textContent = eok(tot);
+    $("#m-prod").title = `도내 ${eok(own)} (${pct0(own / tot)}) · 다른 시도 ${eok(tot - own)}`;
+    // 생산이 늘어나는 곳: 도내 + 다른 시도 (큰 순서, 화면이 모자라면 아래 줄부터 접힌다)
+    const where = [[s, own], ...others].filter(([, v]) => v > 0);
+    $("#mult-where").innerHTML = where.map(([k, v]) => bar(k === s ? `${short(k)} (도내)` : name(k), [[v / tot, k === s ? C.own : C.oth]], `<span class="amt">${eok(v)}</span>${pct0(v / tot)}`,
+      `${name(k)} ${eok(v)} (${pct(v / tot)})`, where[0][1] / tot)).join("");
+    $$("#mult-where .ri-bar").forEach((el, i) => el.classList.toggle("sel", where[i][0] === s));
     $("#m-va").textContent = eok(vaT);
     $("#m-va").title = `도내 ${eok(va[s] * 10)} (${pct0((va[s] * 10) / vaT)})`;
     $("#m-imp").textContent = eok(imT);
@@ -635,7 +645,7 @@
 
   // 한 화면 맞춤에서 옆 열이 넘치면 그 열에서 가장 긴 목록의 아래 줄(작은 값)부터 숨긴다. 고른 품목 줄은 남긴다
   const oneScreen = matchMedia("(min-width: 1281px) and (min-height: 720px)");
-  const TRIM = [[".col-left", [["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4]]]];
+  const TRIM = [[".col-left", [["#mix", 3]]], [".col-right", [["#inputs", 4], ["#sales", 4], ["#mult-where", 0, 1]]]];
   // 한 화면 맞춤에서 왼쪽 열 아래가 남으면: 교역 상대 도넛을 키우고(최대 150px, 96px 이상이면 상위 5개 시도),
   // 나머지는 그림·범례·교역 상대 위 간격으로 나눈다(한 곳 28px까지). 수급 구조 그림(생산·수요 막대)은 키우지 않는다
   function growLeft() {
@@ -672,14 +682,25 @@
 
   function fitCols() {
     growLeft();
+    $("#mult-where").classList.remove("ri-folded");
+    trimCols();
+    // 생산이 늘어나는 곳에 다른 시도 줄이 하나도 안 남으면 목록째 접고, 그 높이를 위 목록에 돌려준다
+    const mw = $$("#mult-where .ri-bar");
+    if (oneScreen.matches && mw.length && !mw.some((el) => !el.hidden && !el.classList.contains("sel"))) {
+      $("#mult-where").classList.add("ri-folded");
+      trimCols();
+    }
+  }
+  function trimCols() {
     for (const [colSel, specs] of TRIM) {
       const col = $(colSel);
-      const lists = specs.map(([sel, min]) => ({ rows: $$(`${sel} .ri-bar`), min }));
+      const lists = specs.map(([sel, min, first]) => ({ rows: $$(`${sel} .ri-bar`), min, first }));
       lists.forEach((l) => l.rows.forEach((el) => { el.hidden = false; }));
       if (!oneScreen.matches) continue;
       while (col.scrollHeight > col.clientHeight) {
+        // first 목록(파급효과의 생산이 늘어나는 곳)을 먼저 접고, 그다음은 가장 긴 목록부터
         const cand = lists.map((l) => ({ l, vis: l.rows.filter((el) => !el.hidden && !el.classList.contains("sel")) }))
-          .filter(({ l, vis }) => vis.length > l.min).sort((a, b) => b.vis.length - a.vis.length)[0];
+          .filter(({ l, vis }) => vis.length > l.min).sort((a, b) => (b.l.first || 0) - (a.l.first || 0) || b.vis.length - a.vis.length)[0];
         if (!cand) break;
         cand.vis[cand.vis.length - 1].hidden = true;
       }
