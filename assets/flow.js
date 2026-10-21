@@ -766,7 +766,24 @@
     renderCrops();
     renderMatrix();
     renderSeason();
+    placeSeason();
   }
+
+  // 한 화면 맞춤: 왼쪽 열 아래가 넉넉히 남으면(판로 행이 적은 시군 등) 월별 흐름을 왼쪽 아래로 옮겨 그 높이를 쓰게 하고,
+  // 모자라면 오른쪽 맨 아래에 두고 남는 높이는 기기 사용량 비중이 받는다
+  function placeSeason() {
+    const L = $(".col-left"), R = $(".col-right"), box = $("#p-season");
+    L.classList.remove("fl-fill");
+    if (box.parentElement !== R) R.append(box);
+    if (!FIT.matches) return;
+    L.classList.add("fl-measure");
+    const spare = L.getBoundingClientRect().bottom - L.lastElementChild.getBoundingClientRect().bottom;
+    L.classList.remove("fl-measure");
+    if (spare >= 170) L.append(box);
+    else L.classList.add("fl-fill");
+  }
+  FIT.addEventListener("change", placeSeason);
+  window.addEventListener("resize", () => { clearTimeout(placeSeason.t); placeSeason.t = setTimeout(placeSeason, 150); });
 
   fromURL();
   // 지도 칸 크기가 바뀌면(처음 배치 뒤 좌우 패널이 자리를 잡을 때, 창 크기를 바꿀 때) 지도를 다시 맞춘다
