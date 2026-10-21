@@ -71,8 +71,10 @@
       <p class="fv-hint" data-ui="hint" aria-live="polite" hidden></p>`;
     H.info.innerHTML = `
       <section class="fv-sec" data-ui="facs" aria-label="유통시설"></section>
-      <section class="fv-sec" data-ui="parcel" aria-label="필지 정보"></section>
-      <section class="fv-sec" data-ui="near" aria-label="주변 농경지"></section>`;
+      <section class="fv-sec fv-pick" aria-label="필지 정보">
+        <div data-ui="parcel"></div>
+        <div class="fv-near" data-ui="near"></div>
+      </section>`;
     for (const el of [H.bar, H.map, H.info]) el.querySelectorAll("[data-ui]").forEach((x) => { ui[x.dataset.ui] = x; });
 
     H.bar.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
@@ -349,7 +351,7 @@
   function renderNear(d) {
     const seg = `<span class="seg" role="group" aria-label="반경">${[500, 1000].map((r) =>
       `<button type="button" data-r="${r}" aria-pressed="${st.radius === r}">${r === 1000 ? "1km" : "500m"}</button>`).join("")}</span>`;
-    let body;
+    let body, title = "주변 농경지";
     if (!d) body = `<p class="fv-loading">주변 필지를 세는 중…</p>`;
     else if (d.error) body = `<p class="fv-error">${esc(d.error)}</p>`;
     else if (!d.total) body = `<p class="fv-empty">반경 안에 팜맵 농경지가 없습니다.</p>`;
@@ -360,12 +362,13 @@
         return `<div class="fv-bar-row"><span>${k}</span><span class="fv-track"><i style="width:${(n / max) * 100}%;--c:${KIND_COLOR[k]}"></i></span><b>${nf.format(n)}</b><em>${nf1.format((n / d.counted) * 100)}%</em></div>`;
       }).join("");
       const emd = d.emd.map((e) => e.name).join("·");
+      // 제목 줄에 필지 수를 함께 적어 한 줄을 아낀다
+      title = `주변 <b>${nf.format(d.total)}</b>개 필지${emd ? ` <span>${esc(emd)}</span>` : ""}`;
       body = `
-        <p class="fv-total"><b>${nf.format(d.total)}</b>개 필지 <span>반경 ${d.radius === 1000 ? "1km" : "500m"}${emd ? ` · ${esc(emd)}` : ""}</span></p>
         <div class="fv-bars">${rows}</div>
         <p class="fv-note">필지 개수 기준(면적 아님)${d.counted < d.total ? ` · 앞 ${nf.format(d.counted)}개만 집계` : ""} · 지난 판독 이후 바뀐 필지 ${nf.format(d.changed)}개</p>`;
     }
-    ui.near.innerHTML = `<div class="fv-sec-head"><h3>주변 농경지</h3>${seg}</div>${body}`;
+    ui.near.innerHTML = `<div class="fv-sec-head"><h3 class="fv-near-title">${title}</h3>${seg}</div>${body}`;
     ui.near.querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => {
       st.radius = +b.dataset.r;
       if (st.nearAt) loadNear(st.nearAt);

@@ -9,7 +9,7 @@
 .sat-bar[hidden] { display: none; }
 .sat-map { position: absolute; inset: 0; z-index: 1; border-radius: 10px; overflow: hidden; background: #0b0c0f; }
 .sat-map[hidden] { display: none; }
-.sat-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px; }
+.sat-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: start; gap: 10px; margin-top: 8px; }
 .sat-info[hidden] { display: none; }
 
 /* 검색 */
@@ -139,6 +139,14 @@
 /* 정보 칸 */
 .fv-sec { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; }
 .fv-sec:empty { display: none; }
+/* 필지와 주변 농경지는 한 상자: 주변 농경지는 줄을 그어 아래에 붙인다 */
+.fv-near:not(:empty) { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.fv-pick .fv-parcel { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
+.fv-pick .fv-area { margin: 0; }
+.fv-pick .fv-area b { font-size: 16px; }
+.fv-near-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fv-near-title b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.fv-near-title span { margin-left: 4px; font-weight: 400; font-size: 12px; color: var(--faint); }
 .fv-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .fv-sec-head h3 { margin: 0; font-size: 13px; }
 .fv-link { font: inherit; font-size: 12px; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
@@ -166,9 +174,6 @@
 .fv-loading { margin: 0; font-size: 12.5px; color: var(--muted); }
 .fv-error { margin: 0; font-size: 12.5px; color: #ffb4ab; }
 
-.fv-total { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); }
-.fv-total b { font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
-.fv-total span { margin-left: 4px; color: var(--faint); }
 .fv-bars { display: grid; gap: 3px; }
 .fv-bar-row { display: grid; grid-template-columns: 30px 1fr 40px 44px; align-items: center; gap: 8px; font-size: 12px; }
 .fv-bar-row b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
