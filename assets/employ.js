@@ -593,10 +593,16 @@
     const yPct = (v) => (lo === hi ? 50 : ((2 + (20 * (hi - v)) / (hi - lo)) / 24) * 100);
     const [i0, v0] = pts[0], [i1, v1] = pts.at(-1);
     const lab = (v, side) => `<span class="em-spv ${side}${yPct(v) < 30 ? " low" : ""}" style="top:${yPct(v)}%">${fmt(v)}</span>`;
-    const w = 100 / vals.length;
+    // 해마다 칸 하나 (점 위치가 칸 가운데, spark의 x와 같은 1~99), 올리면 점과 값이 뜬다
+    const step = 98 / (vals.length - 1);
+    const tip = (v, i) => {
+      const t = `${years[i]} ${ok(v) ? fmt(v) : "자료 없음"}`;
+      const edge = i === 0 ? " l" : i === vals.length - 1 ? " r" : "";
+      return ok(v) ? `<u style="top:${yPct(v)}%"></u><b class="${edge.trim()}${yPct(v) < 40 ? " low" : ""}" style="top:${yPct(v)}%">${t}</b>` : `<b class="${edge.trim()}" style="top:50%">${t}</b>`;
+    };
     return spark(vals) + lab(v0, "l") + lab(v1, "r")
       + `<span class="em-spy l">${years[i0]}</span><span class="em-spy r">${years[i1]}</span>`
-      + `<div class="em-sph">${vals.map((v, i) => `<i style="left:${i * w}%;width:${w}%" title="${years[i]}년 ${ok(v) ? fmt(v) : "자료 없음"}"></i>`).join("")}</div>`;
+      + `<div class="em-sph">${vals.map((v, i) => `<i style="left:${1 + i * step - step / 2}%;width:${step}%" aria-label="${years[i]}년 ${ok(v) ? fmt(v) : "자료 없음"}">${tip(v, i)}</i>`).join("")}</div>`;
   }
   // 지역별고용조사 반기 → 상·하반기가 다 있는 해의 연평균 (표본 흔들림을 줄인다). 시도 값은 그 안 시군의 합
   function trendItems() {
