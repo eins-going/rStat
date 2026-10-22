@@ -79,7 +79,7 @@
     { key: "fg", group: "적성등급", chip: "밭 1·2급지", label: "밭 적성등급 1·2급지 면적", get: (k) => (R(k) ? top12(R(k).fg) : null), fm: 1, note: "밭 적성등급 1급지(생산력 높음)·2급지(보통)인 땅의 면적(ha). 국립농업과학원 정밀토양도 기준으로, 지금 밭인지와 상관없다" },
   ];
   const DEFAULT_METRIC = METRICS[0];
-  const state = { key: NATION, metric: DEFAULT_METRIC, land: "밭", item: "ap", defOpen: false };
+  const state = { key: NATION, metric: DEFAULT_METRIC, land: "논", item: "ph", auto: true, defOpen: false };
 
   // ---------- 선택 ----------
   const selSido = $("#sido"), selSgg = $("#sgg");
@@ -100,8 +100,7 @@
     const path = k === NATION ? "" : level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}`;
     const q = new URLSearchParams();
     if (state.metric !== DEFAULT_METRIC) q.set("m", state.metric.key);
-    if (state.land !== "밭") q.set("l", state.land);
-    if (state.item !== "ap") q.set("i", state.item);
+    if (!state.auto) { q.set("l", state.land); q.set("i", state.item); } // 자동 선택이면 주소에 남기지 않는다
     const url = `${location.pathname}${q.toString() ? `?${q}` : ""}${path ? `#${encodeURIComponent(path)}` : ""}`;
     if (url !== location.pathname + location.search + location.hash) history.replaceState(null, "", url);
   }
@@ -111,8 +110,29 @@
     state.key = s ? (b && UNITS_BY_SIDO[s].find((k) => label(k) === b)) || s : NATION;
     const q = new URLSearchParams(location.search);
     state.metric = METRICS.find((m) => m.key === q.get("m")) || DEFAULT_METRIC;
-    state.land = LANDS.includes(q.get("l")) ? q.get("l") : "밭";
-    state.item = ITEM[q.get("i")] && STD[state.land][q.get("i")] ? q.get("i") : STD[state.land].ap ? "ap" : "ph";
+    const l = q.get("l"), i = q.get("i");
+    state.auto = !(LANDS.includes(l) && ITEM[i] && STD[l][i]);
+    if (state.auto) autoPick(); else { state.land = l; state.item = i; state.cat = null; }
+  }
+
+  // 흙 건강검진 첫 항목: 고른 지역에서 전국과 가장 다른 경지·항목 (낮음·적정·높음 비중 차이의 최댓값, 걸침은 빼고).
+  // 검정 면적이 200ha 미만이거나 걸침이 30% 넘는 칸은 고르지 않는다(흔들리거나 판정이 반쪽). 전국 화면은 견줄 데가 없어 논 pH
+  function autoPick() {
+    const k = state.key;
+    let best = { land: "논", item: "ph", d: -1, cat: null };
+    if (level(k)) {
+      for (const land of LANDS) for (const item of Object.keys(STD[land])) {
+        const j = judge(k, item, land), jn = judge(NATION, item, land);
+        if (!j?.tot || j.tot < 200 || j.X >= 30 || !jn?.tot) continue;
+        for (const c of "LOH".split("").filter((x) => STD[land][item][1].includes(x))) {
+          const d = Math.abs(j[c] - jn[c]);
+          if (d > best.d) best = { land, item, d, cat: c };
+        }
+      }
+    }
+    state.land = best.land;
+    state.item = best.item;
+    state.cat = best.cat;
   }
 
   // ---------- 막대 위 값: 마우스를 올리면 바로 뜬다 (브라우저 title 툴팁은 늦거나 안 뜬다) ----------
@@ -469,7 +489,8 @@
     $("#land-seg").innerHTML = LANDS.map((l) => `<button type="button" data-l="${l}" aria-pressed="${l === land}">${l}</button>`).join("");
     $$("#land-seg button").forEach((b) => b.addEventListener("click", () => {
       state.land = b.dataset.l;
-      if (!STD[state.land][state.item]) state.item = "ap";
+      state.auto = false;
+      if (!STD[state.land][state.item]) state.item = "ph";
       syncURL(); renderCheck(); drawBins();
     }));
     const items = S.chem.filter((c) => STD[land][c.k]);
@@ -482,7 +503,7 @@
         ${checkBar(j, k)}
       </button>`;
     }).join("");
-    $$("#check .sl-ck").forEach((b) => b.addEventListener("click", () => { state.item = b.dataset.i; syncURL(); renderCheck(); drawBins(); }));
+    $$("#check .sl-ck").forEach((b) => b.addEventListener("click", () => { state.item = b.dataset.i; state.auto = false; syncURL(); renderCheck(); drawBins(); }));
     $("#check-key").innerHTML = "LOH".split("").map((c) => `<span><i style="background:${CLS[c][1]}"></i>${CLS[c][0]}</span>`).join("")
       + `<span><i class="sl-khx"></i>걸침 (구간이 기준에 걸쳐 판정 안 함)</span><span class="sl-kn">항목을 누르면 아래에 구간 분포</span>`;
   }
@@ -508,11 +529,13 @@
       if (cc === "H") return `${num(names[ii[0]], false)} 이상`;
       return std[0];
     };
-    const best = ["O", "L", "H"].filter((cc) => idx(cc).length).sort((a, b) => j[b] - j[a])[0];
+    // 자동으로 고른 항목은 전국과 가장 다른 쪽을, 직접 고른 항목은 가장 많은 쪽을 말한다
+    const diffMode = state.auto && state.cat && jn?.tot;
+    const best = diffMode ? state.cat : ["O", "L", "H"].filter((cc) => idx(cc).length).sort((a, b) => j[b] - j[a])[0];
     const unit = c.unit.startsWith("(") ? "" : ` ${c.unit}`;
-    if (j.X > j[best]) return `<b>${pct(j.X)}</b>는 구간이 적정 기준에 걸쳐 판정할 수 없습니다<br><span>판정된 것 중에는 ${{ L: "낮음", O: "적정", H: "높음" }[best]} ${pct(j[best])}${jn?.tot ? `, 전국 ${pct(jn[best])}` : ""}</span>`;
+    if (!diffMode && j.X > j[best]) return `<b>${pct(j.X)}</b>는 구간이 적정 기준에 걸쳐 판정할 수 없습니다<br><span>판정된 것 중에는 ${{ L: "낮음", O: "적정", H: "높음" }[best]} ${pct(j[best])}${jn?.tot ? `, 전국 ${pct(jn[best])}` : ""}</span>`;
     const nm = { L: "낮음", O: "적정", H: "높음" }[best];
-    let t = `가장 많은 쪽은 <b class="c${best}">${nm}</b> <span>(${range(best)}${unit})</span> <b>${pct(j[best])}</b>`;
+    let t = `${diffMode ? "전국과 가장 다른 쪽은" : "가장 많은 쪽은"} <b class="c${best}">${nm}</b> <span>(${range(best)}${unit})</span> <b>${pct(j[best])}</b>`;
     const js = level(k) === 2 ? judge(sidoOf(k), item, land) : null;
     if (js?.tot) t += `<span>, ${esc(shortLabel(sidoOf(k)))} ${pct(js[best])}</span>`;
     if (jn?.tot) { const d = j[best] - jn[best]; t += `<span>, 전국 ${pct(jn[best])}${Math.abs(d) >= 3 ? `보다 ${nf0.format(Math.abs(d))}%p ${d > 0 ? "많음" : "적음"}` : "과 비슷"}</span>`; }
@@ -522,7 +545,7 @@
   function drawBins() {
     const k = state.key, land = state.land, item = state.item, c = ITEM[item], std = STD[land][item];
     const el = $("#chart-bins");
-    $("#bins-title").textContent = `${c.name} · ${land} 구간 분포`;
+    $("#bins-title").innerHTML = `${c.name} · ${land} 구간 분포${state.auto && level(k) ? ` <span class="sl-auto" title="고른 지역에서 전국과 비중 차이가 가장 큰 항목을 먼저 보여 줍니다. 위 목록에서 다른 항목을 누르면 바뀝니다">전국과 가장 다른 항목</span>` : ""}`;
     $("#bins-range").textContent = `적정 ${std[0]} ${c.unit}`;
     const { svg, w, h } = frame(el, 150);
     const share = (key) => { const b = binsOf(key, item, land), t = b ? sum(b) : 0; return t ? b.map((v) => (v / t) * 100) : null; };
@@ -610,6 +633,8 @@
   function select(k) {
     const prevSido = sidoOf(state.key);
     state.key = k || NATION;
+    state.auto = true; // 지역을 바꾸면 그 지역에서 전국과 가장 다른 항목을 다시 고른다
+    autoPick();
     render(prevSido !== sidoOf(state.key));
   }
 

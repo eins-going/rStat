@@ -211,3 +211,4 @@
 .pw-key .sl-kg b { font-weight: 600; color: var(--text); margin-right: 2px; }
 .pw-key i.sl-kb-sd { width: 10px; height: 10px; border-radius: 2px; background: #9aa1ad; }
 .pw-key i.sl-kb-nat { width: 10px; height: 10px; border-radius: 2px; border: 1.3px dashed #cfd3da; box-sizing: border-box; background: none; }
+.sl-auto { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; vertical-align: 1px; }
