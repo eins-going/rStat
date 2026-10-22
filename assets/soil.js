@@ -569,7 +569,9 @@
         ptip.style.top = `${el.getBoundingClientRect().top - ptip.offsetHeight - 4}px`;
       })
       .on("mouseleave", function () { d3.select(this).attr("fill", "transparent"); ptip.hidden = true; });
-    $("#bins-key").innerHTML = `<span><i class="sl-kb"></i>${esc(shortLabel(k))}</span>`
+    // 막대 색은 판정(낮음·적정·높음·걸침), 선은 비교 지역
+    const used = [...new Set(std[1].split(""))];
+    $("#bins-key").innerHTML = `<span class="sl-kg">막대 ${esc(shortLabel(k))}: ${"LOHX".split("").filter((c) => used.includes(c)).map((c) => `<i style="background:${CLS[c][1]}"></i>${CLS[c][0]}`).join(" ")}</span>`
       + (sd ? `<span><i class="sl-ks"></i>${esc(shortLabel(sidoOf(k)))}</span>` : "") + (nat ? `<span><i class="sl-kn2"></i>전국</span>` : "");
     $("#check-note").textContent = "검정 받은 필지의 누적 면적이라 시군 농경지 전체가 아닙니다(사업 목적 검정이 많고 시점이 섞임). 기준 경계가 구간 안에 있으면 걸침.";
   }

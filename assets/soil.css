@@ -202,3 +202,5 @@
 .sl-bsum span { color: var(--muted); font-size: 12px; }
 .sl-bsum span.w { color: var(--faint); font-size: 11.5px; }
 .sl-dl.n { font-size: 10.5px; font-weight: 600; }
+.pw-key .sl-kg { gap: 4px; }
+.pw-key .sl-kg i { width: 9px; height: 9px; border-radius: 2px; margin-left: 4px; }
