@@ -427,7 +427,7 @@
     const N = nk && { 논: R(nk).o.po, 밭: R(nk).o.fo };
     const npct = (land, n) => { if (!N) return null; const o = N[land], t = sum(Object.values(o)); return t ? ((o[n] || 0) / t) * 100 : null; };
     // 도넛이 중심: 큰 조각(9% 이상)은 조각 위에 비중을 바로 적는다
-    const R0 = 64, R1 = 38;
+    const R0 = 67, R1 = 33;
     const arc = d3.arc().innerRadius(R1).outerRadius(R0).padAngle(0.025).cornerRadius(2);
     const tip = (land, p) => `<b>${land} · ${p.n}</b>${p.of ? ` (${p.of.join("·")})` : ` (${WHY[p.n] || ""})`}<br>${ha(p.v)} · ${land} 2~4급지의 ${pct(p.p)}${ok(npct(land, p.n)) && !p.of ? `<br>전국 ${pct(npct(land, p.n))}` : ""}`;
     const donut = (land) => {
@@ -435,7 +435,7 @@
       if (!t) return `<div class="sl-dn"><svg viewBox="-68 -68 136 136"><circle r="51" fill="none" stroke="#2f333b" stroke-width="26"/><text class="sl-dc" y="-2">${land}</text><text class="sl-dv" y="15">해당 없음</text></svg></div>`;
       const arcs = d3.pie().sort(null).value((p) => p.v)(parts);
       return `<div class="sl-dn"><svg viewBox="-68 -68 136 136">${arcs.map((a) => `<path d="${arc(a)}" fill="${a.data.col}" data-tip="${tip(land, a.data)}"></path>`).join("")}
-        ${arcs.filter((a) => a.data.p >= 9).map((a) => { const [x, y] = arc.centroid(a); return `<text class="sl-dl" x="${x}" y="${y + 4}">${nf0.format(a.data.p)}</text>`; }).join("")}
+        ${arcs.filter((a) => a.data.p >= 7).map((a) => { const [x, y] = arc.centroid(a); return `<text class="sl-dl" x="${x}" y="${y - 2}">${a.data.n}</text><text class="sl-dl n" x="${x}" y="${y + 10}">${nf0.format(a.data.p)}%</text>`; }).join("")}
         <text class="sl-dc" y="1">${land}</text><text class="sl-dv" y="17">${nf0.format(t)}ha</text></svg></div>`;
     };
     // 범례: 두 도넛에 나온 요인을 고정 순서로 2열, 칸마다 논·밭 비중 (▲ 전국보다 5%p 넘게 많음)
@@ -452,15 +452,16 @@
       <div class="sl-lgr"><span class="sl-lgn" data-tip="<b>${n}</b> ${n === "그 밖" ? "작은 요인 합" : WHY[n] || ""}"><i style="background:${col(n)}"></i>${n}</span>${val("논", n)}${val("밭", n)}</div>`).join("")}</div>`;
     $("#obst").innerHTML = `<div class="sl-dns">${donut("논")}${donut("밭")}</div>
       <div class="sl-lg">${lgCol(rows.slice(0, half))}${lgCol(rows.slice(half))}</div>
-      <p class="sl-okey">${nk ? "<em>▲</em> 전국보다 5%p 넘게 많음 · " : ""}도넛 가운데는 2~4급지 면적</p>`;
+      <p class="sl-okey">${nk ? "<em>▲</em> 전국보다 5%p 넘게 많음 · " : ""}7% 미만 조각은 아래 표에서</p>`;
     $("#obst-key").innerHTML = "";
     $("#obst-note").textContent = "토양도 통계의 요인별 면적. 2~4급지마다 가장 심한 요인 하나, 비중은 2~4급지 합으로 나눔.";
   }
 
   // ---------- 오른쪽 1: 흙 건강검진 (경지 하나 × 항목 7) ----------
-  function checkBar(j, cls, k) {
-    if (!j || !j.tot) return `<div class="sl-bar ${cls} none"></div>`;
-    return `<div class="sl-bar ${cls}">${"LOHX".split("").map((c) => j[c] > 0 ? `<i style="flex-grow:${j[c]};background:${CLS[c][1]}" data-tip="<b>${esc(fullLabel(k))} ${CLS[c][0]}</b> ${pct(j[c])}<br>검정 면적 ${ha(j.tot)} 중"></i>` : "").join("")}</div>`;
+  // 막대 조각에 이름·비중을 바로 적는다 (12% 이상), 걸침은 빗금
+  function checkBar(j, k) {
+    if (!j || !j.tot) return `<div class="sl-bar lab none"></div>`;
+    return `<div class="sl-bar lab">${"LOHX".split("").map((c) => j[c] > 0 ? `<i class="c${c}" style="flex-grow:${j[c]};background:${CLS[c][1]}" data-tip="<b>${esc(fullLabel(k))} ${CLS[c][0]}</b> ${pct(j[c])}<br>검정 면적 ${ha(j.tot)} 중${c === "X" ? "<br>구간이 기준 경계에 걸쳐 판정하지 않음" : ""}">${j[c] >= 12 ? `${j[c] >= 22 ? `${CLS[c][0]} ` : ""}${nf0.format(j[c])}` : ""}</i>` : "").join("")}</div>`;
   }
   function renderCheck() {
     const k = state.key, land = state.land;
@@ -472,17 +473,18 @@
       syncURL(); renderCheck(); drawBins();
     }));
     const items = S.chem.filter((c) => STD[land][c.k]);
+    // 항목마다 대표 값은 '적정 범위 안 비중' (건강검진의 정상 범위), 옆에 전국
     $("#check").innerHTML = items.map((c) => {
-      const j = judge(k, c.k, land), jn = judge(NATION, c.k, land);
-      const head = !j?.tot ? "자료 없음" : (j.H >= j.L ? `높음 <b class="h">${pct(j.H)}</b>` : `낮음 <b class="l">${pct(j.L)}</b>`);
+      const j = judge(k, c.k, land), jn = level(k) ? judge(NATION, c.k, land) : null;
+      const okv = !j?.tot ? "자료 없음" : !STD[land][c.k][1].includes("O") ? `<span class="na">적정 판정 불가</span>` : `적정 <b>${pct(j.O)}</b>${jn?.tot ? `<em>전국 ${pct(jn.O)}</em>` : ""}`;
       return `<button type="button" class="sl-ck${c.k === state.item ? " sel" : ""}" data-i="${c.k}">
-        <span class="sl-ckh"><span class="sl-ckn">${c.name}</span><span class="sl-cks">적정 ${STD[land][c.k][0]} <em>${c.unit}</em></span><span class="sl-ckv">${head}</span></span>
-        ${checkBar(j, "", k)}${level(k) ? checkBar(jn, "thin", NATION) : ""}
+        <span class="sl-ckh"><span class="sl-ckn">${c.name}</span><span class="sl-cks">적정 ${STD[land][c.k][0]} <em>${c.unit}</em></span><span class="sl-ckv">${okv}</span></span>
+        ${checkBar(j, k)}
       </button>`;
     }).join("");
     $$("#check .sl-ck").forEach((b) => b.addEventListener("click", () => { state.item = b.dataset.i; syncURL(); renderCheck(); drawBins(); }));
-    $("#check-key").innerHTML = "LOHX".split("").map((c) => `<span><i style="background:${CLS[c][1]}"></i>${CLS[c][0]}</span>`).join("")
-      + (level(k) ? `<span class="sl-kn">아래 가는 막대는 전국</span>` : "");
+    $("#check-key").innerHTML = "LOH".split("").map((c) => `<span><i style="background:${CLS[c][1]}"></i>${CLS[c][0]}</span>`).join("")
+      + `<span><i class="sl-khx"></i>걸침 (구간이 기준에 걸쳐 판정 안 함)</span><span class="sl-kn">항목을 누르면 아래에 구간 분포</span>`;
   }
 
   // ---------- 오른쪽 2: 고른 항목의 구간 분포 (지역 막대 · 시도·전국 눈금) ----------
@@ -492,6 +494,28 @@
     el.innerHTML = "";
     const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${w} ${h}`);
     return { svg, w, h };
+  }
+  // 구간 분포 한 문장: 가장 많은 쪽(낮음·적정·높음)과 그 값 범위, 전국과 견줌
+  function binsSummary(k, land, item, names) {
+    const j = judge(k, item, land), jn = level(k) ? judge(NATION, item, land) : null, std = STD[land][item], c = ITEM[item];
+    if (!j?.tot) return "";
+    const idx = (cc) => [...std[1]].map((x, i) => (x === cc ? i : -1)).filter((i) => i >= 0);
+    const num = (t, end) => { const m = t.match(/[\d.]+/g) || []; return end ? m.at(-1) : m[0]; };
+    const range = (cc) => {
+      const ii = idx(cc);
+      if (!ii.length) return "";
+      if (cc === "L") return `${num(names[ii.at(-1)], true)} 이하`;
+      if (cc === "H") return `${num(names[ii[0]], false)} 이상`;
+      return std[0];
+    };
+    const best = ["O", "L", "H"].filter((cc) => idx(cc).length).sort((a, b) => j[b] - j[a])[0];
+    const unit = c.unit.startsWith("(") ? "" : ` ${c.unit}`;
+    if (j.X > j[best]) return `<b>${pct(j.X)}</b>는 구간이 적정 기준에 걸쳐 판정할 수 없습니다<br><span>판정된 것 중에는 ${{ L: "낮음", O: "적정", H: "높음" }[best]} ${pct(j[best])}${jn?.tot ? `, 전국 ${pct(jn[best])}` : ""}</span>`;
+    const nm = { L: "낮음", O: "적정", H: "높음" }[best];
+    let t = `가장 많은 쪽은 <b class="c${best}">${nm}</b> <span>(${range(best)}${unit})</span> <b>${pct(j[best])}</b>`;
+    if (jn?.tot) { const d = j[best] - jn[best]; t += `<span>, 전국 ${pct(jn[best])}${Math.abs(d) >= 3 ? `보다 ${nf0.format(Math.abs(d))}%p ${d > 0 ? "많음" : "적음"}` : "과 비슷"}</span>`; }
+    if (j.X >= 25) t += `<br><span class="w">걸침 ${pct(j.X)}: 구간이 적정 기준에 걸쳐 이만큼은 판정하지 못합니다</span>`;
+    return t;
   }
   function drawBins() {
     const k = state.key, land = state.land, item = state.item, c = ITEM[item], std = STD[land][item];
@@ -504,7 +528,8 @@
     const raw = binsOf(k, item, land);
     if (!me) { svg.append("text").attr("x", 8).attr("y", 20).attr("class", "pw-empty").text("검정 자료 없음"); $("#bins-key").innerHTML = ""; return; }
     const names = c.bins[land];
-    const m = { l: 34, r: 6, t: 8, b: 30 };
+    $("#bins-sum").innerHTML = binsSummary(k, land, item, names);
+    const m = { l: 34, r: 6, t: 16, b: 30 };
     const x = d3.scaleBand().domain(d3.range(6)).range([m.l, w - m.r]).padding(0.22);
     const top = d3.max([...me, ...(sd || []), ...(nat || [])]);
     const y = d3.scaleLinear().domain([0, top * 1.08]).nice(3).range([h - m.b, m.t]);
@@ -512,6 +537,13 @@
       g.append("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", (d) => y(d)).attr("y2", (d) => y(d));
       g.append("text").attr("x", m.l - 5).attr("y", (d) => y(d) + 4).attr("text-anchor", "end").text((d) => `${d}%`);
     });
+    // 적정 구간 배경 (판정이 O인 구간)
+    const oi = [...std[1]].map((cc, i) => (cc === "O" ? i : -1)).filter((i) => i >= 0);
+    if (oi.length) {
+      const x0 = x(oi[0]) - (x.step() * x.paddingInner()) / 2, x1 = x(oi.at(-1)) + x.bandwidth() + (x.step() * x.paddingInner()) / 2;
+      svg.append("rect").attr("class", "sl-oband").attr("x", x0).attr("width", x1 - x0).attr("y", 2).attr("height", h - m.b - 2).attr("rx", 4);
+      svg.append("text").attr("class", "sl-oband-t").attr("x", (x0 + x1) / 2).attr("y", 12).text("적정 범위");
+    }
     svg.append("g").selectAll("rect").data(me).join("rect")
       .attr("x", (d, i) => x(i)).attr("width", x.bandwidth()).attr("y", (d) => y(d)).attr("height", (d) => y(0) - y(d)).attr("rx", 2).attr("fill-opacity", 0.85)
       .attr("fill", (d, i) => CLS[std[1][i]][1]);
