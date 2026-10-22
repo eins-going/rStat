@@ -98,7 +98,7 @@
     { key: "income", group: "농협", chip: "순이익", label: "당기순이익", src: "coop", fmt: eokS, div: true, note: "점 하나가 농·축협 본점. 공시 당기순이익(반기 누계: 6월은 상반기, 12월은 1년)" },
   ];
   const DEFAULT_METRIC = METRICS[0];
-  const state = { key: NATION, y: DEFAULT_YEAR, h: NP.length - 1, metric: DEFAULT_METRIC, coop: null, sort: "assets", cat: "paid" };
+  const state = { key: NATION, y: DEFAULT_YEAR, h: NP.length - 1, metric: DEFAULT_METRIC, coop: null, focus: false, sort: "assets", cat: "paid" };
   const metricVal = (m, k) => (m.src === "ins" ? ins(k, state.y, m.key) : null);
 
   // ---------- 선택 ----------
@@ -248,6 +248,15 @@
   }
   function targetView() {
     const s = sidoOf(state.key);
+    const fc = state.focus && state.coop && BY_CODE.get(state.coop);
+    if (fc?.xy) {
+      // 목록에서 고른 조합: 본점을 가운데로, 시도를 볼 때보다 조금 더 가까이 (이미 시군을 보고 있으면 그 배율)
+      const [cx, cy] = project(...fc.xy);
+      const sk = sidoOf(fc.r.split("|")[0]);
+      const [[x0, y0], [x1, y1]] = path.bounds(sidoFeatures.find((f) => f.properties.key === sk));
+      const k = Math.min(16, Math.max(view.k || 1, Math.min((size.w - 56) / (x1 - x0), (size.h - 56) / (y1 - y0)) * 1.6));
+      return d3.zoomIdentity.translate(size.w / 2 - cx * k, size.h / 2 - cy * k).scale(k);
+    }
     if (!s) return d3.zoomIdentity;
     const [[x0, y0], [x1, y1]] = path.bounds(sidoFeatures.find((f) => f.properties.key === s));
     const pad = 28;
@@ -261,6 +270,18 @@
     else world.interrupt().attr("transform", view);
     sizeDots();
     drawLabels(view, animate);
+    drawFocus(animate);
+  }
+  // 고른 조합 표식: 지표와 상관없이 본점 자리에 고리와 이름 (지도 배율과 상관없이 같은 크기)
+  function drawFocus(animate) {
+    const c = state.coop && BY_CODE.get(state.coop);
+    const g = mapSvg.selectAll("g.coop-focus").data(c?.xy ? [c] : []).join((en) => en.append("g").attr("class", "coop-focus"));
+    if (!c?.xy) return;
+    const [x, y] = project(...c.xy), sx = x * view.k + view.x, sy = y * view.k + view.y;
+    g.html(`<circle class="af-fring" r="14"></circle><circle class="af-fdot" r="5"></circle><text class="af-fname" y="-20">${esc(c.n)}</text>`)
+      .attr("transform", `translate(${sx},${sy})`).style("opacity", animate && !reduceMotion ? 0 : 1);
+    if (animate && !reduceMotion) g.transition().delay(650).duration(250).style("opacity", 1);
+    g.raise();
   }
 
   const pickSido = (k) => level(state.key) === 0 || sidoOf(k) !== sidoOf(state.key);
@@ -408,7 +429,7 @@
       <div class="rank-title"><span><b>${m.label}</b> 상위 ${unitWord}</span><span class="rank-meta">${when}</span></div>
       <div>${top.slice(0, 5).map((d, j) => row(d, j + 1)).join("")}</div>
       <div>${top.slice(5).map((d, j) => row(d, j + 6)).join("")}</div>` : "";
-    $$("#rank .rank-row").forEach((b) => b.addEventListener("click", () => (m.src === "ins" ? select(b.dataset.r) : pickCoop(b.dataset.r))));
+    $$("#rank .rank-row").forEach((b) => b.addEventListener("click", () => (m.src === "ins" ? select(b.dataset.r) : pickCoop(b.dataset.r, true))));
   }
 
   // ---------- 왼쪽: 농작물재해보험 ----------
@@ -508,8 +529,10 @@
     if (picked && list.includes(picked)) return picked;
     return list.slice().sort((a, b) => (val(b, "assets", state.h) ?? -1) - (val(a, "assets", state.h) ?? -1))[0] || null;
   }
-  function pickCoop(cd) {
+  function pickCoop(cd, move = false) {
     state.coop = cd;
+    if (move) state.focus = true; // 지도 점을 누르면 확대 상태는 그대로 두고 표식만 옮긴다
+    if (state.focus) { applyView(true); renderHero(); } else drawFocus(false);
     syncURL();
     renderCoop();
     renderList();
@@ -579,8 +602,8 @@
       <tbody>${sorted.map((c) => `<tr data-c="${c.c}" class="${c === cur ? "sel" : ""}" tabindex="0">${COLS.map(([, , , cell]) => `<td>${cell(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
     $$("#coop-table [data-s]").forEach((b) => b.addEventListener("click", () => { state.sort = b.dataset.s; renderList(); }));
     $$("#coop-table tbody tr").forEach((tr) => {
-      tr.addEventListener("click", () => pickCoop(tr.dataset.c));
-      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") pickCoop(tr.dataset.c); });
+      tr.addEventListener("click", () => pickCoop(tr.dataset.c, true));
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") pickCoop(tr.dataset.c, true); });
     });
     $("#list-note").textContent = level(k) === 2
       ? "지역농협만 시군에 놓았습니다. 축협·품목농협은 사업 구역이 여러 시군에 걸쳐 시도 화면에서 봅니다."
@@ -601,10 +624,13 @@
     $("#title-region").textContent = label(k);
     $("#crumb").textContent = level(k) === 0 ? "" : level(k) === 1 ? "전국 ›" : `전국 › ${T.sidos[sidoOf(k)].name} ›`;
     const reset = $("#reset");
-    reset.hidden = level(k) === 0;
-    reset.textContent = level(k) === 2 ? `${T.sidos[sidoOf(k)].short} 전체보기` : "전국보기";
+    reset.hidden = level(k) === 0 && !state.focus;
+    reset.textContent = state.focus ? `${level(k) ? shortLabel(k) : "전국"} 다시 보기` : level(k) === 2 ? `${T.sidos[sidoOf(k)].short} 전체보기` : "전국보기";
   }
-  $("#reset").addEventListener("click", () => select(parentOf(state.key) ?? NATION));
+  $("#reset").addEventListener("click", () => {
+    if (state.focus) { state.focus = false; applyView(true); renderHero(); return; } // 조합 확대만 풀고 고른 지역은 그대로
+    select(parentOf(state.key) ?? NATION);
+  });
 
   // ---------- 갱신 ----------
   function render(animate = true) {
@@ -623,6 +649,7 @@
   function select(k) {
     const prevSido = sidoOf(state.key);
     state.key = k || NATION;
+    state.focus = false;
     if (state.coop && !coopsIn(state.key, state.h).includes(BY_CODE.get(state.coop))) state.coop = null;
     render(prevSido !== sidoOf(state.key));
   }

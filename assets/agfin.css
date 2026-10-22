@@ -93,3 +93,11 @@ rect.af-ysel { fill: rgba(255, 255, 255, 0.05); stroke: rgba(245, 165, 36, 0.45)
   .af .controls .select { min-width: 0; }
   .af .controls .select select { min-width: 0; width: 100%; }
 }
+
+/* 목록에서 고른 조합 표식 (지도 위, 배율과 상관없이 같은 크기) */
+.coop-focus { pointer-events: none; }
+.af-fring { fill: none; stroke: #fff; stroke-width: 2; animation: af-pulse 1.6s ease-out infinite; }
+.af-fdot { fill: var(--accent); stroke: #14161b; stroke-width: 1.5; }
+.af-fname { fill: #fff; font-size: 12.5px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(20, 22, 27, 0.9); stroke-width: 3.5px; }
+@keyframes af-pulse { 0% { r: 7; opacity: 1; } 100% { r: 20; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .af-fring { animation: none; } }
