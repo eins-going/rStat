@@ -115,7 +115,7 @@
     if (state.auto) autoPick(); else { state.land = l; state.item = i; state.cat = null; }
   }
 
-  // 흙 건강검진 첫 항목: 고른 지역에서 전국과 가장 다른 경지·항목 (낮음·적정·높음 비중 차이의 최댓값, 걸침은 빼고).
+  // 농경지 화학성 첫 항목: 고른 지역에서 전국과 가장 다른 경지·항목 (낮음·적정·높음 비중 차이의 최댓값, 걸침은 빼고).
   // 검정 면적이 200ha 미만이거나 걸침이 30% 넘는 칸은 고르지 않는다(흔들리거나 판정이 반쪽). 전국 화면은 견줄 데가 없어 논 pH
   function autoPick() {
     const k = state.key;
@@ -477,7 +477,7 @@
     $("#obst-note").textContent = "토양도 통계의 요인별 면적. 2~4급지마다 가장 심한 요인 하나, 비중은 2~4급지 합으로 나눔.";
   }
 
-  // ---------- 오른쪽 1: 흙 건강검진 (경지 하나 × 항목 7) ----------
+  // ---------- 오른쪽 1: 농경지 화학성 (토양검정, 경지 하나 × 항목 7) ----------
   // 막대 조각에 이름·비중을 바로 적는다 (12% 이상), 걸침은 빗금
   function checkBar(j, k) {
     if (!j || !j.tot) return `<div class="sl-bar lab none"></div>`;
@@ -494,7 +494,7 @@
       syncURL(); renderCheck(); drawBins();
     }));
     const items = S.chem.filter((c) => STD[land][c.k]);
-    // 항목마다 대표 값은 '적정 범위 안 비중' (건강검진의 정상 범위), 옆에 전국
+    // 항목마다 대표 값은 '적정 범위 안 비중' (흙토람 적정범위), 옆에 전국
     $("#check").innerHTML = items.map((c) => {
       const j = judge(k, c.k, land), jn = level(k) ? judge(NATION, c.k, land) : null;
       const okv = !j?.tot ? "자료 없음" : !STD[land][c.k][1].includes("O") ? `<span class="na">적정 판정 불가</span>` : `적정 <b>${pct(j.O)}</b>${jn?.tot ? `<em>전국 ${pct(jn.O)}</em>` : ""}`;
