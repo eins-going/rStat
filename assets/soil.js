@@ -380,7 +380,7 @@
     const cell = (r, i, land) => { const v = (r[i] / tot(r)) * 100; return `<td class="v" data-tip="<b>${esc(fullLabel(k))} ${land} ${CATS[i].n}</b> ${ha(r[i])}<br>땅의 ${pct(v)}">
       <span class="sl-tx"><b>${pct(v)}</b><em>${haS(r[i])}</em></span><span class="sl-db"><i style="width:${(v / max) * 100}%;background:${CATS[i].col}"></i></span></td>`; };
     const table = `<table class="sl-gtab"><thead><tr><th>적성등급 <button type="button" class="sl-q" data-def aria-expanded="${state.defOpen}">${state.defOpen ? "정의 ▴" : "정의 ▾"}</button></th><th>논 적성등급 <small>% · ha</small></th><th>밭 적성등급 <small>% · ha</small></th></tr></thead><tbody>${CATS.map((c, i) => `
-      <tr class="sl-gtr"><th><span class="sl-gn"><i style="background:${c.col}"></i>${c.n}</span><span class="sl-gd">${c.d}</span></th>${cell(P, i, "논")}${cell(F, i, "밭")}</tr>`).join("")}</tbody></table>`;
+      <tr class="sl-gtr"><th><span class="sl-gn">${c.n}</span><span class="sl-gd">${c.d}</span></th>${cell(P, i, "논")}${cell(F, i, "밭")}</tr>`).join("")}</tbody></table>`;
     const now = [0, 1].map((j) => { const f = R(k).f?.[j], land = j ? "밭" : "논"; return ok(f) ? `지금 ${land} <b>${ha(f)}</b> <em>땅의 ${pct((f / total) * 100)}</em>` : ""; }).filter(Boolean).join(" · ");
     $("#grades").innerHTML = `<p class="sl-lead">${lead}</p>
       ${table}
