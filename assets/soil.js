@@ -329,11 +329,11 @@
   // ---------- 왼쪽 1: 적성등급 — 등급 정의 표에 논·밭 막대를 넣는다(범례 겸 값). 모든 %는 시군 땅 전체 기준 ----------
   // 적성등급: 국립농업과학원이 배수·토성·유효토심·자갈·경사·침식 등으로 지목마다 1~5급지로 매긴 등급 (흙토람 '토양이용 추천')
   const CATS = [
-    { n: "1급지", d: "생산력 높음", long: "생산력이 높고 토양 관리에 제한을 받지 않음", col: "#7fd39a" },
-    { n: "2급지", d: "생산력 보통", long: "생산력이 보통이고 토양 관리에 다소 제한을 받음", col: "#3f8f5c" },
-    { n: "3급지", d: "생산력 낮음", long: "생산력이 낮고 심한 제한을 받아 특수관리·재배기술이 필요함", col: "#c9a46a" },
-    { n: "4급지", d: "생산력 매우 낮음", long: "생산력이 매우 낮고 매우 심한 제한을 받아 경제적 이용이 어려울 수 있음", col: "#8a6a3f" },
-    { n: "5급지", d: "쓰기 부적당", long: "그 용도(논·밭)로 이용하기 부적당 (대개 산지)", col: "#4a4f59" },
+    { n: "1급지", d: "생산력 높음", long: "생산력이 높음. 집약적 경영이 쉽고 토양 관리에 제한을 받지 않음", col: "#7fd39a" },
+    { n: "2급지", d: "생산력 보통", long: "생산력이 보통임. 집약적 경영이 가능하나 토양 관리에 다소 제한을 받음", col: "#3f8f5c" },
+    { n: "3급지", d: "생산력 낮음", long: "생산력이 낮음. 심한 제한을 받아 특수관리 및 재배기술이 필요함", col: "#c9a46a" },
+    { n: "4급지", d: "생산력 매우 낮음", long: "생산력이 매우 낮음. 매우 심한 제한을 받아 경제적 이용이 어려울 경우가 있음", col: "#8a6a3f" },
+    { n: "5급지", d: "이용 부적당", long: "해당 지목(논·밭)으로 이용이 부적당함 (대개 산지)", col: "#4a4f59" },
     { n: "기타", d: "도시·물 등", long: "토양도에 흙으로 그려지지 않은 땅 (시가지·하천·저수지 등)", col: "#2b2f36" },
   ];
   const topPct = (k, g) => { const r = R(k)[g]; return ((r[0] + r[1]) / (sum(r) || 1)) * 100; };
@@ -342,11 +342,12 @@
     const sk = level(k) === 2 ? s : null, nk = level(k) ? NATION : null;
     const P = R(k).pg, F = R(k).fg, total = sum(P), tot = (r) => sum(r) || 1;
     $("#grade-scope").textContent = `(${fullLabel(k)})`;
-    const lead = `${esc(shortLabel(k))} 땅 <b>${ha(total)}</b> 가운데 논 적성 1·2급지는 <b class="g">${pct(topPct(k, "pg"))}</b>, 밭 적성 1·2급지는 <b class="g">${pct(topPct(k, "fg"))}</b>입니다.`;
+    const lead = `${esc(shortLabel(k))} 땅 <b>${ha(total)}</b> 가운데 논 적성 1·2급지는 <b class="g">${pct(topPct(k, "pg"))}</b>(${ha(P[0] + P[1])}), 밭 적성 1·2급지는 <b class="g">${pct(topPct(k, "fg"))}</b>(${ha(F[0] + F[1])})입니다.`;
     const max = Math.max(...P.map((v) => (v / tot(P)) * 100), ...F.map((v) => (v / tot(F)) * 100), 1);
-    const cell = (r, i, land) => { const v = (r[i] / tot(r)) * 100; return `<td data-tip="<b>${esc(fullLabel(k))} ${land} ${CATS[i].n}</b> ${ha(r[i])}<br>땅의 ${pct(v)} · ${CATS[i].long}">
-      <span class="sl-cb"><i style="width:${(v / max) * 100}%;background:${CATS[i].col}"></i></span><b>${pct(v)}</b></td>`; };
-    const table = `<table class="sl-gtab"><thead><tr><th>적성등급</th><th>뜻</th><th>논으로 쓴다면</th><th>밭으로 쓴다면</th></tr></thead><tbody>${CATS.map((c, i) => `
+    const haS = (v) => (v >= 1e5 ? `${(v / 1e4).toFixed(1)}만` : nf0.format(v));
+    const cell = (r, i, land) => { const v = (r[i] / tot(r)) * 100; return `<td class="v" data-tip="<b>${esc(fullLabel(k))} ${land} ${CATS[i].n}</b> ${ha(r[i])}<br>땅의 ${pct(v)} · ${CATS[i].long}">
+      <span class="sl-db" style="width:${(v / max) * 100}%;background:${CATS[i].col}"></span><b>${pct(v)}</b><em>${haS(r[i])}</em></td>`; };
+    const table = `<table class="sl-gtab"><thead><tr><th>적성등급</th><th>정의</th><th>논 적성등급<small>비중 · ha</small></th><th>밭 적성등급<small>비중 · ha</small></th></tr></thead><tbody>${CATS.map((c, i) => `
       <tr><th data-tip="<b>${c.n}</b><br>${c.long}"><i style="background:${c.col}"></i>${c.n}</th><td class="d" data-tip="<b>${c.n}</b><br>${c.long}">${c.d}</td>${cell(P, i, "논")}${cell(F, i, "밭")}</tr>`).join("")}</tbody></table>`;
     const now = [0, 1].map((j) => { const f = R(k).f?.[j], land = j ? "밭" : "논"; return ok(f) ? `지금 ${land} <b>${ha(f)}</b> <em>땅의 ${pct((f / total) * 100)}</em>` : ""; }).filter(Boolean).join(" · ");
     // 같은 시도(전국이면 전체) 시군 사이 위치: 1·2급지 비율을 점으로
@@ -366,7 +367,7 @@
       ${table}
       ${now ? `<p class="sl-wnow">${now} <span>(팜맵 ${S.farmYear})</span></p>` : ""}
       <div class="sl-strip"><h3 class="sl-wh">1·2급지 비율, ${s ? `${esc(T.sidos[s].short)} 시군` : "전국 시군"} 사이 위치 <em>점 하나가 시군 · 세로선은 ${s ? esc(T.sidos[s].short) : "전국"} 전체${cmp ? ` · ${cmp}` : ""}</em></h3>${strip}</div>`;
-    $("#grade-note").textContent = "적성등급: 국립농업과학원이 배수·토성·토심·자갈·경사 등으로 논·밭을 따로 매긴 등급(흙토람). 지금 쓰임과 무관.";
+    $("#grade-note").textContent = "지목별 토지이용 적성등급: 국립농업과학원이 배수·토성·토심·자갈·경사 등으로 매긴 등급(흙토람 정의). 지금 쓰임과 무관.";
   }
 
   // ---------- 왼쪽 2: 저해요인 — 2~4급지에 붙은 '가장 심한 저해요인'별 비중 (논·밭 열, 전국은 눈금) ----------
