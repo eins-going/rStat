@@ -262,3 +262,11 @@
 .em-sph b.r.low { transform: translate(0, 6px); }
 .em-sph i:hover u, .em-sph i:hover b { display: block; }
 .em-dsp-v:has(.em-sph i:hover) .em-spv { opacity: 0.2; }
+
+/* 월별 그림 마우스 값 (employ.js drawBand) */
+.em-band { position: relative; }
+.em-bdot { fill: var(--agri); stroke: #14161b; stroke-width: 1.5; }
+.em-bdot.prev { fill: #9aa1ad; }
+.em-btip { position: absolute; top: 0; padding: 2px 6px; border-radius: 4px; background: var(--panel); border: 1px solid rgba(255, 255, 255, 0.18); font-size: 10.5px; line-height: 1.4; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; z-index: 2; }
+.em-btip b { color: var(--text); font-weight: 600; }
+.em-btip span { color: var(--faint); }

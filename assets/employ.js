@@ -831,8 +831,23 @@
     svg.append("path").attr("class", "em-l-agri").attr("d", line(cur));
     const lm = +M[i].slice(5);
     svg.append("circle").attr("class", "em-hdot").attr("cx", x(lm)).attr("cy", y(cur[lm - 1])).attr("r", 3.5);
+    // 마우스: 그달 세로선·점, 값은 그림 위 상자로 (브라우저 툴팁은 늦게 뜨거나 안 뜬다)
+    const hv = svg.append("g").attr("class", "em-hover").style("display", "none");
+    const ln = hv.append("line").attr("y1", m.t).attr("y2", h - m.b);
+    const dPrev = hv.append("circle").attr("class", "em-bdot prev").attr("r", 2.8);
+    const dCur = hv.append("circle").attr("class", "em-bdot").attr("r", 3.2);
+    const tip = d3.select(el).append("div").attr("class", "em-btip").style("display", "none");
     svg.append("g").selectAll("rect").data(months).join("rect").attr("x", (d) => x(d) - x.step() / 2).attr("width", x.step()).attr("y", 0).attr("height", h).attr("fill", "transparent")
-      .append("title").text((d) => `${d}월 · ${y0}년 ${peopleText(cur[d - 1])} · ${y0 - 1}년 ${peopleText(prev[d - 1])}${band[d - 1] ? ` · 직전 5년 ${peopleText(band[d - 1][0])}~${peopleText(band[d - 1][1])}` : ""}`);
+      .on("mouseenter", (e, d) => {
+        const c = cur[d - 1], p = prev[d - 1], b = band[d - 1];
+        hv.style("display", null);
+        ln.attr("x1", x(d)).attr("x2", x(d));
+        dCur.style("display", ok(c) ? null : "none").attr("cx", x(d)).attr("cy", ok(c) ? y(c) : 0);
+        dPrev.style("display", ok(p) ? null : "none").attr("cx", x(d)).attr("cy", ok(p) ? y(p) : 0);
+        tip.style("display", null).classed("r", x(d) > w / 2).style("left", x(d) > w / 2 ? null : `${x(d) + 8}px`).style("right", x(d) > w / 2 ? `${w - x(d) + 8}px` : null)
+          .html(`<b>${d}월</b> ${y0}년 <b>${peopleText(c)}</b> · ${y0 - 1}년 ${peopleText(p)}${b ? `<br><span>직전 5년 ${peopleText(b[0])}~${peopleText(b[1])}</span>` : ""}`);
+      })
+      .on("mouseleave", () => { hv.style("display", "none"); tip.style("display", "none"); });
     $("#band-key").innerHTML = `<span><i class="em-k-agri"></i>${y0}년</span><span><i class="prev"></i>${y0 - 1}년</span><span><i class="band"></i>${y0 - 5}~${y0 - 1}년 범위</span>${seasonText(k)}`;
     const past = [1, 2, 3, 4, 5].map((d) => mAt(k, "a", i - 12 * d)).filter(ok);
     const dev = past.length >= 3 ? (mAt(k, "a", i) / d3.mean(past) - 1) * 100 : null;
