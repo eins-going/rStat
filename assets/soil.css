@@ -24,26 +24,35 @@
 .sl-lead b.g { color: #7fd39a; }
 .sl-wcols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 .sl-wcol { min-width: 0; }
-.sl-wh { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; }
+.sl-wh { margin: 0 0 4px; font-size: 12.5px; font-weight: 600; }
 .sl-wh em { font-style: normal; font-weight: 400; font-size: 10.5px; color: var(--faint); margin-left: 3px; }
-.sl-waffle { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; aspect-ratio: 1; max-width: 168px; }
-.sl-waffle i { border-radius: 2px; }
-.sl-wls { display: grid; gap: 2px; margin-top: 8px; }
-.sl-wl { display: grid; grid-template-columns: 10px 1fr auto 46px; align-items: center; gap: 5px; font-size: 11.5px; padding: 1px 2px; border-radius: 4px; }
-.sl-wl:hover { background: var(--panel-2); }
-.sl-wl i { width: 10px; height: 10px; border-radius: 2px; }
-.sl-wl span { color: var(--muted); white-space: nowrap; }
-.sl-wl b { font-weight: 600; font-variant-numeric: tabular-nums; }
-.sl-wl em { font-style: normal; font-size: 10.5px; color: var(--faint); text-align: right; font-variant-numeric: tabular-nums; }
-.sl-wl:last-child i { outline: 1px solid #3a3f48; }
-.sl-wcmp, .sl-wnow { margin: 6px 0 0; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-waffle { display: grid; grid-template-columns: repeat(20, 1fr); grid-template-rows: repeat(5, 1fr); grid-auto-flow: column; gap: 2px; aspect-ratio: 4 / 1; }
+.sl-waffle i { border-radius: 1.5px; }
+.sl-wcol .sl-waffle { max-width: none; }
+.sl-gtab, .sl-otab { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11.5px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+.sl-gtab thead th, .sl-otab thead th { font-size: 10.5px; font-weight: 500; color: var(--faint); text-align: right; padding: 0 0 3px; }
+.sl-gtab thead th:first-child, .sl-gtab thead th:nth-child(2), .sl-otab thead th:first-child { text-align: left; }
+.sl-gtab th:first-child { width: 58px; }
+.sl-gtab th:nth-child(3), .sl-gtab th:nth-child(4) { width: 98px; }
+.sl-gtab tbody th { font-weight: 600; text-align: left; white-space: nowrap; padding: 7px 0; border-top: 1px solid var(--line); }
+.sl-gtab tbody th i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.sl-gtab tbody tr:last-child th i { outline: 1px solid #3a3f48; }
+.sl-gtab td { text-align: right; padding: 7px 0 7px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
+.sl-gtab td.d { text-align: left; color: var(--muted); font-size: 11px; }
+.sl-gtab td b, .sl-otab td b { font-weight: 600; }
+.sl-gtab td b { display: inline-block; width: 30px; }
+.sl-cb { display: inline-block; vertical-align: middle; width: calc(100% - 34px); height: 12px; background: var(--panel-2); border-radius: 3px; overflow: hidden; text-align: left; }
+.sl-cb i { display: block; height: 100%; border-radius: 3px; min-width: 1px; }
+.sl-gtab tbody tr:nth-child(6) .sl-cb i { outline: 1px solid #3a3f48; outline-offset: -1px; }
+.sl-gtab tbody tr:hover, .sl-otab tbody tr:hover { background: var(--panel-2); }
+.sl-wcmp, .sl-wnow { margin: 8px 0 0; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sl-wnow { margin-top: 2px; color: var(--muted); }
 .sl-wnow b { color: var(--text); font-weight: 600; }
-.sl-wnow em { font-style: normal; color: var(--faint); }
+.sl-wnow em, .sl-wnow span { font-style: normal; color: var(--faint); }
 
 /* 시도 안 위치: 좋은 땅 비율 점 그림 */
-.sl-strip { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
-.sl-sr { display: grid; grid-template-columns: 20px 1fr 52px; align-items: center; gap: 8px; height: 26px; font-size: 11.5px; }
+.sl-strip { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+.sl-sr { display: grid; grid-template-columns: 20px 1fr 52px; align-items: center; gap: 8px; height: 30px; font-size: 11.5px; }
 .sl-sl { color: var(--muted); }
 .sl-sr b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 11px; }
 .sl-st { position: relative; height: 18px; margin: 0 5px; border-bottom: 1px solid var(--line); }
@@ -53,14 +62,16 @@
 .sl-st u { position: absolute; top: -1px; bottom: -3px; width: 0; border-left: 2px solid var(--accent); text-decoration: none; }
 
 /* 왼쪽 2: 등급을 깎은 이유 */
-.sl-whys { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
-.sl-why { min-width: 0; }
-.sl-wr { display: grid; grid-template-columns: 62px 1fr 38px; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px; border-radius: 4px; }
-.sl-wr:hover { background: var(--panel-2); }
-.sl-wn { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sl-wr b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-.sl-wr.up .sl-wn { color: var(--text); font-weight: 600; }
-.sl-wr b em { font-style: normal; font-size: 9px; color: var(--text); margin-left: 1px; vertical-align: 1px; }
+.sl-otab th:first-child { width: 92px; }
+.sl-otab tbody th { text-align: left; font-weight: 600; padding: 3px 0; border-top: 1px solid var(--line); white-space: nowrap; }
+.sl-otab tbody th em { font-style: normal; font-weight: 400; font-size: 10px; color: var(--faint); margin-left: 4px; }
+.sl-otab thead th em { font-style: normal; font-size: 9.5px; margin-left: 2px; }
+.sl-otab td { padding: 3px 0 3px 6px; border-top: 1px solid var(--line); }
+.sl-otab td { display: table-cell; }
+.sl-otab td > .sl-wt { display: inline-block; vertical-align: middle; width: calc(100% - 38px); }
+.sl-otab td > b { display: inline-block; width: 34px; text-align: right; }
+.sl-otab td.na { color: var(--faint); text-align: right; }
+.sl-otab td b em { font-style: normal; font-size: 9px; margin-left: 1px; vertical-align: 1px; }
 .sl-wt { position: relative; height: 12px; background: var(--panel-2); border-radius: 3px; }
 .sl-wt i { display: block; height: 100%; border-radius: 3px; background: #6d8f7a; }
 .sl-wt u { position: absolute; top: -2px; bottom: -2px; width: 0; border-left: 2px dotted #cfd3da; }
