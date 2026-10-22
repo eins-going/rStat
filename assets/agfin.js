@@ -551,11 +551,6 @@
     const tot = parts.reduce((s, [, v]) => s + v, 0) || 1; // 막대 길이용 (화면에 숫자로 내지 않는다)
     const [roa, roaAt] = lastDec(c, "roa", h);
     const income = val(c, "income", h);
-    const spark = (f, fmt) => {
-      const vs = NP.map((_, j) => val(c, f, j));
-      const mx = Math.max(...vs.filter(ok).map(Math.abs), 0) || 1;
-      return `<div class="af-spark">${vs.map((v, j) => `<span class="af-sb${j === h ? " cur" : ""}${ok(v) && v < 0 ? " neg" : ""}" title="${halfLabel(NP[j])} ${ok(v) ? fmt(v) : "공시 없음"}"><i style="height:${ok(v) ? Math.max(3, (Math.abs(v) / mx) * 100) : 0}%"></i><em>${halfShort(NP[j])}</em></span>`).join("")}</div>`;
-    };
     box.innerHTML = `
       <p class="af-place">${esc(placeOf(c))}${c.h ? ` · 누리집 이름 ${esc(c.h)}` : ""}</p>
       <div class="stats two">
@@ -576,9 +571,42 @@
         <div><span>당기순이익 <em>${NP[h].endsWith("06") ? "상반기" : "1년"}</em></span><b class="${ok(income) && income < 0 ? "af-neg" : ""}">${eokS(income)}</b></div>
       </div>
       <div class="af-sparks">
-        <div><h3 class="sub-head">자산총계</h3>${spark("assets", eokS)}</div>
-        <div><h3 class="sub-head">고정이하여신비율</h3>${spark("npl", pct)}</div>
+        <div><h3 class="sub-head">자산총계 <span class="af-sv" data-sv="assets"></span></h3><div class="af-spark" data-f="assets"></div></div>
+        <div><h3 class="sub-head">고정이하여신비율 <span class="af-sv" data-sv="npl"></span></h3><div class="af-spark" data-f="npl"></div></div>
       </div>`;
+    drawSparks(c);
+  }
+
+  // 조합 추이: 반기 6개 선 그림. 값 범위에 맞춘 세로축(0부터가 아님)이라 막대 대신 선으로 그린다.
+  // 처음·끝 값을 적고, 반기에 마우스를 올리면 제목 옆에 그 반기 값 (고른 반기는 주황 점)
+  function drawSparks(c) {
+    const FMT = { assets: eokS, npl: pct };
+    $$("#coop-card .af-spark").forEach((el) => {
+      const f = el.dataset.f, fmt = FMT[f], out = $(`#coop-card [data-sv="${f}"]`);
+      const vs = NP.map((_, j) => val(c, f, j));
+      const pts = vs.map((v, j) => [j, v]).filter(([, v]) => ok(v));
+      const w = el.clientWidth || 150, h = el.clientHeight || 70, m = { l: 4, r: 4, t: 20, b: 14 };
+      el.innerHTML = "";
+      const showVal = (j) => { out.innerHTML = ok(vs[j]) ? `<b>${fmt(vs[j])}</b> <em>${halfShort(NP[j])}</em>` : `<em>${halfShort(NP[j])} 공시 없음</em>`; };
+      showVal(state.h);
+      if (pts.length < 2) { el.innerHTML = `<p class="af-empty">공시 ${pts.length ? "한 번뿐" : "없음"}</p>`; return; }
+      const [lo, hi] = d3.extent(pts, (p) => p[1]), pad = (hi - lo) * 0.15 || Math.abs(hi) * 0.05 || 1;
+      const x = d3.scalePoint().domain(d3.range(NP.length)).range([m.l + 10, w - m.r - 10]);
+      const y = d3.scaleLinear().domain([lo - pad, hi + pad]).range([h - m.b, m.t]);
+      const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+      svg.append("path").attr("class", "af-sl").attr("d", d3.line().defined((d) => ok(d[1])).x((d) => x(d[0])).y((d) => y(d[1]))(vs.map((v, j) => [j, v])));
+      svg.append("g").selectAll("circle").data(pts).join("circle").attr("class", (d) => `af-sd${d[0] === state.h ? " cur" : ""}`)
+        .attr("cx", (d) => x(d[0])).attr("cy", (d) => y(d[1])).attr("r", (d) => (d[0] === state.h ? 4 : 2.6));
+      // 처음·끝 값은 위 양쪽 끝에 (선과 겹치지 않게)
+      const ends = [pts[0], pts.at(-1)];
+      svg.append("g").selectAll("text").data(ends).join("text").attr("class", "af-se")
+        .attr("x", (d, i) => (i ? w - m.r : m.l)).attr("y", 10).attr("text-anchor", (d, i) => (i ? "end" : "start")).text((d, i) => `${halfShort(NP[d[0]])} ${fmt(d[1])}`);
+      svg.append("g").selectAll("text").data(NP).join("text").attr("class", "af-sx")
+        .attr("x", (d, j) => x(j)).attr("y", h - 2).attr("text-anchor", "middle").text((d) => halfShort(d));
+      svg.append("g").selectAll("rect").data(NP).join("rect").attr("x", (d, j) => x(j) - x.step() / 2).attr("width", x.step()).attr("y", 0).attr("height", h).attr("fill", "transparent")
+        .on("mouseenter", function (e, d) { const j = NP.indexOf(d); d3.select(this).attr("fill", "rgba(255,255,255,0.05)"); showVal(j); })
+        .on("mouseleave", function () { d3.select(this).attr("fill", "transparent"); showVal(state.h); });
+    });
   }
 
   const COLS = [
