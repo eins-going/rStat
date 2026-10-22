@@ -563,21 +563,6 @@
     setKpi("eff", eff, (v) => `${nf1.format(v)}곳`, ok(eff) && ok(effB) ? eff - effB : null, (v) => nf1.format(v));
   }
 
-  // 구성 비율 한 덩이: 100% 쌓기 막대(이 흐름, 지역을 고르면 아래 가는 막대는 전국) + 두 열 범례(이름·비중·전년대비).
-  // 범례 줄을 누르면 그 값으로 거른다 (판로·출하 주체는 거르기, 기기는 그 기기의 흐름)
-  function compBlock(items, attr, selOf, tipOf) {
-    const chg = (d) => {
-      const dd = ok(d.c) && ok(d.prev) ? d.c - d.prev : null;
-      return dd == null ? `<em>–</em>` : `<em class="${dd > 0 ? "up" : dd < 0 ? "down" : ""}">${dd > 0 ? "▲" : dd < 0 ? "▼" : ""}${nf1.format(Math.abs(dd))}</em>`;
-    };
-    const seg = (d, v, big) => (v > 0 ? `<i style="flex-grow:${v};background:${d.color}" title="${esc(tipOf(d))}">${big && v >= 9 ? `<span>${v >= 30 ? `${esc(d.name)} ` : ""}${nf0.format(v)}%</span>` : ""}</i>` : "");
-    const natOn = !all() && items.some((d) => ok(d.nat));
-    return `<div class="cb-bar">${items.map((d) => seg(d, d.c || 0, true)).join("")}</div>`
-      + (natOn ? `<div class="cb-nat"><b>전국</b><span class="cb-bar thin">${items.map((d) => seg(d, d.nat || 0, false)).join("")}</span></div>` : "")
-      + `<div class="cb-leg">${items.map((d) => `<button type="button" class="cb-row${selOf(d) ? " sel" : ""}" data-${attr}="${d.key}" title="${esc(tipOf(d))}">
-          <i style="background:${d.color}"></i><span class="nm">${esc(d.name)}</span><b>${pct(d.c)}</b>${chg(d)}</button>`).join("")}</div>`;
-  }
-
   // 판로(dt)·출하 주체(sh) 구성. 행을 누르면 그 값으로 거르고, 다시 누르면 푼다
   function renderComposition(key, names, colors, el) {
     const sum = (a) => a.reduce((x, y) => x + y, 0);
@@ -589,8 +574,16 @@
       prev: bt ? (base[key][t] / bt) * 100 : null,
       nat: totN ? (cur[`${key}N`][t] / totN) * 100 : null,
     })).filter((d) => d.c > 0 || d.prev > 0).sort((a, b) => (b.c ?? 0) - (a.c ?? 0));
-    items.forEach((d) => { d.key = d.t; });
-    el.innerHTML = items.length ? compBlock(items, key, (d) => state[key] === d.t, (d) => `${d.name} · ${pct(d.c)}${ok(d.nat) && !all() ? ` (전국 ${pct(d.nat)})` : ""}${state[key] === d.t ? " · 누르면 거르기 풀기" : " · 누르면 이 값만"}`) : '<p class="note">자료가 없습니다.</p>';
+    el.innerHTML = items.length ? items.map((d) => {
+      const dd = ok(d.c) && ok(d.prev) ? d.c - d.prev : null;
+      const cls = dd == null ? "" : dd > 0 ? "up" : dd < 0 ? "down" : "";
+      const txt = dd == null ? "–" : `${dd > 0 ? "▲" : dd < 0 ? "▼" : ""}${nf1.format(Math.abs(dd))}%p`;
+      return `<button type="button" class="bar-row share-row${state[key] === d.t ? " sel" : ""}" data-${key}="${d.t}" title="${esc(`${d.name} · ${pct(d.c)}${ok(d.nat) ? ` (전국 ${pct(d.nat)})` : ""}`)}">
+        <span class="name"><i class="sw" style="background:${d.color}"></i>${esc(d.name)}</span>
+        <span class="track mark-track"><span class="fill" style="width:${Math.min(100, d.c || 0)}%;background:${d.color}"></span>${ok(d.nat) && !all() ? `<span class="nat-mark" style="left:${Math.min(100, d.nat)}%"></span>` : ""}</span>
+        <span class="val">${pct(d.c)}</span><span class="natv">${all() ? "" : pct(d.nat)}</span><span class="chg ${cls}">${txt}</span></button>`;
+    }).join("") : '<p class="note">자료가 없습니다.</p>';
+    if (items.length && key === "dt") el.insertAdjacentHTML("afterbegin", `<div class="mix-head"><span></span><span></span><span>${all() ? "비중" : "이 흐름"}</span><span>${all() ? "" : "전국"}</span><span>전년대비</span></div>`);
     $$(`[data-${key}]`, el).forEach((b) => b.addEventListener("click", () => { const v = +b.dataset[key]; state[key] = state[key] === v ? -1 : v; render(); }));
   }
 
@@ -607,8 +600,16 @@
     const COLORS = ["#f5a524", "#3987e5", "#199e70", "#9085e9", "#d55181", "#c98500", "#7d8590"];
     const rows = MON.eqNames.map((name, i) => ({ name, i, c: cur[i], p: prev?.[i], n: natS?.[i], color: COLORS[i] }))
       .filter((r) => r.c > 0 || r.p > 0).sort((a, b) => b.c - a.c);
-    rows.forEach((r) => { r.key = EQ.findIndex((e) => e.name === r.name); r.prev = r.p; r.nat = r.n; });
-    el.innerHTML = compBlock(rows, "eq", (r) => r.key === state.eq, (r) => `${r.name} · ${pct(r.c)}${ok(r.n) && !all() ? ` (전국 ${pct(r.n)})` : ""} · 누르면 이 기기의 흐름`);
+    el.innerHTML = `<div class="mix-head"><span></span><span></span><span>${all() ? "비중" : "이 흐름"}</span><span>${all() ? "" : "전국"}</span><span>전년대비</span></div>` + rows.map((r) => {
+      const d = ok(r.c) && ok(r.p) ? r.c - r.p : null;
+      const cls = d == null ? "" : d > 0 ? "up" : d < 0 ? "down" : "";
+      const ei = EQ.findIndex((e) => e.name === r.name);
+      return `<button type="button" class="bar-row share-row${ei === state.eq ? " sel" : ""}" data-eq="${ei}" title="${esc(`${r.name} · ${pct(r.c)}${ok(r.n) ? ` (전국 ${pct(r.n)})` : ""} · 누르면 이 기기의 흐름`)}">
+        <span class="name"><i class="sw" style="background:${r.color}"></i>${esc(r.name)}</span>
+        <span class="track mark-track"><span class="fill" style="width:${Math.min(100, r.c)}%;background:${r.color}"></span>${ok(r.n) && !all() ? `<span class="nat-mark" style="left:${Math.min(100, r.n)}%"></span>` : ""}</span>
+        <span class="val">${pct(r.c)}</span><span class="natv">${all() ? "" : pct(r.n)}</span>
+        <span class="chg ${cls}">${d == null ? "–" : `${d > 0 ? "▲" : d < 0 ? "▼" : ""}${nf1.format(Math.abs(d))}%p`}</span></button>`;
+    }).join("");
     $$("[data-eq]", el).forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.eq; if (i >= 0 && i !== state.eq) setEq(i); }));
   }
 
@@ -778,7 +779,7 @@
     L.classList.add("fl-measure");
     const spare = L.getBoundingClientRect().bottom - L.lastElementChild.getBoundingClientRect().bottom;
     L.classList.remove("fl-measure");
-    if (spare >= 128) L.append(box); // 월별 흐름은 왼쪽에서 그림 높이를 줄여(최소 56px) 들어간다
+    if (spare >= 170) L.append(box);
     else L.classList.add("fl-fill");
   }
   FIT.addEventListener("change", placeSeason);

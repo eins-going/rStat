@@ -150,33 +150,5 @@ button.bar-row.sel, .crop-row2.sel { background: var(--accent-soft); box-shadow:
   .fl .col-left.fl-fill #p-equip { flex: 1 1 0; }
   .fl .col-left.fl-measure > .panel { flex: 0 0 auto !important; }
   .fl .col-left #p-season { flex: 1 1 0; display: flex; flex-direction: column; }
-  .fl .col-left #p-season .fl-season { flex: 1 1 0; height: auto; min-height: 56px; }
+  .fl .col-left #p-season .fl-season { flex: 1 1 0; height: auto; min-height: 90px; }
 }
-
-/* 구성 비율: 100% 쌓기 막대 + 두 열 범례 (flow.js compBlock) */
-.cb-bar { display: flex; height: 22px; gap: 2px; border-radius: 5px; overflow: hidden; background: var(--panel-2); }
-.cb-bar i { display: flex; align-items: center; justify-content: center; min-width: 2px; overflow: hidden; white-space: nowrap; font-style: normal; }
-.cb-bar i span { font-size: 11.5px; font-weight: 700; color: #101216; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; }
-.cb-bar.thin { height: 6px; flex: 1; border-radius: 3px; opacity: 0.85; }
-.cb-nat { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 10.5px; color: var(--faint); }
-.cb-nat b { font-weight: 500; width: 24px; }
-.cb-leg { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; margin-top: 6px; }
-.cb-row { display: grid; grid-template-columns: 9px 1fr auto 30px; align-items: center; gap: 4px; width: 100%; padding: 2px 3px; letter-spacing: -0.2px; border: 0; border-radius: 5px; background: none; color: var(--text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
-.cb-row:hover { background: var(--panel-2); }
-.cb-row.sel { background: var(--accent-soft); outline: 1px solid var(--accent); }
-.cb-row i { width: 9px; height: 9px; border-radius: 2px; }
-.cb-row .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-.cb-row b { font-weight: 600; }
-.cb-row em { font-style: normal; font-size: 10.5px; text-align: right; color: var(--faint); }
-.cb-row em.up { color: var(--up, #ef6a5a); } .cb-row em.down { color: var(--down, #5fa8e6); }
-.fl #p-mix .sub-head { margin: 10px 0 5px; }
-.fl #p-mix .sub-head.fl-first { margin-top: 0; }
-/* 흐름의 성격 넷은 한 줄로 (한 화면 맞춤에서 왼쪽 높이를 아낀다) */
-@media (min-width: 1281px) and (min-height: 720px) {
-  .fl #p-kpi .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 10px; }
-  .fl #p-kpi .kpi .stat-label { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-  .fl #p-kpi .kpi b { font-size: 15px; }
-  .fl #p-kpi .kpi .delta { font-size: 10.5px; white-space: nowrap; }
-  .fl #p-kpi .kpi .delta > span:last-child:not(.up):not(.down) { display: none; } /* "전년대비" 글자만 숨긴다 (머리에 적음) */
-}
-.fl #p-kpi h2 .h2-scope { font-size: 11.5px; font-weight: 400; color: var(--faint); margin-left: 4px; }
