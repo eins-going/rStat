@@ -530,6 +530,32 @@ cadence = "매달 누계, 연말 확정"
 period = "apfs"
 
 [[source]]
+id = "soil"
+name = "농경지 토양 (농촌진흥청 토양도 기반 토양특성 통계 · 농경지화학성 통계)"
+page = "농경지 토양"
+method = "auto"
+schedule = { kind = "yearly", months = [4], day = 1 }
+commands = [["scripts/fetch_soil.py"], ["scripts/build_soil.py"]]
+outputs = ["data/soil.js"]
+check = "soil"
+keys = ["DATA_PORTAL_API_KEY", "VWORLD_API_KEY"]
+note = "갱신 주기가 '수시'라 해마다 한 번 새 판(db/raw/soil/<연도>/)으로 시군구 256곳 × 11기능(화학성 7, 논·밭 적성등급·저해요인 4)을 받는다. 기능마다 하루 1,000건 안이라 하루에 끝난다. 토양도 값은 거의 바뀌지 않고, 화학성은 판마다 쌓아 두어 나중에 견줄 수 있게 한다. 응답의 지역 이름은 틀리는 일이 있어 코드만 쓴다."
+
+[[source.dataset]]
+name = "논·밭 적성등급(1~5급지)·저해요인 (시군 전체 땅)"
+origin = "농촌진흥청 국립농업과학원 토양도 기반 토양특성 통계정보 V2 (OpenAPI)"
+freq = "수시"
+cadence = "정밀토양도 기반, 거의 바뀌지 않음"
+period = "soil"
+
+[[source.dataset]]
+name = "농경지 화학성 구간별 면적 (pH·유기물·유효인산·칼륨·칼슘·마그네슘·유효규산, 검정 필지 누적)"
+origin = "농촌진흥청 국립농업과학원 농경지화학성 통계정보 V2 (OpenAPI)"
+freq = "수시"
+cadence = "토양검정 누적, 조사 시점 미표기"
+period = "soil"
+
+[[source]]
 id = "live"
 name = "팜맵 필지·VWorld 지도 (자세히 보기)"
 page = "주요 통계 > 자세히 보기"

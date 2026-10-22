@@ -187,9 +187,26 @@ def check_apfs(old, new):
     return not problems, changes, problems
 
 
+def check_soil(old, new):
+    changes, problems = [], []
+    a, b = (old["tag"] if old else ""), new["tag"]
+    if b < a:
+        problems.append(f"판이 뒤로 갔다 ({a} → {b})")
+    elif a != b:
+        changes.append(f"토양 {a or '–'} → {b}판")
+    units = [k for k in new["r"] if "|" in k]
+    if len(units) < 160:
+        problems.append(f"시군이 {len(units)}곳뿐이다")
+    nat = new["r"]["00"]
+    if sum(nat["pg"][:5]) < 5_000_000:
+        problems.append("전국 논 적성등급 면적 합이 너무 작다")
+    return not problems, changes, problems
+
+
 CHECKS = {"kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
           "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities),
-          "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs)}
+          "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs),
+          "soil": ("data/soil.js", check_soil)}
 
 
 def period_of(src):
@@ -219,6 +236,9 @@ def period_of(src):
         if src["id"] == "nhcoop":
             h = read_js("data/nhcoop.js")["periods"][-1]
             return f"{h[:4]}년 {int(h[4:])}월 말까지"
+        if src["id"] == "soil":
+            d = read_js("data/soil.js")
+            return f"{d['tag']}년 수집"
         if src["id"] == "apfs":
             p = read_js("data/apfs.js")["periods"][-1]
             return f"{p['y']}년" + ("" if p["m"] == 12 else f" {p['m']}월 누계") + "까지"
@@ -476,6 +496,8 @@ def dataset_period(ds):
             done = [x for x in p if x["m"] == 12]
             cur = p[-1]
             return (f"{done[-1]['y']}년" if done else "") + ("" if cur["m"] == 12 else f" (올해 {cur['m']}월 누계)")
+        if kind == "soil":
+            return f"{read_js('data/soil.js')['tag']}년 수집"
         if kind == "static":
             return arg
     except Exception as e:

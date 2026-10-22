@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>농경지 토양</title>
+  <meta name="description" content="농촌진흥청 정밀토양도로 본 땅의 적성등급과, 토양검정으로 본 흙의 양분 상태를 시군 단위로 봅니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/power.css">
+  <link rel="stylesheet" href="assets/soil.css">
+</head>
+<body class="pw sl">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="rio">지역산업연관표(농업)</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+          <a href="employ">농업고용</a>
+          <a href="agfin">농업금융보험</a>
+          <a href="soil" aria-current="page">농경지 토양</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="타고난 땅: 정밀토양도, 시군 전체 땅">
+        <article class="panel" id="p-grade">
+          <header class="panel-head">
+            <h2>타고난 땅 <span class="h2-scope" id="grade-scope"></span></h2>
+            <span class="chip">토양도 · 시군 전체 땅</span>
+          </header>
+          <div class="sl-grades" id="grades"></div>
+          <div class="sl-key" id="grade-key"></div>
+          <p class="note" id="grade-note"></p>
+        </article>
+
+        <article class="panel" id="p-obst">
+          <header class="panel-head">
+            <h2>등급을 낮추는 이유</h2>
+            <span class="chip">2~4급지</span>
+          </header>
+          <div class="sl-obst" id="obst"></div>
+          <p class="note" id="obst-note"></p>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 농경지 토양</h1>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="pw-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="관리된 흙: 토양검정을 받은 필지">
+        <article class="panel" id="p-check">
+          <header class="panel-head">
+            <h2>흙 건강검진 <span class="h2-scope" id="check-scope"></span></h2>
+            <span class="seg sl-seg" id="land-seg" role="group" aria-label="경지 구분"></span>
+          </header>
+          <div class="sl-check" id="check"></div>
+          <div class="sl-key" id="check-key"></div>
+        </article>
+
+        <article class="panel" id="p-bins">
+          <header class="panel-head">
+            <h2 id="bins-title">구간 분포</h2>
+            <span class="chip" id="bins-range"></span>
+          </header>
+          <div class="chart sl-bins" id="chart-bins" aria-label="고른 항목의 구간별 면적 비중"></div>
+          <div class="pw-key" id="bins-key"></div>
+          <p class="note" id="check-note"></p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p title="왼쪽: 농촌진흥청 국립농업과학원 '토양도 기반 토양특성 통계정보 V2'. 정밀토양도의 시군 전체 땅(산 포함)을 논·밭 적성등급(1~5급지)과 저해요인별 면적으로 묶은 값입니다. 오른쪽: 같은 기관의 '농경지화학성 통계정보 V2'. 토양검정을 받은 필지의 누적 면적을 항목별 구간으로 묶은 값으로, 시군 농경지 전체를 대표하지 않습니다. 적정범위는 흙토람(soil.rda.go.kr) 경지구분별 적정범위입니다. 시도·전국은 시군 값을 더했습니다.">자료: 농촌진흥청 국립농업과학원 토양도 기반 토양특성 통계 · 농경지화학성 통계(OpenAPI) · 적정범위는 흙토람 경지구분별 기준 · 경지면적은 팜맵.</p>
+      <p id="built"></p>
+      <p class="foot-link"><a href="status">자료 수집 현황</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/soil.js"></script>
+  <script src="assets/soil.js"></script>
+  <script src="assets/about.js"></script>
+</body>
+</html>
