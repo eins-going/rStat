@@ -473,10 +473,7 @@
   function renderPartners(n = ptN) {
     const s = state.sido, el = $("#partners");
     const head = `<h3 class="sub-head">주요 교역 상대 <span>다른 시도와 거래한 금액 중 비중</span></h3>`;
-    if (s === NATION) {  // 전국은 교역 상대가 없다: 도넛 자리에 시도를 고르라는 안내
-      el.innerHTML = head + `<div class="ri-pt-empty"><b>지도에서 시도를 눌러 보세요</b><span>그 시도가 다른 시도로 어디에 많이 보내고, 어디서 많이 받는지 보여 드립니다.</span></div>`;
-      return;
-    }
+    if (s === NATION) { renderChord(); return; } // 전국: 시도 사이 거래 전체를 한 원에
     const colorOf = new Map();
     const pick = (k) => { if (!colorOf.has(k)) colorOf.set(k, PT_COL[colorOf.size % PT_COL.length]); return colorOf.get(k); };
     const side = (obj, label) => {
@@ -506,6 +503,58 @@
       lab.append("tspan").attr("x", 0).attr("dy", "-0.15em").text((a) => a.data.nm);
       lab.append("tspan").attr("x", 0).attr("dy", "1.05em").attr("class", "ri-dn-tp").text((a) => pct0(a.data.v / d.tot));
     });
+  }
+
+  // 전국의 시도 간 거래: 원둘레의 호는 시도(길이 = 다른 시도로 보낸 금액 + 받은 금액), 띠는 보낸 시도 → 받은 시도 (굵기 = 금액).
+  // 호 색은 보낸 금액이 받은 금액보다 크면 파랑(공급 쪽), 작으면 분홍(소비 쪽). 시도에 마우스를 올리면 그 시도의 띠만, 누르면 그 시도로
+  const CH_SUP = "#3987e5", CH_CON = "#d55181";
+  function renderChord(hpx) {
+    const el = $("#partners");
+    const n = REG.length;
+    const M = REG.map((a, i) => REG.map((b, j) => (i === j ? 0 : Math.max(0, R(a)?.flowOut?.[j] || 0))));
+    const out = M.map((r) => d3.sum(r)), inn = REG.map((_, j) => d3.sum(M, (r) => r[j]));
+    const total = d3.sum(out);
+    el.innerHTML = `<h3 class="sub-head">시도 사이 거래 <span>다른 시도로 보낸 금액 · 띠 굵기 = 거래액</span></h3>`;
+    if (!total) { el.insertAdjacentHTML("beforeend", `<div class="ri-pt-empty"><b>시도 사이 거래가 없습니다</b></div>`); return; }
+    const flows = [];
+    M.forEach((r, i) => r.forEach((v, j) => { if (v > 0) flows.push([i, j, v]); }));
+    flows.sort((a, b) => b[2] - a[2]);
+    const top3 = flows.slice(0, 2).map(([i, j, v]) => `<b>${short(REG[i])}→${short(REG[j])}</b> ${won(v)}`).join(" · ");
+    const chord = d3.chordDirected().padAngle(0.035).sortSubgroups(d3.descending).sortChords(d3.descending)(M);
+    const col = (i) => (out[i] >= inn[i] ? CH_SUP : CH_CON);
+    // 오른쪽: 순이출(보낸 − 받은) 큰 시도 넷, 순이입 큰 시도 넷
+    const net = REG.map((k, i) => [k, out[i] - inn[i]]).sort((a, b) => b[1] - a[1]);
+    const nmax = d3.max(net, (d) => Math.abs(d[1])) || 1;
+    const nrow = ([k, v]) => `<button type="button" class="ri-nr" data-k="${k}" title="${esc(name(k))} 보냄 ${won(out[REG.indexOf(k)])} · 받음 ${won(inn[REG.indexOf(k)])}">
+      <span class="nm">${short(k)}</span><span class="tr"><i style="width:${(Math.abs(v) / nmax) * 100}%;background:${v >= 0 ? CH_SUP : CH_CON}"></i></span><b>${won(Math.abs(v))}</b></button>`;
+    el.insertAdjacentHTML("beforeend", `<div class="ri-chw"><div class="ri-chord"${hpx ? ` style="height:${hpx}px"` : ""}><svg></svg></div>
+      <div class="ri-net"><h4>더 보낸 시도 <em>보낸 − 받은</em></h4>${net.slice(0, 4).filter((d) => d[1] > 0).map(nrow).join("")}
+        <h4>더 받은 시도 <em>받은 − 보낸</em></h4>${net.slice(-4).reverse().filter((d) => d[1] < 0).map(nrow).join("")}</div></div>
+      <p class="ri-ch-k"><span><i style="background:${CH_SUP}"></i>보낸 금액이 더 큼</span><span><i style="background:${CH_CON}"></i>받은 금액이 더 큼</span><span class="ri-ch-h">시도를 누르면 그 시도로</span></p>
+      <p class="ri-ch-top">가장 큰 흐름 ${top3}</p>`);
+    // 화면 픽셀로 그린다 (viewBox로 줄이면 시도 이름이 작아진다). growLeft가 칸을 키우면 다시 그린다
+    const box = $("#partners .ri-chord"), w = box.clientWidth || 300, h = box.clientHeight || 176;
+    const R0 = Math.max(50, Math.min(h / 2 - 16, w / 2 - 44)), R1 = R0 - Math.max(6, R0 * 0.09);
+    const arc = d3.arc().innerRadius(R1).outerRadius(R0);
+    const ribbon = d3.ribbonArrow().radius(R1 - 1).padAngle(0.004).headRadius(Math.max(4, R0 * 0.05));
+    const svg = d3.select(box).select("svg").attr("viewBox", `${-w / 2} ${-h / 2} ${w} ${h}`);
+    const rib = svg.append("g").attr("class", "ri-ribs").selectAll("path").data(chord).join("path")
+      .attr("d", ribbon).attr("fill", (d) => col(d.source.index))
+      .append("title").text((d) => `${name(REG[d.source.index])} → ${name(REG[d.target.index])} ${won(d.source.value)}`);
+    void rib;
+    const g = svg.append("g").selectAll("g").data(chord.groups).join("g").attr("class", "ri-chg")
+      .on("mouseenter", (e, d) => svg.selectAll(".ri-ribs path").classed("on", (c) => c.source.index === d.index || c.target.index === d.index).classed("off", (c) => c.source.index !== d.index && c.target.index !== d.index))
+      .on("mouseleave", () => svg.selectAll(".ri-ribs path").classed("on", false).classed("off", false))
+      .on("click", (e, d) => setSido(REG[d.index]));
+    g.append("path").attr("d", arc).attr("fill", (d) => col(d.index))
+      .append("title").text((d) => `${name(REG[d.index])} · 다른 시도로 보냄 ${won(out[d.index])} · 받음 ${won(inn[d.index])}`);
+    // 시도 이름은 눕히지 않고 호 바깥에 (작은 호는 이름을 생략, 마우스를 올리면 보인다)
+    g.append("text").attr("class", "ri-chl").each(function (d) { d.a = (d.startAngle + d.endAngle) / 2; })
+      .attr("x", (d) => Math.sin(d.a) * (R0 + 6)).attr("y", (d) => -Math.cos(d.a) * (R0 + 6))
+      .attr("text-anchor", (d) => (Math.abs(Math.sin(d.a)) < 0.2 ? "middle" : Math.sin(d.a) > 0 ? "start" : "end"))
+      .attr("dy", (d) => (Math.cos(d.a) > 0.8 ? "-0.1em" : Math.cos(d.a) < -0.8 ? "0.8em" : "0.35em"))
+      .text((d) => ((d.endAngle - d.startAngle) * R0 > 9 ? short(REG[d.index]) : ""));
+    $$("#partners .ri-nr").forEach((b) => b.addEventListener("click", () => setSido(b.dataset.k)));
   }
 
   // ---------- 오른쪽 ④ 투입구조: 생산 100원의 구성 ----------
@@ -577,12 +626,11 @@
   function renderMult() {
     const s = state.sido, r0 = R(s), nat = s === NATION;
     $("#mult-bar").hidden = nat;
-    $("#mult-where-h").hidden = $("#mult-where").hidden = nat;
-    $("#mult-tiles").style.display = nat ? "none" : ""; // .tiles의 display:grid가 hidden을 덮어쓴다
-    if (nat) {
-      $("#mult-lead").innerHTML = "파급효과는 시도별 표에서 계산합니다. <b>시도를 고르면</b> 이 품목 수요 10억 원이 도내와 다른 시도에 만드는 생산·부가가치·일자리를 봅니다.";
-      return;
-    }
+    $("#mult-where-h").hidden = $("#mult-where").hidden = false;
+    $("#mult-tiles").style.display = "";
+    if (nat) { renderMultNation(); return; }
+    $("#mult-where-h").innerHTML = MULT_WHERE_H;
+    $("#mult-where").classList.remove("ri-mn");
     const pr = r0.mult.prod, tot = sum(pr) * 10, own = pr[s] * 10;
     const others = Object.entries(pr).filter(([k]) => k !== s).map(([k, v]) => [k, v * 10]).sort((a, b) => b[1] - a[1]);
     const va = r0.mult.va, vaT = sum(va) * 10, imT = sum(r0.mult.imp) * 10;
@@ -624,6 +672,35 @@
     $("#m-jobs").textContent = `${nf1.format(jT)}명`;
     $("#m-jobs").title = `도내 ${nf1.format(jOwn)}명 (${pct0(jOwn / jT)})`;
   }
+
+  // 전국: 파급효과는 시도별 표에서만 계산되므로, 시도마다 '그 시도 수요 10억 원'의 효과를 나란히 놓는다.
+  // 위 타일은 시도 산출액으로 가중한 평균, 아래는 시도별 생산유발액(도내 몫 주황 · 다른 시도로 새는 몫 파랑). 누르면 그 시도로
+  function renderMultNation() {
+    const rows = SIDOS.map((k) => {
+      const r0 = R(k);
+      if (!r0?.mult || !r0.x) return null;
+      const tot = sum(r0.mult.prod) * 10, own = (r0.mult.prod[k] || 0) * 10;
+      return { k, x: r0.x, tot, own, va: sum(r0.mult.va) * 10, imp: sum(r0.mult.imp) * 10, jobs: sum(r0.multJobs || {}) };
+    }).filter((d) => d && d.tot > 0).sort((a, b) => b.tot - a.tot);
+    if (!rows.length) { $("#mult-lead").textContent = "이 품목은 시도별 파급효과를 계산할 수 없습니다."; $("#mult-where").innerHTML = ""; return; }
+    const W = d3.sum(rows, (d) => d.x), wavg = (f) => d3.sum(rows, (d) => d[f] * d.x) / W;
+    const keep = d3.sum(rows, (d) => (d.own / d.tot) * d.x) / W;
+    const hi = rows[0], lo = rows.at(-1);
+    $("#mult-lead").innerHTML = `시도마다 ${esc(itemLabel())} 수요가 <b>10억 원</b> 늘면, 산출액 가중 평균으로 생산이 <b>${eok(wavg("tot"))}</b> 늘고 그중 <b>${pct0(keep)}</b>가 그 시도 안에서 일어납니다. `
+      + `가장 큰 곳은 ${short(hi.k)}(${eok(hi.tot)}), 가장 작은 곳은 ${short(lo.k)}(${eok(lo.tot)}).`;
+    $("#m-prod").textContent = eok(wavg("tot")); $("#m-prod").title = "시도별 생산유발액의 산출액 가중 평균";
+    $("#m-va").textContent = eok(wavg("va")); $("#m-va").title = "시도별 부가가치유발액의 산출액 가중 평균";
+    $("#m-imp").textContent = eok(wavg("imp"));
+    $("#m-jobs").textContent = `${nf1.format(wavg("jobs"))}명`; $("#m-jobs").title = "시도별 취업유발의 산출액 가중 평균";
+    $("#mult-where-h").innerHTML = `시도별 생산유발 <span>수요 10억 원당 · <i class="ri-kk" style="background:${C.own}"></i>도내 <i class="ri-kk" style="background:${C.oth}"></i>다른 시도</span>`;
+    const max = rows[0].tot;
+    $("#mult-where").classList.add("ri-mn");
+    $("#mult-where").innerHTML = rows.map((d) => bar(short(d.k), [[d.own, C.own], [d.tot - d.own, C.oth]], `${nf1.format(d.tot)}억`,
+      `${name(d.k)}: 생산유발 ${eok(d.tot)} · 도내 ${eok(d.own)}(${pct0(d.own / d.tot)}) · 다른 시도 ${eok(d.tot - d.own)} · 부가가치 ${eok(d.va)} · 일자리 ${nf1.format(d.jobs)}명`, max)).join("");
+    $$("#mult-where .ri-bar").forEach((el, i) => { el.classList.add("ri-click"); el.addEventListener("click", () => setSido(rows[i].k)); });
+  }
+  // 시도 화면으로 돌아오면 제목을 되돌린다
+  const MULT_WHERE_H = $("#mult-where-h").innerHTML;
 
   // ---------- 그리기 ----------
   function render() {
@@ -674,6 +751,8 @@
         box.style.setProperty("--dn", `${size}px`);
       }
     }
+    const ch = $("#partners .ri-chord");  // 전국 원그림: 남는 높이만큼 키운다 (칸 너비까지)
+    if (ch && spare() > 8) renderChord(Math.floor(Math.min(ch.clientWidth * 0.9, ch.getBoundingClientRect().height + spare())));
     const empty = $("#partners .ri-pt-empty");  // 전국 안내 상자는 그림을 다시 그린 뒤에 키운다 (다시 그리면 새로 만들어진다)
     if (empty && spare() > 8) empty.style.minHeight = `${Math.floor(empty.getBoundingClientRect().height + spare())}px`; // 남는 높이를 모두 채운다
     const rest = Math.floor(spare()), open = gaps.filter((g) => !g.hidden);
@@ -692,7 +771,9 @@
     }
   }
   function trimCols() {
-    for (const [colSel, specs] of TRIM) {
+    const nat = state.sido === NATION;
+    for (const [colSel, specs0] of TRIM) {
+      const specs = specs0.map(([sel, min, first]) => (nat && sel === "#mult-where" ? [sel, 8, 0] : [sel, min, first]));
       const col = $(colSel);
       const lists = specs.map(([sel, min, first]) => ({ rows: $$(`${sel} .ri-bar`), min, first }));
       lists.forEach((l) => l.rows.forEach((el) => { el.hidden = false; }));

@@ -153,3 +153,39 @@
   #mult-where-h, #mult-where { display: none; } /* 낮은 화면: 목록을 접고 타일만 */
 }
 #mult-where.ri-folded, #mult-where-h:has(+ #mult-where.ri-folded) { display: none; }
+
+/* 전국 시도 간 거래 원그림 (rio.js renderChord) */
+.ri-chord { height: 176px; margin-top: 2px; min-width: 0; }
+.ri-chord svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.ri-ribs path { fill-opacity: 0.32; stroke: none; transition: fill-opacity 0.15s; }
+.ri-ribs path.on { fill-opacity: 0.85; }
+.ri-ribs path.off { fill-opacity: 0.04; }
+.ri-chg { cursor: pointer; }
+.ri-chg path { stroke: var(--panel); stroke-width: 0.6; }
+.ri-chg:hover path { filter: brightness(1.3); }
+.ri-chl { fill: var(--text); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--panel); stroke-width: 2.5px; }
+.ri-ch-k { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+.ri-ch-k span { display: inline-flex; align-items: center; gap: 5px; }
+.ri-ch-k i { width: 9px; height: 9px; border-radius: 2px; }
+.ri-ch-k .ri-ch-h { color: var(--faint); }
+.ri-ch-top { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ri-ch-top b { color: var(--text); font-weight: 600; }
+.ri-chw { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 8px; align-items: center; }
+.ri-net h4 { margin: 0 0 2px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.ri-net h4 em { font-style: normal; font-weight: 400; color: var(--faint); font-size: 10px; margin-left: 3px; }
+.ri-net h4 + .ri-nr { margin-top: 0; }
+.ri-net .ri-nr:last-of-type { margin-bottom: 6px; }
+.ri-nr { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 5px; width: 100%; padding: 1px 2px; border: 0; background: none; color: inherit; font: inherit; font-size: 11.5px; cursor: pointer; border-radius: 4px; text-align: left; }
+.ri-nr:hover { background: var(--panel-2); }
+.ri-nr .nm { color: var(--text); font-weight: 600; }
+.ri-nr .tr { height: 7px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.ri-nr .tr i { display: block; height: 100%; border-radius: 3px; }
+.ri-nr b { font-weight: 600; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ri-kk { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin: 0 2px 0 4px; vertical-align: 0; }
+.ri-bar.ri-click { cursor: pointer; border-radius: 4px; }
+.ri-bar.ri-click:hover { background: var(--panel-2); }
+/* 전국 파급효과: 시도 17곳을 두 열로 */
+.ri-mn { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 2px; }
+#mult-where.ri-mn .ri-bar { grid-template-columns: 2.2em minmax(30px, 1fr) 40px; gap: 6px; cursor: pointer; }
+.ri-mn .ri-bar .track { min-width: 30px; }
+.ri-mn .ri-bar .val .amt { margin-right: 4px; }
