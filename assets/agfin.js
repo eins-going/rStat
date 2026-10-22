@@ -466,19 +466,30 @@
     $("#ins-note").textContent = level(k) === 2 ? "가입률은 전국·시도만 공시됩니다." : (AP[y].m === 12 ? "" : `${AP[y].y}년은 ${AP[y].m}월까지의 누계입니다.`);
   }
 
-  const CAT_FIELDS = [["paid", "지급보험금", milS], ["amt", "가입금액", milS], ["cnt", "가입건수", (v) => cnt(v, "건").join("")]];
+  // 품목별: 품목마다 낸 보험료(주황)와 받은 보험금(파랑)을 같은 축에 나란히, 옆에 가입건수·가입률 (모두 공시값)
+  const CAT_SORT = [["paid", "지급순"], ["prem", "보험료순"], ["cnt", "건수순"]];
   function renderCats() {
     const seg = $("#cat-seg");
-    seg.innerHTML = CAT_FIELDS.map(([f, t]) => `<button type="button" data-f="${f}" aria-pressed="${state.cat === f}">${t}</button>`).join("");
+    if (!CAT_SORT.some(([f]) => f === state.cat)) state.cat = "paid";
+    seg.innerHTML = CAT_SORT.map(([f, t]) => `<button type="button" data-f="${f}" aria-pressed="${state.cat === f}">${t}</button>`).join("");
     $$("#cat-seg button").forEach((b) => b.addEventListener("click", () => { state.cat = b.dataset.f; renderCats(); }));
-    const [f, , fmt] = CAT_FIELDS.find((x) => x[0] === state.cat);
     const rows = (isSibu(state.key) ? [] : insRow(state.key, state.y)?.c || [])
-      .map(([ci, ...v]) => [ci, v[COL[f]]]).filter(([, v]) => ok(v)).sort((a, b) => b[1] - a[1]);
-    const max = Math.max(...rows.map(([, v]) => v), 0) || 1;
-    $("#cat-bars").innerHTML = rows.length ? rows.map(([ci, v]) => {
-      const [big, mid] = catName(ci);
-      return `<div class="af-bar-row"><span class="af-bar-l" title="${esc(big)} › ${esc(mid)}">${esc(mid)}${mid.startsWith(big) ? "" : `<em>${esc(big)}</em>`}</span><span class="af-track"><i style="width:${(v / max) * 100}%"></i></span><b>${fmt(v)}</b></div>`;
-    }).join("") : `<p class="af-empty">${isSibu(state.key) ? "광역시의 구는 왼쪽 위 표에서 구별로 봅니다." : "공시 없음"}</p>`;
+      .map(([ci, ...v]) => ({ ci, prem: v[COL.prem], paid: v[COL.paid], cnt: v[COL.cnt], rate: v[COL.rate] }))
+      .filter((r) => ok(r.prem) || ok(r.paid)).sort((a, b) => (b[state.cat] ?? -1) - (a[state.cat] ?? -1));
+    const max = Math.max(...rows.flatMap((r) => [r.prem || 0, r.paid || 0]), 0) || 1;
+    const sub = level(state.key) === 2;
+    $("#cat-bars").innerHTML = rows.length ? `<div class="af-ch"><span>품목</span><span title="받은 보험금이 낸 보험료보다 크면 보험금 값을 파란 글씨로${sub ? ". 시군 가입률은 공시되지 않음" : ""}"><i class="af-prem"></i>보험료 <i class="af-paid"></i>보험금 <em class="af-over">파랑 글씨=더 받음</em></span><span>가입건수</span>${sub ? "" : "<span>가입률</span>"}</div>` + rows.map((r) => {
+      const [big, mid] = catName(r.ci);
+      return `<div class="af-cr${sub ? " sub" : ""}">
+        <span class="af-bar-l" title="${esc(big)} › ${esc(mid)}">${esc(mid)}</span>
+        <span class="af-cb">
+          <span class="af-cbr"><span class="af-track"><i class="af-prem" style="width:${((r.prem || 0) / max) * 100}%"></i></span><b>${milS(r.prem)}</b></span>
+          <span class="af-cbr"><span class="af-track"><i class="af-paid" style="width:${((r.paid || 0) / max) * 100}%"></i></span><b class="${ok(r.paid) && ok(r.prem) && r.paid > r.prem ? "af-over" : ""}">${milS(r.paid)}</b></span>
+        </span>
+        <span class="af-cn">${cnt(r.cnt, "건").join("")}</span>${sub ? "" : `<span class="af-cn">${ok(r.rate) ? `${nf1.format(r.rate)}%` : "–"}</span>`}
+      </div>`;
+    }).join("")
+      : `<p class="af-empty">${isSibu(state.key) ? "광역시의 구는 왼쪽 위 표에서 구별로 봅니다." : "공시 없음"}</p>`;
   }
 
   function frame(el, h0) {
