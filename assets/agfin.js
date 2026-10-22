@@ -478,17 +478,18 @@
       .filter((r) => ok(r.prem) || ok(r.paid)).sort((a, b) => (b[state.cat] ?? -1) - (a[state.cat] ?? -1));
     const max = Math.max(...rows.flatMap((r) => [r.prem || 0, r.paid || 0]), 0) || 1;
     const sub = level(state.key) === 2;
-    $("#cat-bars").innerHTML = rows.length ? `<div class="af-ch"><span>품목</span><span title="받은 보험금이 낸 보험료보다 크면 보험금 값을 파란 글씨로${sub ? ". 시군 가입률은 공시되지 않음" : ""}"><i class="af-prem"></i>보험료 <i class="af-paid"></i>보험금 <em class="af-over">파랑 글씨=더 받음</em></span><span>가입건수</span>${sub ? "" : "<span>가입률</span>"}</div>` + rows.map((r) => {
+    // 한 줄에 한 품목: 이름 · 쌍 막대 · 보험료/보험금 값 · 가입건수 · 가입률 (줄마다 옅은 띠, 값은 억원 단위로 한 줄)
+    const eok1 = (v) => (!ok(v) ? "–" : Math.abs(v) < 1000 ? nf1.format(v / 100) : nf0.format(v / 100)); // 백만원 → 억원 숫자만 (10억 미만은 소수 한 자리)
+    $("#cat-bars").innerHTML = rows.length ? `<div class="af-ch"><span>품목</span><span><i class="af-prem"></i>보험료 <i class="af-paid"></i>보험금</span><span>억원</span><span>건수</span>${sub ? "" : "<span>가입률</span>"}</div>` + rows.map((r) => {
       const [big, mid] = catName(r.ci);
-      return `<div class="af-cr${sub ? " sub" : ""}">
-        <span class="af-bar-l" title="${esc(big)} › ${esc(mid)}">${esc(mid)}</span>
-        <span class="af-cb">
-          <span class="af-cbr"><span class="af-track"><i class="af-prem" style="width:${((r.prem || 0) / max) * 100}%"></i></span><b>${milS(r.prem)}</b></span>
-          <span class="af-cbr"><span class="af-track"><i class="af-paid" style="width:${((r.paid || 0) / max) * 100}%"></i></span><b class="${ok(r.paid) && ok(r.prem) && r.paid > r.prem ? "af-over" : ""}">${milS(r.paid)}</b></span>
-        </span>
-        <span class="af-cn">${cnt(r.cnt, "건").join("")}</span>${sub ? "" : `<span class="af-cn">${ok(r.rate) ? `${nf1.format(r.rate)}%` : "–"}</span>`}
+      const over = ok(r.paid) && ok(r.prem) && r.paid > r.prem;
+      return `<div class="af-cr${sub ? " sub" : ""}" title="${esc(big)} › ${esc(mid)} · 순보험료 ${milS(r.prem)} · 지급보험금 ${milS(r.paid)} · 가입 ${cnt(r.cnt, "건").join("")}${ok(r.rate) ? ` · 가입률 ${nf1.format(r.rate)}%` : ""}">
+        <span class="af-bar-l">${esc(mid)}</span>
+        <span class="af-cb"><i class="af-prem" style="width:${((r.prem || 0) / max) * 100}%"></i><i class="af-paid" style="width:${((r.paid || 0) / max) * 100}%"></i></span>
+        <span class="af-cv"><span>${eok1(r.prem)}</span><b class="${over ? "af-over" : ""}">${eok1(r.paid)}</b></span>
+        <span class="af-cn">${cnt(r.cnt, "").join("")}</span>${sub ? "" : `<span class="af-cn">${ok(r.rate) ? `${nf1.format(r.rate)}%` : "–"}</span>`}
       </div>`;
-    }).join("")
+    }).join("") + `<p class="af-cnote">값은 보험료 / <b>보험금</b>(억원), 보험금이 더 크면 <b class="af-over">파랑</b></p>`
       : `<p class="af-empty">${isSibu(state.key) ? "광역시의 구는 왼쪽 위 표에서 구별로 봅니다." : "공시 없음"}</p>`;
   }
 

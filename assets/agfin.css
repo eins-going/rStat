@@ -110,25 +110,30 @@ rect.af-ysel { fill: rgba(255, 255, 255, 0.05); stroke: rgba(245, 165, 36, 0.45)
 .af-sed { fill: var(--faint); font-size: 9.5px; font-weight: 400; }
 .af-sparks .sub-head { white-space: nowrap; }
 
-/* 품목별: 낸 보험료·받은 보험금 쌍 막대 + 가입건수·가입률 */
-.af-ch, .af-cr { display: grid; grid-template-columns: 62px 1fr 58px 40px; align-items: center; gap: 6px; }
-.af-cr.sub, .af-ch:has(+ .af-cr.sub) { grid-template-columns: 62px 1fr 58px; }
-.af-ch { font-size: 10.5px; color: var(--faint); padding-bottom: 3px; white-space: nowrap; border-bottom: 1px solid var(--line); }
-.af-ch span:nth-child(n+3) { text-align: right; }
-.af-ch i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; vertical-align: 0; margin-right: 2px; }
-.af-ch i.af-prem { background: var(--accent); } .af-ch i.af-paid { background: #5fb3ff; }
-.af-cr { padding: 1px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-size: 12px; }
-.af-cr .af-bar-l { font-weight: 600; color: var(--text); }
-.af-cb { display: grid; gap: 1px; min-width: 0; }
-.af-cbr { display: grid; grid-template-columns: 1fr 58px; align-items: center; gap: 5px; }
-.af-cbr .af-track { height: 6px; }
-.af-cbr b { font-size: 10.5px; line-height: 1.2; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-.af-cbr b.af-over { color: #5fb3ff; }
-.af-cn { text-align: right; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.af-cnote { margin: 4px 0 0; font-size: 10.5px; color: var(--faint); }
+/* 품목별: 한 줄에 한 품목 (쌍 막대 · 값 · 건수 · 가입률) */
 .af-bars { gap: 0; }
+.af-ch, .af-cr { display: grid; grid-template-columns: 54px 1fr 72px 46px 42px; align-items: center; column-gap: 6px; }
+.af-cr.sub, .af-ch:has(+ .af-cr.sub) { grid-template-columns: 54px 1fr 72px 50px; }
+.af-ch { font-size: 11px; color: var(--muted); padding: 0 4px 5px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.af-ch span:nth-child(n+3) { text-align: right; overflow: visible; }
+.af-ch span:nth-child(2) { overflow: hidden; }
+.af-ch i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin: 0 3px 0 0; }
+.af-ch i.af-prem { background: var(--accent); } .af-ch i.af-paid { background: #5fb3ff; margin-left: 6px; }
+.af-cr { padding: 0 4px; min-height: 28px; font-size: 12.5px; border-radius: 4px; }
+.af-cr:nth-child(odd) { background: rgba(255, 255, 255, 0.03); }
+.af-cr:hover { background: rgba(255, 255, 255, 0.07); }
+.af-cr .af-bar-l { font-weight: 600; color: var(--text); }
+.af-cb { display: grid; gap: 3px; min-width: 0; padding-right: 6px; }
+.af-cb i { display: block; height: 6px; border-radius: 3px; min-width: 2px; }
+.af-cb i.af-prem { background: var(--accent); } .af-cb i.af-paid { background: #5fb3ff; }
+.af-cv { display: flex; justify-content: flex-end; gap: 5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.af-cv span { color: var(--muted); }
+.af-cv b { font-weight: 700; color: var(--text); }
+.af-over, .af-cv b.af-over { color: #6fbcff; }
+.af-cn { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.af-cnote { margin: 5px 0 0; font-size: 11px; color: var(--faint); }
+.af-cnote b { color: var(--muted); font-weight: 600; }
 @media (min-width: 1281px) and (min-height: 720px) {
   .af #p-cat .af-bars { display: flex; flex-direction: column; }
-  .af #p-cat .af-cr { flex: 0 0 auto; }
+  .af #p-cat .af-cr { flex: 1 1 0; max-height: 34px; }
 }
-.af-ch em.af-over { font-style: normal; color: #5fb3ff; margin-left: 3px; }
