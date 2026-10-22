@@ -513,6 +513,8 @@
     if (j.X > j[best]) return `<b>${pct(j.X)}</b>는 구간이 적정 기준에 걸쳐 판정할 수 없습니다<br><span>판정된 것 중에는 ${{ L: "낮음", O: "적정", H: "높음" }[best]} ${pct(j[best])}${jn?.tot ? `, 전국 ${pct(jn[best])}` : ""}</span>`;
     const nm = { L: "낮음", O: "적정", H: "높음" }[best];
     let t = `가장 많은 쪽은 <b class="c${best}">${nm}</b> <span>(${range(best)}${unit})</span> <b>${pct(j[best])}</b>`;
+    const js = level(k) === 2 ? judge(sidoOf(k), item, land) : null;
+    if (js?.tot) t += `<span>, ${esc(shortLabel(sidoOf(k)))} ${pct(js[best])}</span>`;
     if (jn?.tot) { const d = j[best] - jn[best]; t += `<span>, 전국 ${pct(jn[best])}${Math.abs(d) >= 3 ? `보다 ${nf0.format(Math.abs(d))}%p ${d > 0 ? "많음" : "적음"}` : "과 비슷"}</span>`; }
     if (j.X >= 25) t += `<br><span class="w">걸침 ${pct(j.X)}: 구간이 적정 기준에 걸쳐 이만큼은 판정하지 못합니다</span>`;
     return t;
@@ -544,13 +546,17 @@
       svg.append("rect").attr("class", "sl-oband").attr("x", x0).attr("width", x1 - x0).attr("y", 2).attr("height", h - m.b - 2).attr("rx", 4);
       svg.append("text").attr("class", "sl-oband-t").attr("x", (x0 + x1) / 2).attr("y", 12).text("적정 범위");
     }
-    svg.append("g").selectAll("rect").data(me).join("rect")
-      .attr("x", (d, i) => x(i)).attr("width", x.bandwidth()).attr("y", (d) => y(d)).attr("height", (d) => y(0) - y(d)).attr("rx", 2).attr("fill-opacity", 0.85)
-      .attr("fill", (d, i) => CLS[std[1][i]][1]);
-    const tick = (vals, cls) => svg.append("g").selectAll("line").data(vals).join("line").attr("class", cls)
-      .attr("x1", (d, i) => x(i) - 2).attr("x2", (d, i) => x(i) + x.bandwidth() + 2).attr("y1", (d) => y(d)).attr("y2", (d) => y(d));
-    if (nat) tick(nat, "sl-tk-n");
-    if (sd) tick(sd, "sl-tk-s");
+    // 구간마다 막대 묶음: 이 지역(판정 색) · 시도(회색) · 전국(점선 테두리). 이 지역 막대 위에 값
+    const ser = [{ k: "me", v: me }, sd && { k: "sd", v: sd }, nat && { k: "nat", v: nat }].filter(Boolean);
+    const x2 = d3.scaleBand().domain(ser.map((d) => d.k)).range([0, x.bandwidth()]).padding(ser.length > 1 ? 0.12 : 0);
+    const g = svg.append("g");
+    ser.forEach((sr) => {
+      g.append("g").selectAll("rect").data(sr.v).join("rect").attr("class", `sl-b-${sr.k}`)
+        .attr("x", (d, i) => x(i) + x2(sr.k)).attr("width", x2.bandwidth()).attr("y", (d) => y(d)).attr("height", (d) => Math.max(0, y(0) - y(d))).attr("rx", 2)
+        .attr("fill", (d, i) => (sr.k === "me" ? CLS[std[1][i]][1] : null));
+    });
+    g.append("g").selectAll("text").data(me).join("text").attr("class", "sl-bv")
+      .attr("x", (d, i) => x(i) + x2("me") + x2.bandwidth() / 2).attr("y", (d) => y(d) - 3).text((d) => (d >= 1 ? nf0.format(d) : ""));
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(names).join("text")
       .attr("x", (d, i) => x(i) + x.bandwidth() / 2).attr("y", h - m.b + 13).attr("text-anchor", "middle").text((d) => d);
     svg.append("g").attr("class", "pw-axis").selectAll("text").data(std[1].split("")).join("text")
@@ -569,10 +575,10 @@
         ptip.style.top = `${el.getBoundingClientRect().top - ptip.offsetHeight - 4}px`;
       })
       .on("mouseleave", function () { d3.select(this).attr("fill", "transparent"); ptip.hidden = true; });
-    // 막대 색은 판정(낮음·적정·높음·걸침), 선은 비교 지역
+    // 범례: 이 지역 막대 색은 판정, 비교 막대는 시도(회색)·전국(점선 테두리)
     const used = [...new Set(std[1].split(""))];
-    $("#bins-key").innerHTML = `<span class="sl-kg">막대 ${esc(shortLabel(k))}: ${"LOHX".split("").filter((c) => used.includes(c)).map((c) => `<i style="background:${CLS[c][1]}"></i>${CLS[c][0]}`).join(" ")}</span>`
-      + (sd ? `<span><i class="sl-ks"></i>${esc(shortLabel(sidoOf(k)))}</span>` : "") + (nat ? `<span><i class="sl-kn2"></i>전국</span>` : "");
+    $("#bins-key").innerHTML = `<span class="sl-kg"><b>${esc(shortLabel(k))}</b>${"LOHX".split("").filter((c) => used.includes(c)).map((c) => `<i style="background:${CLS[c][1]}"></i>${CLS[c][0]}`).join("")}</span>`
+      + (sd ? `<span class="sl-kg"><i class="sl-kb-sd"></i><b>${esc(shortLabel(sidoOf(k)))}</b></span>` : "") + (nat ? `<span class="sl-kg"><i class="sl-kb-nat"></i><b>전국</b></span>` : "");
     $("#check-note").textContent = "검정 받은 필지의 누적 면적이라 시군 농경지 전체가 아닙니다(사업 목적 검정이 많고 시점이 섞임). 기준 경계가 구간 안에 있으면 걸침.";
   }
 
