@@ -426,26 +426,35 @@
     const A = { 논: obParts(R(k).o.po || {}), 밭: obParts(R(k).o.fo || {}) };
     const N = nk && { 논: R(nk).o.po, 밭: R(nk).o.fo };
     const npct = (land, n) => { if (!N) return null; const o = N[land], t = sum(Object.values(o)); return t ? ((o[n] || 0) / t) * 100 : null; };
-    const R0 = 50, R1 = 31; // 그리는 칸은 CSS가 정한다
-    const arc = d3.arc().innerRadius(R1).outerRadius(R0).padAngle(0.03).cornerRadius(2);
+    // 도넛이 중심: 큰 조각(9% 이상)은 조각 위에 비중을 바로 적는다
+    const R0 = 64, R1 = 38;
+    const arc = d3.arc().innerRadius(R1).outerRadius(R0).padAngle(0.025).cornerRadius(2);
+    const tip = (land, p) => `<b>${land} · ${p.n}</b>${p.of ? ` (${p.of.join("·")})` : ` (${WHY[p.n] || ""})`}<br>${ha(p.v)} · ${land} 2~4급지의 ${pct(p.p)}${ok(npct(land, p.n)) && !p.of ? `<br>전국 ${pct(npct(land, p.n))}` : ""}`;
     const donut = (land) => {
       const { t, parts } = A[land];
-      if (!t) return `<div class="sl-dn"><svg viewBox="-56 -56 112 112"><circle r="42" fill="none" stroke="#2f333b" stroke-width="20"/><text class="sl-dc" y="5">해당 없음</text></svg></div>`;
+      const head = `<h3 class="sl-dh">${land} <em>2~4급지 ${ha(t)}</em></h3>`;
+      if (!t) return `<div class="sl-dn">${head}<svg viewBox="-68 -68 136 136"><circle r="51" fill="none" stroke="#2f333b" stroke-width="26"/><text class="sl-dc" y="5">해당 없음</text></svg></div>`;
       const arcs = d3.pie().sort(null).value((p) => p.v)(parts);
-      return `<div class="sl-dn"><svg viewBox="-56 -56 112 112">${arcs.map((a) => `<path d="${arc(a)}" fill="${a.data.col}" data-tip="<b>${land} · ${a.data.n}</b>${a.data.of ? ` (${a.data.of.join("·")})` : ` (${WHY[a.data.n] || ""})`}<br>${ha(a.data.v)} · ${land} 2~4급지의 ${pct(a.data.p)}${ok(npct(land, a.data.n)) && !a.data.of ? `<br>전국 ${pct(npct(land, a.data.n))}` : ""}"></path>`).join("")}
-        <text class="sl-dc" y="5">${land}</text></svg><span class="sl-dt">${ha(t)}</span></div>`;
+      const top = parts.slice().sort((x, y) => y.p - x.p)[0];
+      return `<div class="sl-dn">${head}<svg viewBox="-68 -68 136 136">${arcs.map((a) => `<path d="${arc(a)}" fill="${a.data.col}" data-tip="${tip(land, a.data)}"></path>`).join("")}
+        ${arcs.filter((a) => a.data.p >= 9).map((a) => { const [x, y] = arc.centroid(a); return `<text class="sl-dl" x="${x}" y="${y + 4}">${nf0.format(a.data.p)}</text>`; }).join("")}
+        <text class="sl-dc" y="-2">${top.n}</text><text class="sl-dv" y="14">${pct(top.p)}</text></svg></div>`;
     };
-    // 표: 두 도넛에 나온 요인을 고정 순서로, 칸마다 비중 (▲ 전국보다 5%p 넘게 많음)
+    // 범례: 두 도넛에 나온 요인을 고정 순서로 2열, 칸마다 논·밭 비중 (▲ 전국보다 5%p 넘게 많음)
     const rows = [...OB_ORDER, "그 밖"].filter((n) => A.논.parts.some((p) => p.n === n) || A.밭.parts.some((p) => p.n === n));
-    const cell = (land, n) => {
+    const val = (land, n) => {
       const p = A[land].parts.find((x) => x.n === n);
-      if (!p) return `<td class="na">–</td>`;
+      if (!p) return `<span class="na">–</span>`;
       const nv = p.of ? null : npct(land, n), up = ok(nv) && p.p - nv >= 5;
-      return `<td data-tip="<b>${land} · ${n}</b> ${ha(p.v)}<br>${land} 2~4급지의 ${pct(p.p)}${ok(nv) ? `<br>전국 ${pct(nv)}` : ""}${p.of ? `<br>${p.of.join(" · ")}` : ""}"><b>${pct(p.p)}</b>${up ? "<em>▲</em>" : ""}</td>`;
+      return `<span data-tip="${tip(land, p)}">${pct(p.p)}${up ? "<em>▲</em>" : ""}</span>`;
     };
     const col = (n) => (n === "그 밖" ? OB_OTHER : OB_COL.find((c) => c[0] === n)[1]);
-    $("#obst").innerHTML = `<table class="sl-otab"><thead><tr><th>${nk ? `<span class="sl-okey"><em>▲</em> 전국보다 5%p 넘게 많음</span>` : ""}저해요인</th><th>${donut("논")}</th><th>${donut("밭")}</th></tr></thead><tbody>${rows.map((n) => `
-        <tr><th><i style="background:${col(n)}"></i>${n}<em>${n === "그 밖" ? "작은 요인 합" : WHY[n] || ""}</em></th>${cell("논", n)}${cell("밭", n)}</tr>`).join("")}</tbody></table>`;
+    const half = Math.ceil(rows.length / 2);
+    const lgCol = (list) => `<div class="sl-lgc"><div class="sl-lgr h"><span></span><span>논</span><span>밭</span></div>${list.map((n) => `
+      <div class="sl-lgr"><span class="sl-lgn" data-tip="<b>${n}</b> ${n === "그 밖" ? "작은 요인 합" : WHY[n] || ""}"><i style="background:${col(n)}"></i>${n}</span>${val("논", n)}${val("밭", n)}</div>`).join("")}</div>`;
+    $("#obst").innerHTML = `<div class="sl-dns">${donut("논")}${donut("밭")}</div>
+      <div class="sl-lg">${lgCol(rows.slice(0, half))}${lgCol(rows.slice(half))}</div>
+      ${nk ? `<p class="sl-okey"><em>▲</em> 전국보다 5%p 넘게 많음 · 도넛 가운데는 가장 큰 요인</p>` : `<p class="sl-okey">도넛 가운데는 가장 큰 요인</p>`}`;
     $("#obst-key").innerHTML = "";
     $("#obst-note").textContent = "토양도 통계의 요인별 면적. 2~4급지마다 가장 심한 요인 하나, 비중은 2~4급지 합으로 나눔.";
   }

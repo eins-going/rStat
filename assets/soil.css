@@ -75,14 +75,25 @@
 .sl-key u.sl-ksd { display: inline-block; width: 0; height: 11px; border-left: 2px solid var(--accent); text-decoration: none; }
 
 /* 왼쪽 2: 등급을 깎은 이유 */
-/* 저해요인 도넛 + 표 */
-.sl-dn { display: flex; flex-direction: column; align-items: flex-end; }
-.sl-dn svg { display: block; width: 58px; height: 58px; }
-.sl-dt { font-size: 10.5px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+/* 저해요인: 도넛이 중심, 아래 2열 범례 */
+.sl-dns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.sl-dn { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.sl-dh { margin: 0 0 2px; font-size: 13.5px; font-weight: 600; }
+.sl-dh em { font-style: normal; font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 3px; }
+.sl-dn svg { display: block; width: 100%; max-width: 132px; height: auto; aspect-ratio: 1; }
 .sl-dn path { stroke: var(--panel); stroke-width: 1; }
 .sl-dn path:hover { filter: brightness(1.25); }
-.sl-dc { fill: var(--text); font-size: 16px; font-weight: 700; text-anchor: middle; }
-.sl-dv { fill: var(--muted); font-size: 10px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.sl-dl { fill: #fff; font-size: 11px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(20, 22, 27, 0.55); stroke-width: 2px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.sl-dc { fill: var(--text); font-size: 15px; font-weight: 700; text-anchor: middle; }
+.sl-dv { fill: var(--muted); font-size: 12px; font-weight: 600; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.sl-lg { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; margin-top: 6px; }
+.sl-lgr { display: grid; grid-template-columns: 1fr 44px 44px; align-items: center; height: 21px; font-size: 12.5px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.sl-lgr.h { height: 16px; border-top: 0; font-size: 11px; color: var(--muted); }
+.sl-lgr > span:not(.sl-lgn) { text-align: right; font-weight: 600; }
+.sl-lgr .na { color: var(--faint); font-weight: 400; }
+.sl-lgr em { font-style: normal; font-size: 9.5px; margin-left: 1px; vertical-align: 1px; }
+.sl-lgn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.sl-lgn i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .sl-otab th:first-child { width: auto; }
 .sl-otab thead th:nth-child(2), .sl-otab thead th:nth-child(3) { width: 84px; }
 .sl-otab tbody th { text-align: left; font-weight: 600; padding: 1px 0; border-top: 1px solid var(--line); white-space: nowrap; }
@@ -164,7 +175,7 @@
 .sl-defr b { font-size: 13px; }
 .sl-defr p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.45; color: #d3d7de; }
 .sl-defr em { font-style: normal; font-weight: 600; font-size: 11.5px; color: #14161b; background: #9aa1ad; border-radius: 4px; padding: 0 5px; margin-right: 6px; }
-.sl-okey { display: block; margin-bottom: 24px; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.sl-okey { margin: 6px 0 0; font-size: 11.5px; font-weight: 400; color: var(--muted); }
 .sl-okey em { font-style: normal; font-size: 10px; color: var(--text); }
 #obst-key:empty { display: none; }
 #pos-key:empty { display: none; }
