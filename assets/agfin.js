@@ -587,7 +587,9 @@
       const pts = vs.map((v, j) => [j, v]).filter(([, v]) => ok(v));
       const w = el.clientWidth || 150, h = el.clientHeight || 70, m = { l: 4, r: 4, t: 20, b: 14 };
       el.innerHTML = "";
-      const showVal = (j) => { out.innerHTML = ok(vs[j]) ? `<b>${fmt(vs[j])}</b> <em>${halfShort(NP[j])}</em>` : `<em>${halfShort(NP[j])} 공시 없음</em>`; };
+      const when = (j) => `${NP[j].slice(2, 4)}년 ${+NP[j].slice(4)}월 말`;
+      // 고른 반기 값은 날짜 없이 (카드 머리에 반기가 있다), 다른 반기에 마우스를 올리면 그 날짜를 붙인다
+      const showVal = (j) => { out.innerHTML = ok(vs[j]) ? `<b>${fmt(vs[j])}</b>${j === state.h ? "" : `<em>${when(j)}</em>`}` : `<em>${when(j)} 공시 없음</em>`; };
       showVal(state.h);
       if (pts.length < 2) { el.innerHTML = `<p class="af-empty">공시 ${pts.length ? "한 번뿐" : "없음"}</p>`; return; }
       const [lo, hi] = d3.extent(pts, (p) => p[1]), pad = (hi - lo) * 0.15 || Math.abs(hi) * 0.05 || 1;
@@ -600,7 +602,8 @@
       // 처음·끝 값은 위 양쪽 끝에 (선과 겹치지 않게)
       const ends = [pts[0], pts.at(-1)];
       svg.append("g").selectAll("text").data(ends).join("text").attr("class", "af-se")
-        .attr("x", (d, i) => (i ? w - m.r : m.l)).attr("y", 10).attr("text-anchor", (d, i) => (i ? "end" : "start")).text((d, i) => `${halfShort(NP[d[0]])} ${fmt(d[1])}`);
+        .attr("x", (d, i) => (i ? w - m.r : m.l)).attr("y", 10).attr("text-anchor", (d, i) => (i ? "end" : "start"))
+        .html((d) => `<tspan class="af-sed">${halfShort(NP[d[0]])}</tspan><tspan dx="4">${fmt(d[1])}</tspan>`);
       svg.append("g").selectAll("text").data(NP).join("text").attr("class", "af-sx")
         .attr("x", (d, j) => x(j)).attr("y", h - 2).attr("text-anchor", "middle").text((d) => halfShort(d));
       svg.append("g").selectAll("rect").data(NP).join("rect").attr("x", (d, j) => x(j) - x.step() / 2).attr("width", x.step()).attr("y", 0).attr("height", h).attr("fill", "transparent")
