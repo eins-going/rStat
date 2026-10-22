@@ -466,30 +466,26 @@
     $("#ins-note").textContent = level(k) === 2 ? "가입률은 전국·시도만 공시됩니다." : (AP[y].m === 12 ? "" : `${AP[y].y}년은 ${AP[y].m}월까지의 누계입니다.`);
   }
 
-  // 품목별: 품목마다 낸 보험료(주황)와 받은 보험금(파랑)을 같은 축에 나란히, 옆에 가입건수·가입률 (모두 공시값)
-  const CAT_SORT = [["paid", "지급순"], ["prem", "보험료순"], ["cnt", "건수순"]];
+  // 품목별: 한 줄에 한 품목 — 이름 · 쌍 막대(보험료 주황·보험금 파랑, 같은 축) · 보험료 · 보험금 · 가입건수 · 가입률 (모두 공시값).
+  // 순서는 지급보험금 큰 순. 보험금이 보험료보다 크면 보험금 값을 파랑으로
   function renderCats() {
-    const seg = $("#cat-seg");
-    if (!CAT_SORT.some(([f]) => f === state.cat)) state.cat = "paid";
-    seg.innerHTML = CAT_SORT.map(([f, t]) => `<button type="button" data-f="${f}" aria-pressed="${state.cat === f}">${t}</button>`).join("");
-    $$("#cat-seg button").forEach((b) => b.addEventListener("click", () => { state.cat = b.dataset.f; renderCats(); }));
     const rows = (isSibu(state.key) ? [] : insRow(state.key, state.y)?.c || [])
       .map(([ci, ...v]) => ({ ci, prem: v[COL.prem], paid: v[COL.paid], cnt: v[COL.cnt], rate: v[COL.rate] }))
-      .filter((r) => ok(r.prem) || ok(r.paid)).sort((a, b) => (b[state.cat] ?? -1) - (a[state.cat] ?? -1));
+      .filter((r) => ok(r.prem) || ok(r.paid)).sort((a, b) => (b.paid ?? -1) - (a.paid ?? -1));
     const max = Math.max(...rows.flatMap((r) => [r.prem || 0, r.paid || 0]), 0) || 1;
     const sub = level(state.key) === 2;
-    // 한 줄에 한 품목: 이름 · 쌍 막대 · 보험료/보험금 값 · 가입건수 · 가입률 (줄마다 옅은 띠, 값은 억원 단위로 한 줄)
     const eok1 = (v) => (!ok(v) ? "–" : Math.abs(v) < 1000 ? nf1.format(v / 100) : nf0.format(v / 100)); // 백만원 → 억원 숫자만 (10억 미만은 소수 한 자리)
-    $("#cat-bars").innerHTML = rows.length ? `<div class="af-ch"><span>품목</span><span><i class="af-prem"></i>보험료 <i class="af-paid"></i>보험금</span><span>억원</span><span>건수</span>${sub ? "" : "<span>가입률</span>"}</div>` + rows.map((r) => {
+    $("#cat-unit").textContent = "금액 억원";
+    $("#cat-bars").innerHTML = rows.length ? `<div class="af-ch${sub ? " sub" : ""}"><span>품목</span><span></span><span class="h-prem"><i></i>보험료</span><span class="h-paid"><i></i>보험금</span><span>가입건수</span>${sub ? "" : "<span>가입률</span>"}</div>` + rows.map((r) => {
       const [big, mid] = catName(r.ci);
       const over = ok(r.paid) && ok(r.prem) && r.paid > r.prem;
-      return `<div class="af-cr${sub ? " sub" : ""}" title="${esc(big)} › ${esc(mid)} · 순보험료 ${milS(r.prem)} · 지급보험금 ${milS(r.paid)} · 가입 ${cnt(r.cnt, "건").join("")}${ok(r.rate) ? ` · 가입률 ${nf1.format(r.rate)}%` : ""}">
+      return `<div class="af-cr${sub ? " sub" : ""}" title="${esc(big)} › ${esc(mid)} · 순보험료 ${milS(r.prem)} · 지급보험금 ${milS(r.paid)}${over ? " (보험금이 더 많음)" : ""} · 가입 ${cnt(r.cnt, "건").join("")}${ok(r.rate) ? ` · 가입률 ${nf1.format(r.rate)}%` : ""}">
         <span class="af-bar-l">${esc(mid)}</span>
         <span class="af-cb"><i class="af-prem" style="width:${((r.prem || 0) / max) * 100}%"></i><i class="af-paid" style="width:${((r.paid || 0) / max) * 100}%"></i></span>
-        <span class="af-cv"><span>${eok1(r.prem)}</span><b class="${over ? "af-over" : ""}">${eok1(r.paid)}</b></span>
+        <span class="af-cn v">${eok1(r.prem)}</span><span class="af-cn v paid${over ? " af-over" : ""}">${eok1(r.paid)}</span>
         <span class="af-cn">${cnt(r.cnt, "").join("")}</span>${sub ? "" : `<span class="af-cn">${ok(r.rate) ? `${nf1.format(r.rate)}%` : "–"}</span>`}
       </div>`;
-    }).join("") + `<p class="af-cnote">값은 보험료 / <b>보험금</b>(억원), 보험금이 더 크면 <b class="af-over">파랑</b></p>`
+    }).join("")
       : `<p class="af-empty">${isSibu(state.key) ? "광역시의 구는 왼쪽 위 표에서 구별로 봅니다." : "공시 없음"}</p>`;
   }
 
