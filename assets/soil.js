@@ -330,21 +330,21 @@
   // 적성등급: 국립농업과학원이 배수·토성·유효토심·자갈·경사·침식 등으로 지목마다 1~5급지로 매긴 등급 (흙토람 '토양이용 추천')
   // 정의는 흙토람 '토양이용 추천'의 지목별 토지이용 적성등급 구분기준(비화산회 토양) 원문 그대로. d는 원문 1), 논·밭은 원문 2)
   const CATS = [
-    { n: "1급지", d: "생산력이 높음", col: "#86dba0",
+    { n: "1급지", d: "생산력이 높음", col: "#8ee6a8",
       논: "논으로서 생산력이 높음. 수도재배에 있어서 집약적 경영이 용이하며 토양을 관리하는데 제한을 받지 않음.",
       밭: "밭으로서 생산력이 높음. 전작물재배에 있어 집약적 경영이 용이하며 토양관리 및 작물을 선택하는데 제한을 받지않음." },
-    { n: "2급지", d: "생산력이 보통임", col: "#4fb47a",
+    { n: "2급지", d: "생산력이 보통임", col: "#5cc98a",
       논: "논으로서 생산력이 보통임. 수도재배에 있어서 집약적 경영이 가능하나 토양을 관리하는데 다소의 제한을 받음.",
       밭: "밭으로서 생산력이 보통임. 전작물재배에 있어 집약적 경영이 가능하나 토양관리 및 작물을 선택하는데 다소의 제한을 받음." },
-    { n: "3급지", d: "생산력이 낮음", col: "#e2b866",
+    { n: "3급지", d: "생산력이 낮음", col: "#f0c674",
       논: "논으로서 생산력이 낮음. 수도재배지로서 심한 제한을 받고 있어 특수관리 및 재배기술을 필요로 함.",
       밭: "밭으로서 생산력이 낮음. 전작물재배지로서 심한 제한을 받고 있어 특수관리 및 재배기술을 필요로 함." },
-    { n: "4급지", d: "생산력이 매우 낮음", col: "#c08a4a",
+    { n: "4급지", d: "생산력이 매우 낮음", col: "#dc9a52",
       논: "논으로서 생산력이 매우 낮음. 수도재배지로서 매우 심한 제한을 받고있어 경제적 이용이 어려울 경우가 있음.",
       밭: "밭으로서 생산력이 매우 낮음. 전작물재배에 있어 매우 심한 제한을 받고 있어 경제적 이용이 어려울 경우가 있음." },
-    { n: "5급지", d: "이용이 부적당", col: "#5c626d",
+    { n: "5급지", d: "이용이 부적당", col: "#8a919c",
       논: "해당 지목(논)으로 이용이 부적당한 토양.", 밭: "해당 지목(밭)으로 이용이 부적당한 토양." },
-    { n: "기타", d: "적성등급 없음", col: "#3a3f48",
+    { n: "기타", d: "적성등급 없음", col: "#5e6470",
       논: "적성등급이 매겨지지 않은 땅 (토양도의 '기타').", 밭: "적성등급이 매겨지지 않은 땅 (토양도의 '기타')." },
   ];
   const topPct = (k, g) => { const r = R(k)[g]; return ((r[0] + r[1]) / (sum(r) || 1)) * 100; };
@@ -358,7 +358,7 @@
     const max = Math.max(...P.map((v) => (v / tot(P)) * 100), ...F.map((v) => (v / tot(F)) * 100), 1);
     const haS = (v) => (v >= 1e5 ? `${(v / 1e4).toFixed(1)}만` : nf0.format(v));
     const cell = (r, i, land) => { const v = (r[i] / tot(r)) * 100; return `<td class="v" data-tip="<b>${esc(fullLabel(k))} ${land} ${CATS[i].n}</b> ${ha(r[i])}<br>땅의 ${pct(v)}">
-      <span class="sl-db" style="width:${(v / max) * 100}%;background:${CATS[i].col}"></span><b>${pct(v)}</b><em>${haS(r[i])}</em></td>`; };
+      <span class="sl-tx"><b>${pct(v)}</b><em>${haS(r[i])}</em></span><span class="sl-db"><i style="width:${(v / max) * 100}%;background:${CATS[i].col}"></i></span></td>`; };
     const table = `<table class="sl-gtab"><thead><tr><th>적성등급 <button type="button" class="sl-q" data-def aria-expanded="${state.defOpen}">${state.defOpen ? "정의 ▴" : "정의 ▾"}</button></th><th>논 적성등급 <small>% · ha</small></th><th>밭 적성등급 <small>% · ha</small></th></tr></thead><tbody>${CATS.map((c, i) => `
       <tr class="sl-gtr"><th><span class="sl-gn"><i style="background:${c.col}"></i>${c.n}</span><span class="sl-gd">${c.d}</span></th>${cell(P, i, "논")}${cell(F, i, "밭")}</tr>`).join("")}</tbody></table>`;
     const now = [0, 1].map((j) => { const f = R(k).f?.[j], land = j ? "밭" : "논"; return ok(f) ? `지금 ${land} <b>${ha(f)}</b> <em>땅의 ${pct((f / total) * 100)}</em>` : ""; }).filter(Boolean).join(" · ");
@@ -432,13 +432,11 @@
     const tip = (land, p) => `<b>${land} · ${p.n}</b>${p.of ? ` (${p.of.join("·")})` : ` (${WHY[p.n] || ""})`}<br>${ha(p.v)} · ${land} 2~4급지의 ${pct(p.p)}${ok(npct(land, p.n)) && !p.of ? `<br>전국 ${pct(npct(land, p.n))}` : ""}`;
     const donut = (land) => {
       const { t, parts } = A[land];
-      const head = `<h3 class="sl-dh">${land} <em>2~4급지 ${ha(t)}</em></h3>`;
-      if (!t) return `<div class="sl-dn">${head}<svg viewBox="-68 -68 136 136"><circle r="51" fill="none" stroke="#2f333b" stroke-width="26"/><text class="sl-dc" y="5">해당 없음</text></svg></div>`;
+      if (!t) return `<div class="sl-dn"><svg viewBox="-68 -68 136 136"><circle r="51" fill="none" stroke="#2f333b" stroke-width="26"/><text class="sl-dc" y="-2">${land}</text><text class="sl-dv" y="15">해당 없음</text></svg></div>`;
       const arcs = d3.pie().sort(null).value((p) => p.v)(parts);
-      const top = parts.slice().sort((x, y) => y.p - x.p)[0];
-      return `<div class="sl-dn">${head}<svg viewBox="-68 -68 136 136">${arcs.map((a) => `<path d="${arc(a)}" fill="${a.data.col}" data-tip="${tip(land, a.data)}"></path>`).join("")}
+      return `<div class="sl-dn"><svg viewBox="-68 -68 136 136">${arcs.map((a) => `<path d="${arc(a)}" fill="${a.data.col}" data-tip="${tip(land, a.data)}"></path>`).join("")}
         ${arcs.filter((a) => a.data.p >= 9).map((a) => { const [x, y] = arc.centroid(a); return `<text class="sl-dl" x="${x}" y="${y + 4}">${nf0.format(a.data.p)}</text>`; }).join("")}
-        <text class="sl-dc" y="-2">${top.n}</text><text class="sl-dv" y="14">${pct(top.p)}</text></svg></div>`;
+        <text class="sl-dc" y="1">${land}</text><text class="sl-dv" y="17">${nf0.format(t)}ha</text></svg></div>`;
     };
     // 범례: 두 도넛에 나온 요인을 고정 순서로 2열, 칸마다 논·밭 비중 (▲ 전국보다 5%p 넘게 많음)
     const rows = [...OB_ORDER, "그 밖"].filter((n) => A.논.parts.some((p) => p.n === n) || A.밭.parts.some((p) => p.n === n));
@@ -454,7 +452,7 @@
       <div class="sl-lgr"><span class="sl-lgn" data-tip="<b>${n}</b> ${n === "그 밖" ? "작은 요인 합" : WHY[n] || ""}"><i style="background:${col(n)}"></i>${n}</span>${val("논", n)}${val("밭", n)}</div>`).join("")}</div>`;
     $("#obst").innerHTML = `<div class="sl-dns">${donut("논")}${donut("밭")}</div>
       <div class="sl-lg">${lgCol(rows.slice(0, half))}${lgCol(rows.slice(half))}</div>
-      ${nk ? `<p class="sl-okey"><em>▲</em> 전국보다 5%p 넘게 많음 · 도넛 가운데는 가장 큰 요인</p>` : `<p class="sl-okey">도넛 가운데는 가장 큰 요인</p>`}`;
+      <p class="sl-okey">${nk ? "<em>▲</em> 전국보다 5%p 넘게 많음 · " : ""}도넛 가운데는 2~4급지 면적</p>`;
     $("#obst-key").innerHTML = "";
     $("#obst-note").textContent = "토양도 통계의 요인별 면적. 2~4급지마다 가장 심한 요인 하나, 비중은 2~4급지 합으로 나눔.";
   }
