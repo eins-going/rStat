@@ -75,7 +75,7 @@
     { key: "dairy", group: "사육", chip: "젖소", label: "젖소 사육 마릿수", unit: "마리", get: heads("젖소"), fmt: head, note: `${LAST}년 전국오염원조사의 젖소 마릿수 (가축동향조사와 조사 기준이 다릅니다)` },
   ];
   const DEFAULT_METRIC = METRICS[0];
-  const state = { key: NATION, metric: DEFAULT_METRIC };
+  const state = { key: NATION, metric: DEFAULT_METRIC, pk: null };
 
   // ---------- 선택 ----------
   const selSido = $("#sido"), selSgg = $("#sgg");
@@ -388,21 +388,49 @@
   }
 
   // ---------- 왼쪽 3: 처리 방식 — 방법마다 한 줄 (막대 0~100%, 전국은 막대 위 눈금과 옆 칸) ----------
+  // 단추로 축종을 고르면 그 축종의 분뇨만 (전국도 같은 축종). 전체일 때 줄 위에 마우스를 올리면 그 방법의 축종 구성
+  const PROC_KINDS = ["돼지", "한우", "젖소"];
+  const SELF_PROCS = ["퇴비화", "액비화", "정화"];
+  function procOf(key, kind) {
+    const r = R(key);
+    if (!r) return null;
+    const p = kind ? r.pk[L.kinds.indexOf(kind)] : r.p;
+    const t = sum(p);
+    return t > 0 ? { p, t } : null;
+  }
   function renderProcs() {
-    const k = state.key, s = sidoOf(k), r = R(k), m = manOf(k), mN = manOf(NATION), natOn = level(k) > 0;
-    const sk = level(k) === 2 && R(s) ? s : null;
-    const rows = L.procs.map((n, i) => ({ n, v: m > 0 ? (r.p[i] / m) * 100 : 0, t: r.p[i], nat: mN > 0 ? (R(NATION).p[i] / mN) * 100 : null,
-      sd: sk ? (R(sk).p[i] / manOf(sk)) * 100 : null })).filter((d) => d.t > 0 || (natOn && d.nat > 0)).sort((a, b) => b.v - a.v);
+    const k = state.key, s = sidoOf(k), r = R(k), natOn = level(k) > 0;
+    const has = (kd) => (procOf(k, kd)?.t ?? 0) >= 0.5;
+    if (state.pk && !has(state.pk)) state.pk = null;
+    const kind = state.pk;
+    $("#proc-seg").innerHTML = [null, ...PROC_KINDS.filter(has)].map((kd) => `<button type="button" data-k="${kd ?? ""}" aria-pressed="${kd === kind}">${kd ?? "전체"}</button>`).join("");
+    $$("#proc-seg button").forEach((bt) => bt.addEventListener("click", () => { state.pk = bt.dataset.k || null; renderProcs(); }));
+    const me = procOf(k, kind), nat = procOf(NATION, kind);
+    const sk = level(k) === 2 ? s : null, sd = sk ? procOf(sk, kind) : null;
+    const share = (o, i) => (o ? (o.p[i] / o.t) * 100 : null);
+    const kindMix = (i) => {
+      if (kind || !r.pk) return "";
+      const parts = L.kinds.map((kd, j) => [kd, r.pk[j][i]]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]);
+      const t = sum(parts.map(([, v]) => v));
+      return t > 0 ? `<br>${parts.slice(0, 3).map(([kd, v]) => `${kd} ${pct((v / t) * 100)}`).join(" · ")}` : "";
+    };
+    const rows = L.procs.map((n, i) => ({ n, i, v: share(me, i) ?? 0, t: me ? me.p[i] : 0, nat: share(nat, i), sd: share(sd, i) }))
+      .filter((d) => d.t > 0 || (natOn && d.nat > 0)).sort((a, b) => b.v - a.v);
     $("#procs").innerHTML = `<div class="lv-ph"><span></span><span></span><span>${esc(shortLabel(k))}</span><span>${natOn ? "전국" : ""}</span></div>` + rows.map((d) => `
-      <div class="lv-pr" data-tip="<b>${d.n}</b> ${PROC_WHY[d.n]}<br>${esc(shortLabel(k))} 하루 ${ton(d.t)} · ${pct(d.v)}${sk ? `<br>${esc(shortLabel(sk))} ${pct(d.sd)}` : ""}${natOn ? `<br>전국 ${pct(d.nat)}` : ""}">
+      <div class="lv-pr" data-tip="<b>${kind ? `${kind} · ` : ""}${d.n}</b> ${PROC_WHY[d.n]}<br>${esc(shortLabel(k))} 하루 ${ton(d.t)} · ${pct(d.v)}${sk && ok(d.sd) ? `<br>${esc(shortLabel(sk))} ${pct(d.sd)}` : ""}${natOn ? `<br>전국 ${pct(d.nat)}` : ""}${kindMix(d.i)}">
         <span class="nm">${d.n}</span>
-        <span class="track"><span class="fill" style="width:${Math.min(100, d.v)}%"></span>${natOn ? `<span class="nat" style="left:${Math.min(100, d.nat)}%"></span>` : ""}</span>
+        <span class="track"><span class="fill" style="width:${Math.min(100, d.v)}%"></span>${natOn && ok(d.nat) ? `<span class="nat" style="left:${Math.min(100, d.nat)}%"></span>` : ""}</span>
         <b>${pct(d.v)}</b><span class="natv">${natOn ? pct(d.nat) : ""}</span></div>`).join("");
-    const self = (key, i) => { const t = R(key).t; return t.man[i] > 0 ? (t.self[i] / t.man[i]) * 100 : null; };
-    const s0 = self(k, 0), s1 = self(k, YN);
-    $("#proc-sum").innerHTML = ok(s1) ? `스스로 처리 <b>${pct(s1)}</b> · 맡겨서 처리 <b class="hi">${pct(100 - s1)}</b>`
-      + (ok(s0) ? ` <span>(${YEARS[0]}년 스스로 ${pct(s0)})</span>` : "") : "";
-    $("#proc-note").textContent = natOn ? "흰 눈금은 전국 비중. 스스로 처리는 퇴비화·액비화·정화·미처리." : "스스로 처리는 퇴비화·액비화·정화·미처리.";
+    if (kind) {
+      const self = me ? sum(SELF_PROCS.map((n) => me.p[L.procs.indexOf(n)])) / me.t * 100 : null;
+      $("#proc-sum").innerHTML = me ? `${kind} 분뇨 하루 ${ton(me.t)} · 스스로 처리 <b>${pct(self)}</b> · 맡겨서 처리 <b class="hi">${pct(100 - self)}</b>` : "";
+    } else {
+      const self = (key, i) => { const t = R(key).t; return t.man[i] > 0 ? (t.self[i] / t.man[i]) * 100 : null; };
+      const s0 = self(k, 0), s1 = self(k, YN);
+      $("#proc-sum").innerHTML = ok(s1) ? `스스로 처리 <b>${pct(s1)}</b> · 맡겨서 처리 <b class="hi">${pct(100 - s1)}</b>`
+        + (ok(s0) ? ` <span>(${YEARS[0]}년 스스로 ${pct(s0)})</span>` : "") : "";
+    }
+    $("#proc-note").textContent = `${natOn ? `흰 눈금은 전국${kind ? ` ${kind}` : ""} 비중. ` : ""}스스로 처리는 퇴비화·액비화·정화${kind ? "" : "·미처리"}.${kind ? "" : " 줄에 마우스를 올리면 축종 구성."}`;
   }
 
   // ---------- 오른쪽 1: 흐름 — 분뇨 발생량·농가 수 (해마다) ----------

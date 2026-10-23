@@ -47,7 +47,8 @@
 .lv-dkey i { width: 8px; height: 8px; border-radius: 50%; }
 #court-note { -webkit-line-clamp: 2; }
 
-/* 왼쪽 3: 처리 방식 — 방법마다 한 줄, 전국은 눈금 */
+/* 왼쪽 3: 처리 방식 — 방법마다 한 줄, 전국은 눈금. 머리에 축종 단추 */
+.lv-seg button { font-size: 12px; padding: 1px 8px; }
 .lv-procs { display: grid; gap: 1px; }
 .lv-ph, .lv-pr { display: grid; grid-template-columns: 74px 1fr 40px 40px; align-items: center; gap: 8px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .lv-ph { font-size: 11px; color: var(--faint); }

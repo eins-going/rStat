@@ -4,7 +4,7 @@
 맞는지 먼저 대조하고, 어긋나면 멈춘다. 지역 키는 통계 페이지와 같다('31|수원시', 일반시의 구는 시로, 청원군은 청주시로).
 
 - 분뇨 발생량은 수질오염원 산정용 값(톤/일)이다. 폐수 + 고형물. 닭·오리 등 가금은 거의 0으로 잡혀 있다.
-- 처리 방법은 줄마다 적힌 방법 이름으로 그 줄의 분뇨를 나눈다(폐수는 폐수 처리 방법, 고형물은 고형물 처리 방법,
+- 처리 방법은 줄마다 적힌 방법 이름으로 그 줄의 분뇨를 나눈다(축종별로도 싣는다)(폐수는 폐수 처리 방법, 고형물은 고형물 처리 방법,
   방법이 여럿이면 똑같이). 처리량 칸(공공·위탁 처리량)은 해에 따라 발생량을 넘어(2016년 124%) 쓰지 않는다.
 - 방법 이름은 2015·2018년에 바뀌었다. 해마다 견주는 것은 '농가 자체 처리' 비중만, 자세한 구성은 마지막 해만 싣는다.
 - 농가수는 축종별 농가를 더한 값이다(두 축종을 기르면 두 번 센다). 시군구 통계도 같은 셈이다.
@@ -81,7 +81,8 @@ def main():
     n = len(years)
     zeros = lambda: [0.0] * n  # noqa: E731
     series = collections.defaultdict(lambda: {"farm": zeros(), "man": zeros(), "self": zeros(), "h": {k: zeros() for k in KINDS[:5]}})
-    detail = collections.defaultdict(lambda: {"k": [[0, 0, 0.0] for _ in KINDS], "c": [[0, 0, 0.0] for _ in COURTS], "p": [0.0] * len(PROCS)})
+    detail = collections.defaultdict(lambda: {"k": [[0, 0, 0.0] for _ in KINDS], "c": [[0, 0, 0.0] for _ in COURTS], "p": [0.0] * len(PROCS),
+                                                        "pk": [[0.0] * len(PROCS) for _ in KINDS]})
     villages = collections.defaultdict(lambda: {"man": 0.0, "farm": 0, "heads": 0, "kind": collections.Counter()})
     unmapped = collections.Counter()
 
@@ -117,7 +118,9 @@ def main():
             for amt, txt in parts:
                 ms = (txt or "").split()
                 for m in ms:
-                    dd["p"][PROCS.index(PROC_OF.get(m, "그 밖"))] += amt / len(ms)
+                    j = PROCS.index(PROC_OF.get(m, "그 밖"))
+                    dd["p"][j] += amt / len(ms)
+                    dd["pk"][KINDS.index(kind)][j] += amt / len(ms)
             v = villages[(k, r["ADIVICD"])]
             v["emd"], v["ri"] = r["ADIVIDOUNGNM"] or "", r["ADIVININM"] or ""
             v["man"] += man
@@ -153,6 +156,7 @@ def main():
             for f in ("k", "c"):
                 dd[f] = [[a + b for a, b in zip(x, z)] for x, z in zip(dd[f], sd[f])]
             dd["p"] = [a + b for a, b in zip(dd["p"], sd["p"])]
+            dd["pk"] = [[a + b for a, b in zip(x, z)] for x, z in zip(dd["pk"], sd["pk"])]
             fac[up] += fac.get(k, [])
     vgroups = collections.defaultdict(list)
     for (k, code), v in villages.items():
@@ -172,6 +176,7 @@ def main():
             "k": [[round(a), round(b), r1(c)] for a, b, c in dd["k"]],
             "c": [[round(a), round(b), r1(c)] for a, b, c in dd["c"]],
             "p": [r1(x) for x in dd["p"]],
+            "pk": [[r1(x) for x in row] for row in dd["pk"]],  # 축종(KINDS) × 처리 방법(PROCS)
             "nv": len(vs),
             "v": [[u, v["emd"], v["ri"], r1(v["man"]), KINDS.index(v["kind"].most_common(1)[0][0]), round(v["farm"]), round(v["heads"])]
                   for u, v in vs[:TOP_VILLAGES]],
