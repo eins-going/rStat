@@ -24,7 +24,6 @@
 .lv-ktab thead th:nth-child(3) { width: 50px; }
 .lv-ktab thead th small { font-size: 10.5px; color: var(--muted); font-weight: 400; margin-left: 2px; }
 .lv-ktab tbody th { text-align: left; font-weight: 600; white-space: nowrap; padding: 4px 0; border-top: 1px solid var(--line); }
-.lv-ktab tbody th i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .lv-ktab td { text-align: right; padding: 4px 0 4px 8px; border-top: 1px solid var(--line); white-space: nowrap; color: #c4c9d1; }
 .lv-ktab td.v { padding-left: 12px; }
 .lv-ktab tbody tr:hover { background: var(--panel-2); }
@@ -32,34 +31,35 @@
 .lv-kv b { font-weight: 700; color: var(--text); text-align: right; }
 .lv-kv em { font-style: normal; font-size: 11.5px; color: var(--muted); text-align: right; }
 .lv-db { display: block; height: 8px; border-radius: 4px; background: #2c3139; overflow: hidden; }
-.lv-db i { display: block; height: 100%; border-radius: 4px; min-width: 2px; }
+.lv-db i { display: block; height: 100%; border-radius: 4px; min-width: 2px; background: var(--accent); opacity: 0.85; }
 
-/* 왼쪽 2·3: 100% 쌓기 막대 */
-.lv-stacks { display: grid; gap: 5px; }
-.lv-sr { display: grid; grid-template-columns: 46px 1fr; align-items: center; gap: 8px; }
-.lv-sl { font-size: 12.5px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-bar { display: flex; gap: 2px; min-width: 0; }
-.lv-bar i { display: flex; align-items: center; justify-content: center; flex-basis: 0; min-width: 2px; overflow: hidden; white-space: nowrap; border-radius: 3px; cursor: default;
-  font-style: normal; font-size: 11px; font-weight: 700; color: #101216; font-variant-numeric: tabular-nums; }
-.lv-bar i:hover { filter: brightness(1.2); }
-.lv-bar.big { height: 20px; }
-.lv-bar.thin { height: 8px; opacity: 0.85; }
-.lv-bar.none { height: 8px; background: var(--panel-2); border-radius: 3px; }
-.lv-sr.thin .lv-sl { font-size: 11.5px; font-weight: 500; color: var(--faint); }
-.lv-key { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-top: 8px; font-size: 12px; color: var(--muted); }
-.lv-key span { display: inline-flex; align-items: center; gap: 5px; }
-.lv-key i { width: 9px; height: 9px; border-radius: 2px; }
-.lv-key .lv-kn { color: var(--faint); }
+/* 왼쪽 2: 농장 규모 도넛 셋 */
+.lv-dns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 6px; }
+.lv-dn { display: flex; justify-content: center; min-width: 0; }
+.lv-dn svg { display: block; width: 100%; max-width: 116px; height: auto; aspect-ratio: 1; }
+.lv-dn path { stroke: var(--panel); stroke-width: 1; cursor: default; }
+.lv-dn path:hover { filter: brightness(1.2); }
+.lv-dl { fill: #fff; font-size: 10.5px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(20, 22, 27, 0.6); stroke-width: 2px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.lv-dc { fill: var(--text); font-size: 13px; font-weight: 700; text-anchor: middle; }
+.lv-dv { fill: var(--muted); font-size: 9.5px; font-weight: 500; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.lv-dkey { display: inline-flex; gap: 10px; margin-right: 10px; color: var(--muted); }
+.lv-dkey span { display: inline-flex; align-items: center; gap: 4px; cursor: default; }
+.lv-dkey i { width: 8px; height: 8px; border-radius: 50%; }
+#court-note { -webkit-line-clamp: 2; }
 
-/* 왼쪽 3: 처리 방식 범례 2열 (값 포함) */
-.lv-lg { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; margin-top: 8px; }
-.lv-lgc + .lv-lgc { position: relative; }
-.lv-lgc + .lv-lgc::before { content: ""; position: absolute; left: -13px; top: 2px; bottom: 2px; border-left: 1px solid #3a3f48; }
-.lv-lgr { display: grid; grid-template-columns: 1fr auto; align-items: center; height: 21px; font-size: 12.5px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-.lv-lgr:first-child { border-top: 0; }
-.lv-lgr b { font-weight: 600; }
-.lv-lgn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #c4c9d1; }
-.lv-lgn i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+/* 왼쪽 3: 처리 방식 — 방법마다 한 줄, 전국은 눈금 */
+.lv-procs { display: grid; gap: 1px; }
+.lv-ph, .lv-pr { display: grid; grid-template-columns: 74px 1fr 40px 40px; align-items: center; gap: 8px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.lv-ph { font-size: 11px; color: var(--faint); }
+.lv-ph span:nth-child(n+3) { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-pr { height: 23px; padding: 0 2px; border-radius: 5px; cursor: default; }
+.lv-pr:hover { background: var(--panel-2); }
+.lv-pr .nm { color: #c4c9d1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-pr .track { position: relative; height: 8px; background: var(--panel-2); border-radius: 999px; }
+.lv-pr .fill { display: block; height: 100%; background: var(--accent); opacity: 0.85; border-radius: 999px; }
+.lv-pr .nat { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #e6e8ec; border-radius: 1px; }
+.lv-pr b { text-align: right; font-weight: 700; }
+.lv-pr .natv { text-align: right; color: var(--muted); font-size: 12px; }
 
 /* 오른쪽 1: 흐름 */
 .lv-trends { display: grid; gap: 4px; }
@@ -87,7 +87,7 @@
 .lv-vn, .lv-fn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #c4c9d1; }
 .lv-vn b { color: var(--text); font-weight: 600; }
 .lv-vu { color: var(--faint); margin-right: 4px; font-size: 11.5px; }
-.lv-vk { font-size: 11px; font-weight: 700; color: #14161b; background: var(--c); border-radius: 4px; padding: 0 5px; }
+.lv-vk { font-size: 11px; color: var(--muted); border: 1px solid #3a3f48; border-radius: 4px; padding: 0 5px; }
 .lv-vr .track, .lv-fr .track { height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
 .lv-vr .fill, .lv-fr .fill { display: block; height: 100%; background: var(--accent); opacity: 0.8; border-radius: 999px; }
 .lv-vr .val, .lv-fr .val { text-align: right; color: var(--muted); }
@@ -120,4 +120,9 @@
   .lv-trc { height: 46px; }
   .lv-trends { gap: 2px; }
   .lv #p-vil { min-height: 170px; }
+  .lv-dn svg { max-width: 80px; }
+  .lv-ktab tbody th, .lv-ktab td { padding-top: 2px; padding-bottom: 2px; }
+  .lv-pr { height: 18px; }
+  .lv-sum, .lv-lead { margin-bottom: 4px; }
+  .lv #p-kind .note, .lv #p-court .note, .lv #p-proc .note { margin-top: 3px; }
 }

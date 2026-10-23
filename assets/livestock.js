@@ -49,13 +49,7 @@
   const R = (k) => L.r[k];
   const manOf = (k) => R(k)?.t.man[YN] ?? null;
 
-  // ---------- 색 (dataviz 검증한 고정 순서, 어두운 바탕 #1d2026) ----------
-  const KIND_COL = { 돼지: "#d55181", 한우: "#c98500", 젖소: "#3987e5", 닭: "#199e70", 오리: "#9085e9", "그 밖": "#6b717c" };
-  // 규모는 순서가 있어 한 가지 색의 세 단계(큰 농장이 가장 밝다, --ordinal 검증)
-  const COURT_COL = { 허가: "#f2b48a", 신고: "#e0793f", 신고미만: "#b4501f" };
   const COURT_WHY = { 허가: "가축분뇨법 허가 대상 (예: 돼지 1,000㎡ 이상)", 신고: "신고 대상 (예: 돼지 50~1,000㎡)", 신고미만: "신고 대상보다 작은 농장" };
-  // 처리: 막대에서 이웃하는 순서 그대로 검증한 범주 색 순서
-  const PROC_COL = { 퇴비화: "#3987e5", 액비화: "#d95926", 정화: "#199e70", "재활용 위탁": "#c98500", 공공처리: "#d55181", "그 밖": "#6b717c" };
   const PROC_WHY = { 퇴비화: "농가가 스스로 퇴비로", 액비화: "농가가 스스로 액비(물거름)로", 정화: "농가가 스스로 정화해 방류", "재활용 위탁": "재활용 신고자(퇴비·액비 업체)에 맡김",
     공공처리: "가축분뇨 공공처리시설로 보냄", "그 밖": "처리업자·공동처리 위탁, 미처리 등" };
 
@@ -343,13 +337,13 @@
   function emptyPanels(k) {
     const msg = `<p class="lv-empty">${esc(fullLabel(k))}에는 전국오염원조사 축산계 자료가 없습니다 (가축을 기르는 농가가 없음).</p>`;
     ["#kinds", "#courts", "#procs", "#trends", "#vils", "#facs"].forEach((s) => { $(s).innerHTML = msg; });
-    ["#kind-lead", "#kind-note", "#court-sum", "#court-key", "#proc-sum", "#proc-key", "#trend-note", "#vil-sum"].forEach((s) => { $(s).innerHTML = ""; });
+    ["#kind-lead", "#kind-note", "#court-sum", "#court-note", "#proc-sum", "#proc-note", "#trend-note", "#vil-sum"].forEach((s) => { $(s).innerHTML = ""; });
     ["#vil-count", "#fac-count"].forEach((s) => { $(s).textContent = ""; });
     $("#kind-scope").textContent = `(${fullLabel(k)})`;
     $("#trend-scope").textContent = `(${fullLabel(k)})`;
   }
 
-  // ---------- 왼쪽 1: 축종 — 마릿수·농가·분뇨 표, 분뇨 막대는 비중 ----------
+  // ---------- 왼쪽 1: 축종 — 마릿수·농가·분뇨 표, 분뇨 막대는 비중 (이름 앞 색 네모 없이, 막대는 한 색) ----------
   function renderKinds() {
     const k = state.key, r = R(k), m = manOf(k);
     $("#kind-scope").textContent = `(${fullLabel(k)})`;
@@ -362,51 +356,53 @@
       const [f, h, v] = r.k[i];
       if (!f && !h) return "";
       const p = m > 0 ? (v / m) * 100 : 0;
-      return `<tr><th><i style="background:${KIND_COL[n]}"></i>${n}</th><td>${big(h)}</td><td>${nf0.format(f)}</td>
-        <td class="v" data-tip="<b>${esc(fullLabel(k))} ${n}</b> 분뇨 하루 ${ton(v)}<br>전체의 ${p >= 1 || !p ? pct(p) : "1% 미만"}"><span class="lv-kv"><span class="lv-db"><i style="width:${(v / max) * 100}%;background:${KIND_COL[n]}"></i></span><b>${p >= 1 || !p ? pct(p) : "<1%"}</b><em>${ton(v)}</em></span></td></tr>`;
+      return `<tr><th>${n}</th><td>${big(h)}</td><td>${nf0.format(f)}</td>
+        <td class="v" data-tip="<b>${esc(fullLabel(k))} ${n}</b> 분뇨 하루 ${ton(v)}<br>전체의 ${p >= 1 || !p ? pct(p) : "1% 미만"}"><span class="lv-kv"><span class="lv-db"><i style="width:${(v / max) * 100}%"></i></span><b>${p >= 1 || !p ? pct(p) : "<1%"}</b><em>${ton(v)}</em></span></td></tr>`;
     }).join("")}</tbody></table>`;
     $("#kind-note").textContent = "분뇨는 수질오염원을 셈하는 값이라 닭·오리 등 가금은 마릿수가 많아도 거의 0입니다. 농가는 축종마다 센 수입니다.";
   }
 
-  // ---------- 왼쪽 2·3 공용: 100% 쌓기 막대 (조각에 이름·비중) ----------
-  function stack(parts, cls, tipHead) {
-    const t = sum(parts.map((p) => p.v));
-    if (!t) return `<div class="lv-bar ${cls} none"></div>`;
-    return `<div class="lv-bar ${cls}">${parts.filter((p) => p.v > 0).map((p) => {
-      const s = (p.v / t) * 100;
-      return `<i style="flex-grow:${p.v};background:${p.col}" data-tip="<b>${tipHead} · ${p.n}</b> ${pct(s)}${p.extra ? `<br>${p.extra}` : ""}">${cls === "big" && s >= 11 ? `${s >= 20 ? `${p.n} ` : ""}${nf0.format(s)}%` : ""}</i>`;
-    }).join("")}</div>`;
-  }
-
-  // ---------- 왼쪽 2: 농장 규모 — 농가·마릿수·분뇨를 허가·신고·신고미만으로 ----------
+  // ---------- 왼쪽 2: 농장 규모 — 농가·마릿수·분뇨 도넛 셋 (허가·신고·신고미만) ----------
+  // 규모는 순서가 있어 한 가지 색의 세 단계(큰 농장이 가장 밝다, dataviz --ordinal 검증, 바탕 #1d2026)
+  const COURT_COL = { 허가: "#f2b48a", 신고: "#e0793f", 신고미만: "#b4501f" };
   function renderCourts() {
     const k = state.key, c = R(k).c;
-    const rows = [["농가", 0, (v) => `${nf0.format(v)}곳`], ["마릿수", 1, head], ["분뇨", 2, (v) => `하루 ${ton(v)}`]];
-    $("#courts").innerHTML = rows.map(([n, j, f]) => `<div class="lv-sr"><span class="lv-sl">${n}</span>${stack(L.courts.map((cn, i) => ({ n: cn, v: c[i][j], col: COURT_COL[cn], extra: f(c[i][j]) })), "big", `${esc(fullLabel(k))} ${n}`)}</div>`).join("");
+    const cols = [["농가", 0, (v) => `${nf0.format(v)}곳`], ["마릿수", 1, head], ["분뇨", 2, (v) => `하루 ${ton(v)}`]];
+    const R0 = 56, R1 = 30;
+    const arc = d3.arc().innerRadius(R1).outerRadius(R0).padAngle(0.03).cornerRadius(2);
+    const donut = ([n, j, f]) => {
+      const t = sum(c.map((x) => x[j]));
+      if (!t) return `<div class="lv-dn"><svg viewBox="-58 -58 116 116"><circle r="43" fill="none" stroke="#2f333b" stroke-width="26"/><text class="lv-dc" y="4">${n}</text></svg></div>`;
+      const parts = L.courts.map((cn, i) => ({ n: cn, v: c[i][j], p: (c[i][j] / t) * 100 }));
+      const arcs = d3.pie().sort(null).value((d) => d.v)(parts);
+      return `<div class="lv-dn"><svg viewBox="-58 -58 116 116">${arcs.map((a) => `<path d="${arc(a)}" fill="${COURT_COL[a.data.n]}" data-tip="<b>${esc(fullLabel(k))} ${a.data.n}</b> ${n} ${f(a.data.v)}<br>${n}의 ${pct(a.data.p)}"></path>`).join("")}
+        ${arcs.filter((a) => a.data.p >= 9).map((a) => { const [x, y] = arc.centroid(a); return a.data.p >= 22 ? `<text class="lv-dl" x="${x}" y="${y - 3}">${a.data.n === "신고미만" ? "미만" : a.data.n}</text><text class="lv-dl" x="${x}" y="${y + 9}">${nf0.format(a.data.p)}%</text>` : `<text class="lv-dl" x="${x}" y="${y + 4}">${nf0.format(a.data.p)}%</text>`; }).join("")}
+        <text class="lv-dc" y="1">${n}</text><text class="lv-dv" y="15">${j === 2 ? ton(t) : big(t)}</text></svg></div>`;
+    };
+    $("#courts").innerHTML = `<div class="lv-dns">${cols.map(donut).join("")}</div>`;
     const tf = sum(c.map((x) => x[0])), tm = sum(c.map((x) => x[2]));
     $("#court-sum").innerHTML = tf && tm ? `허가 규모 농장은 농가의 <b>${pct((c[0][0] / tf) * 100)}</b>지만 분뇨의 <b class="hi">${pct((c[0][2] / tm) * 100)}</b>를 냅니다`
       + `<br><span>신고미만 작은 농장은 농가 ${pct((c[2][0] / tf) * 100)}, 분뇨 ${pct((c[2][2] / tm) * 100)}</span>` : "";
-    $("#court-key").innerHTML = L.courts.map((n) => `<span data-tip="<b>${n}</b> ${COURT_WHY[n]}"><i style="background:${COURT_COL[n]}"></i>${n}</span>`).join("")
-      + `<span class="lv-kn">가축분뇨법 시설 면적 기준</span>`;
+    $("#court-note").innerHTML = `<span class="lv-dkey">${L.courts.map((n) => `<span data-tip="<b>${n}</b> ${COURT_WHY[n]}"><i style="background:${COURT_COL[n]}"></i>${n}</span>`).join("")}</span>`
+      + "가축분뇨법 시설 면적 기준";
   }
 
-  // ---------- 왼쪽 3: 처리 방식 — 이 지역(굵게)·시도·전국 막대, 범례가 곧 값 ----------
+  // ---------- 왼쪽 3: 처리 방식 — 방법마다 한 줄 (막대 0~100%, 전국은 막대 위 눈금과 옆 칸) ----------
   function renderProcs() {
-    const k = state.key, s = sidoOf(k), r = R(k), m = manOf(k);
-    const parts = (key) => L.procs.map((n, i) => ({ n, v: R(key).p[i], col: PROC_COL[n], extra: `하루 ${ton(R(key).p[i])} · ${PROC_WHY[n]}` }));
-    const cmp = [level(k) === 2 && R(s) ? s : null, level(k) ? NATION : null].filter(Boolean);
-    $("#procs").innerHTML = `<div class="lv-sr"><span class="lv-sl">${esc(shortLabel(k))}</span>${stack(parts(k), "big", esc(fullLabel(k)))}</div>`
-      + cmp.map((x) => `<div class="lv-sr thin"><span class="lv-sl">${esc(shortLabel(x))}</span>${stack(parts(x), "thin", esc(shortLabel(x)))}</div>`).join("");
+    const k = state.key, s = sidoOf(k), r = R(k), m = manOf(k), mN = manOf(NATION), natOn = level(k) > 0;
+    const sk = level(k) === 2 && R(s) ? s : null;
+    const rows = L.procs.map((n, i) => ({ n, v: m > 0 ? (r.p[i] / m) * 100 : 0, t: r.p[i], nat: mN > 0 ? (R(NATION).p[i] / mN) * 100 : null,
+      sd: sk ? (R(sk).p[i] / manOf(sk)) * 100 : null })).filter((d) => d.t > 0 || (natOn && d.nat > 0)).sort((a, b) => b.v - a.v);
+    $("#procs").innerHTML = `<div class="lv-ph"><span></span><span></span><span>${esc(shortLabel(k))}</span><span>${natOn ? "전국" : ""}</span></div>` + rows.map((d) => `
+      <div class="lv-pr" data-tip="<b>${d.n}</b> ${PROC_WHY[d.n]}<br>${esc(shortLabel(k))} 하루 ${ton(d.t)} · ${pct(d.v)}${sk ? `<br>${esc(shortLabel(sk))} ${pct(d.sd)}` : ""}${natOn ? `<br>전국 ${pct(d.nat)}` : ""}">
+        <span class="nm">${d.n}</span>
+        <span class="track"><span class="fill" style="width:${Math.min(100, d.v)}%"></span>${natOn ? `<span class="nat" style="left:${Math.min(100, d.nat)}%"></span>` : ""}</span>
+        <b>${pct(d.v)}</b><span class="natv">${natOn ? pct(d.nat) : ""}</span></div>`).join("");
     const self = (key, i) => { const t = R(key).t; return t.man[i] > 0 ? (t.self[i] / t.man[i]) * 100 : null; };
     const s0 = self(k, 0), s1 = self(k, YN);
-    $("#proc-sum").innerHTML = ok(s1) ? `농가가 스스로 처리 <b>${pct(s1)}</b> · 맡겨서 처리 <b class="hi">${pct(100 - s1)}</b>`
-      + (ok(s0) ? `<br><span>${YEARS[0]}년에는 스스로 ${pct(s0)} · 맡겨서 ${pct(100 - s0)}</span>` : "") : "";
-    const half = Math.ceil(L.procs.length / 2);
-    const col = (list) => `<div class="lv-lgc">${list.map((n) => {
-      const i = L.procs.indexOf(n), v = r.p[i];
-      return `<div class="lv-lgr" data-tip="<b>${n}</b> ${PROC_WHY[n]}<br>하루 ${ton(v)}"><span class="lv-lgn"><i style="background:${PROC_COL[n]}"></i>${n}</span><b>${m > 0 ? pct((v / m) * 100) : "–"}</b></div>`;
-    }).join("")}</div>`;
-    $("#proc-key").innerHTML = `${col(L.procs.slice(0, half))}${col(L.procs.slice(half))}`;
+    $("#proc-sum").innerHTML = ok(s1) ? `스스로 처리 <b>${pct(s1)}</b> · 맡겨서 처리 <b class="hi">${pct(100 - s1)}</b>`
+      + (ok(s0) ? ` <span>(${YEARS[0]}년 스스로 ${pct(s0)})</span>` : "") : "";
+    $("#proc-note").textContent = natOn ? "흰 눈금은 전국 비중. 스스로 처리는 퇴비화·액비화·정화·미처리." : "스스로 처리는 퇴비화·액비화·정화·미처리.";
   }
 
   // ---------- 오른쪽 1: 흐름 — 분뇨 발생량·농가 수 (해마다) ----------
@@ -483,7 +479,7 @@
       const where = level(k) === 2 ? "" : `<span class="lv-vu">${esc(level(k) === 1 ? label(u) : fullLabel(u))}</span>`;
       return `<button type="button" class="lv-vr" data-u="${u}" data-tip="<b>${esc(fullLabel(u))} ${esc(emd)} ${esc(ri)}</b><br>분뇨 하루 ${ton(v)} · 가장 많은 축종 ${kn}<br>농가 ${nf0.format(f)}곳(축종별) · ${head(h)}">
         <span class="no">${j + 1}</span><span class="lv-vn">${where}${esc(emd)} <b>${esc(ri)}</b></span>
-        <span class="lv-vk" style="--c:${KIND_COL[kn]}">${kn}</span>
+        <span class="lv-vk">${kn}</span>
         <span class="track"><span class="fill" style="width:${(v / max) * 100}%"></span></span><span class="val">${ton(v)}</span></button>`;
     }).join("") || `<p class="lv-empty">마을 자료가 없습니다</p>`;
     $$("#vils .lv-vr").forEach((b) => b.addEventListener("click", () => { if (b.dataset.u !== state.key) select(b.dataset.u); }));
