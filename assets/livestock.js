@@ -407,7 +407,7 @@
     const [mj, mn, mt, josa] = tm >= 1 ? [2, "분뇨", tm, "를 냅니다"] : [1, "마릿수", th, "를 기릅니다"];
     const who = kind ? `${kind} ` : "";
     $("#court-sum").innerHTML = tf && mt ? `${who}허가 규모 축사는 농가의 <b>${pct((c[0][0] / tf) * 100)}</b>지만 ${mn}의 <b class="hi">${pct((c[0][mj] / mt) * 100)}</b>${josa}`
-      + `<br><span>${who}신고미만 축사는 농가 ${pct((c[2][0] / tf) * 100)}, ${mn} ${pct((c[2][mj] / mt) * 100)}</span>` : "";
+      + `<span class="lv-sub">${who}신고미만 축사는 농가 ${pct((c[2][0] / tf) * 100)}, ${mn} ${pct((c[2][mj] / mt) * 100)}</span>` : "";
     $("#court-note").innerHTML = `<button type="button" class="lv-q" id="court-rule" aria-expanded="false" title="누르면 허가·신고 기준 설명">법적규제 구분 ▾</button>`
       + `<span class="lv-dkey">${L.courts.map((n) => `<span data-tip="<b>${COURT_NAME[n]}</b> ${COURT_WHY[n]}"><i style="background:${COURT_COL[n]}"></i>${COURT_SHORT[n]}</span>`).join("")}</span>`;
     $("#court-rule").addEventListener("click", () => { state.ruleOpen = !state.ruleOpen; renderCourtRule(); });

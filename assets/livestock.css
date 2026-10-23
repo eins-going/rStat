@@ -15,6 +15,7 @@
 .lv-sum b { color: var(--text); font-weight: 700; }
 .lv-sum b.hi { color: var(--accent); }
 .lv-sum span { color: var(--muted); font-size: 12px; }
+.lv-sum .lv-sub { display: block; }
 
 /* 왼쪽 1: 축종 표 */
 .lv-ktab { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; table-layout: fixed; }
@@ -133,6 +134,8 @@
   .lv-ktab tbody th, .lv-ktab td { padding-top: 2px; padding-bottom: 2px; }
   .lv-pr { height: 18px; }
   .lv-sum, .lv-lead { margin-bottom: 4px; }
+  .lv #p-court .lv-sub { display: none; } /* 같은 값이 도넛에 있다 */
+  .lv #courts { min-height: 72px; }
   .lv #p-kind .note, .lv #p-court .note, .lv #p-proc .note { margin-top: 3px; }
 }
 
