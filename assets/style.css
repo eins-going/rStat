@@ -489,10 +489,11 @@ body {
 .legend .row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .legend .sw { width: 14px; height: 10px; border-radius: 2px; }
 /* 범례를 누르면 그 구간만 지도에 (assets/legendpick.js) */
-.legend .row.lp { cursor: pointer; padding: 1px 6px; margin: -1px -6px; border-radius: 6px; border: 1px solid transparent; transition: opacity 0.15s, background 0.15s; }
-.legend .row.lp:hover { background: var(--panel-2); }
-.legend .row.lp:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.legend .row.lp-on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+/* 크기를 바꾸는 속성(padding·margin·border)은 쓰지 않는다: 범례 줄 수가 바뀌면 지도가 다시 그려지며 범례를 새로 만들어 끝없이 흔들린다 */
+.legend .row.lp { cursor: pointer; border-radius: 4px; transition: opacity 0.15s, background 0.15s; }
+.legend .row.lp:hover { background: var(--panel-2); box-shadow: 0 0 0 3px var(--panel-2); }
+.legend .row.lp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.legend .row.lp-on { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4px var(--accent); color: var(--text); }
 .legend .row.lp-dim { opacity: 0.45; }
 #map .lp-off { opacity: 0.08 !important; }
 
