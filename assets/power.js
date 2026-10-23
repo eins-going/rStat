@@ -325,7 +325,7 @@
     mapSvg.select("g.world").interrupt().attr("transform", t);
     tip.hidden = true;
     drawLabels(t, false);
-  });
+  }, () => applyView(true)); // '맞춤' 단추: 고른 지역의 원래 시점으로
 
   // 전국 화면이나 다른 시도의 시군을 누르면 그 시도로, 고른 시도 안의 시군은 그 시군으로 (다시 누르면 시도로)
   const pickSido = (k) => level(state.key) === 0 || sidoOf(k) !== sidoOf(state.key);

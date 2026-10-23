@@ -281,7 +281,7 @@
     sizeDots();
     drawLabels(t, false);
     drawFocus(false);
-  });
+  }, () => applyView(true)); // '맞춤' 단추: 고른 지역의 원래 시점으로
   // 고른 조합 표식: 지표와 상관없이 본점 자리에 고리와 이름 (지도 배율과 상관없이 같은 크기)
   function drawFocus(animate) {
     const c = state.coop && BY_CODE.get(state.coop);

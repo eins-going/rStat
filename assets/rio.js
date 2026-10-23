@@ -172,20 +172,21 @@
     pan.sync(d3.zoomIdentity);
     paintMap();
   }
-  // 확대해도 이름 글씨·화살표 굵기·화살촉은 화면에서 같은 크기로 (배율로 나눈다)
+  // 확대해도 이름 글씨·화살표 굵기·화살촉은 화면에서 같은 크기로 (배율로 나눈다). '맞춤' 단추는 처음 크기로
   let viewK = 1;
   function setMapView(t) {
     viewK = t.k;
     mapSvg.select("g.world").attr("transform", t);
     mapSvg.select("#ri-arrow").attr("markerWidth", 13 / t.k).attr("markerHeight", 13 / t.k);
     fitLabels();
-    $("#map-home").hidden = t.k === 1 && t.x === 0 && t.y === 0;
   }
   function fitLabels() {
     mapSvg.selectAll("g.labels text").style("font-size", function () { return `${(this.classList.contains("sel") ? 13.5 : 12) / viewK}px`; }).style("stroke-width", `${3 / viewK}px`);
   }
-  const pan = window.rstatPan(mapSvg, (t) => { tip.hidden = true; setMapView(t); });
-  $("#map-home").addEventListener("click", () => { setMapView(d3.zoomIdentity); pan.sync(d3.zoomIdentity); });
+  const pan = window.rstatPan(mapSvg, (t) => { tip.hidden = true; setMapView(t); }, () => {
+    mapSvg.select("g.world").transition().duration(500).attr("transform", d3.zoomIdentity).on("end", () => setMapView(d3.zoomIdentity));
+    pan.sync(d3.zoomIdentity);
+  });
 
   function metricValues() {
     const m = state.metric, s = state.sido;

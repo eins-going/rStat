@@ -272,7 +272,7 @@
     mapSvg.select("g.world").interrupt().attr("transform", t);
     tip.hidden = true;
     drawLabels(t, false);
-  });
+  }, () => applyView(true)); // '맞춤' 단추: 고른 지역의 원래 시점으로
 
   const pickSido = (k) => level(state.key) === 0 || sidoOf(k) !== sidoOf(state.key);
   function onRegionClick(k) {
