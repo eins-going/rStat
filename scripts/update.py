@@ -203,10 +203,25 @@ def check_soil(old, new):
     return not problems, changes, problems
 
 
+def check_livestock(old, new):
+    changes, problems = [], []
+    a, b = (old["years"][-1] if old else 0), new["years"][-1]
+    if b < a:
+        problems.append(f"마지막 해가 뒤로 갔다 ({a} → {b})")
+    elif a != b:
+        changes.append(f"축산계 {a or '–'} → {b}년")
+    units = [k for k in new["r"] if "|" in k]
+    if len(units) < 150:
+        problems.append(f"시군이 {len(units)}곳뿐이다")
+    if not 100_000 < new["r"]["00"]["t"]["man"][-1] < 300_000:
+        problems.append(f"전국 분뇨 발생량이 이상하다 ({new['r']['00']['t']['man'][-1]:,.0f}톤/일)")
+    return not problems, changes, problems
+
+
 CHECKS = {"kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
           "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities),
           "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs),
-          "soil": ("data/soil.js", check_soil)}
+          "soil": ("data/soil.js", check_soil), "livestock": ("data/livestock.js", check_livestock)}
 
 
 def period_of(src):
@@ -239,6 +254,9 @@ def period_of(src):
         if src["id"] == "soil":
             d = read_js("data/soil.js")
             return f"{d['tag']}년 수집"
+        if src["id"] == "livestock":
+            y = read_js("data/livestock.js")["years"]
+            return f"{y[0]}~{y[-1]}년"
         if src["id"] == "apfs":
             p = read_js("data/apfs.js")["periods"][-1]
             return f"{p['y']}년" + ("" if p["m"] == 12 else f" {p['m']}월 누계") + "까지"
@@ -498,6 +516,9 @@ def dataset_period(ds):
             return (f"{done[-1]['y']}년" if done else "") + ("" if cur["m"] == 12 else f" (올해 {cur['m']}월 누계)")
         if kind == "soil":
             return f"{read_js('data/soil.js')['tag']}년 수집"
+        if kind == "livestock":
+            y = read_js("data/livestock.js")["years"]
+            return f"{y[0]}~{y[-1]}년"
         if kind == "static":
             return arg
     except Exception as e:

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>축산 환경</title>
+  <meta name="description" content="국립환경과학원 전국오염원조사로 본 시군·마을의 가축분뇨 발생량, 농장 규모, 처리 방식과 2012년부터의 흐름.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/power.css">
+  <link rel="stylesheet" href="assets/livestock.css">
+</head>
+<body class="pw lv">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>한눈에 보는 지역농업 통계</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="rio">지역산업연관표(농업)</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+          <a href="employ">농업고용</a>
+          <a href="agfin">농업금융보험</a>
+          <a href="soil">농경지 토양</a>
+          <a href="livestock" aria-current="page">축산 환경</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="이 지역의 가축분뇨: 축종·농장 규모·처리 방식">
+        <article class="panel" id="p-kind">
+          <header class="panel-head">
+            <h2>분뇨는 어느 가축에서 <span class="h2-scope" id="kind-scope"></span></h2>
+            <span class="chip" id="kind-year"></span>
+          </header>
+          <p class="lv-lead" id="kind-lead"></p>
+          <div id="kinds"></div>
+          <p class="note" id="kind-note"></p>
+        </article>
+
+        <article class="panel" id="p-court">
+          <header class="panel-head">
+            <h2>농장 규모</h2>
+            <span class="chip">법적규제 구분</span>
+          </header>
+          <p class="lv-sum" id="court-sum"></p>
+          <div class="lv-stacks" id="courts"></div>
+          <div class="lv-key" id="court-key"></div>
+        </article>
+
+        <article class="panel" id="p-proc">
+          <header class="panel-head">
+            <h2>처리 방식</h2>
+            <span class="chip">분뇨 양 기준</span>
+          </header>
+          <p class="lv-sum" id="proc-sum"></p>
+          <div class="lv-stacks" id="procs"></div>
+          <div class="lv-lg" id="proc-key"></div>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 축산 환경</h1>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="pw-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="흐름과 마을·시설">
+        <article class="panel" id="p-trend">
+          <header class="panel-head">
+            <h2>흐름 <span class="h2-scope" id="trend-scope"></span></h2>
+            <span class="chip" id="trend-range"></span>
+          </header>
+          <div class="lv-trends" id="trends"></div>
+          <p class="note" id="trend-note"></p>
+        </article>
+
+        <article class="panel" id="p-vil">
+          <header class="panel-head">
+            <h2>분뇨가 많은 마을</h2>
+            <span class="chip" id="vil-count"></span>
+          </header>
+          <p class="lv-sum" id="vil-sum"></p>
+          <div class="lv-vils" id="vils"></div>
+        </article>
+
+        <article class="panel" id="p-fac">
+          <header class="panel-head">
+            <h2>가축분뇨 공공처리시설</h2>
+            <span class="chip" id="fac-count"></span>
+          </header>
+          <div class="lv-facs" id="facs"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p title="국립환경과학원 전국오염원조사(물환경보전법 제23조)의 축산계 정보제공서비스(리 × 축종)와 시군구 통계 서비스(환경기초시설 기본현황). 시군이 해마다 조사해 내고 국립환경과학원이 확정한 값입니다. 분뇨 발생량은 수질오염원을 셈하려는 값(톤/일, 폐수 + 고형물)이라 닭·오리 등 가금은 거의 0으로 잡힙니다. 처리 방식은 줄마다 적힌 처리 방법으로 분뇨를 나눈 것이고(여러 방법이면 똑같이), 농가 수는 축종별 농가를 더한 값입니다. 경지 1ha당 값의 경지면적은 국가데이터처 농업면적조사입니다. 시도·전국은 시군 값을 더했습니다.">자료: 국립환경과학원 전국오염원조사 축산계·환경기초시설 · 경지면적은 국가데이터처 농업면적조사.</p>
+      <p id="built"></p>
+      <p class="foot-link"><a href="status">자료 수집 현황</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/livestock.js"></script>
+  <script src="assets/livestock.js"></script>
+  <script src="assets/about.js"></script>
+</body>
+</html>

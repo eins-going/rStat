@@ -556,6 +556,32 @@ cadence = "토양검정 누적, 조사 시점 미표기"
 period = "soil"
 
 [[source]]
+id = "livestock"
+name = "축산 환경 (국립환경과학원 전국오염원조사 축산계·환경기초시설)"
+page = "축산 환경"
+method = "auto"
+schedule = { kind = "yearly", months = [1, 4, 7, 10], day = 5 }
+commands = [["scripts/fetch_livestock.py"], ["scripts/build_livestock.py"]]
+outputs = ["data/livestock.js"]
+check = "livestock"
+keys = ["DATA_PORTAL_API_KEY"]
+note = "2012년부터 해마다 한 판, 약 2년 늦게 나오고 공표 달이 정해져 있지 않아 석 달마다 다음 해가 나왔는지 본다. 리 × 축종 자료를 더해 쓰고, 해마다 시군구 통계와 사육두수·농가수·분뇨 발생량이 맞는지 대조한 뒤에만 만든다. 개발계정 활용기간은 2028-10-23까지."
+
+[[source.dataset]]
+name = "가축 사육두수·농가수·법적규제·가축분뇨 발생량·처리 방법 (리 × 축종)"
+origin = "기후에너지환경부 국립환경과학원 축산계 정보제공서비스 (OpenAPI)"
+freq = "1년"
+cadence = "약 2년 늦게, 공표 달 미정"
+period = "livestock"
+
+[[source.dataset]]
+name = "가축분뇨 공공처리시설 (환경기초시설 기본현황)"
+origin = "기후에너지환경부 국립환경과학원 시군구 통계 서비스 (OpenAPI)"
+freq = "1년"
+cadence = "축산계와 같은 해"
+period = "livestock"
+
+[[source]]
 id = "live"
 name = "팜맵 필지·VWorld 지도 (자세히 보기)"
 page = "주요 통계 > 자세히 보기"

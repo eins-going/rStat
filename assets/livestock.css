@@ -1,0 +1,123 @@
+/* 축산 환경 (livestock.html, assets/livestock.js) — 지도·순위·칩은 style.css·power.css를 그대로 쓴다 */
+
+.lv-empty { margin: 4px 0; font-size: 13px; color: var(--faint); }
+
+/* 값 상자 (마우스를 올리면 바로) */
+.lv-ptip { position: fixed; z-index: 50; pointer-events: none; max-width: 300px; padding: 5px 8px; border-radius: 6px; background: var(--panel); border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); font-size: 12.5px; line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lv-ptip b { color: var(--text); font-weight: 600; }
+
+/* 결론 한 문장 */
+.lv-lead { margin: 0 0 6px; font-size: 13.5px; line-height: 1.45; color: #c4c9d1; font-variant-numeric: tabular-nums; }
+.lv-lead b { color: var(--text); font-weight: 700; }
+.lv-lead span { font-size: 12px; color: var(--muted); }
+.lv-sum { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: #c4c9d1; font-variant-numeric: tabular-nums; }
+.lv-sum b { color: var(--text); font-weight: 700; }
+.lv-sum b.hi { color: var(--accent); }
+.lv-sum span { color: var(--muted); font-size: 12px; }
+
+/* 왼쪽 1: 축종 표 */
+.lv-ktab { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+.lv-ktab thead th { font-size: 12px; font-weight: 600; color: #c4c9d1; text-align: right; padding: 0 0 4px; border-bottom: 1px solid #4a4f59; }
+.lv-ktab thead th:first-child { text-align: left; width: 58px; }
+.lv-ktab thead th:nth-child(2) { width: 62px; }
+.lv-ktab thead th:nth-child(3) { width: 50px; }
+.lv-ktab thead th small { font-size: 10.5px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+.lv-ktab tbody th { text-align: left; font-weight: 600; white-space: nowrap; padding: 4px 0; border-top: 1px solid var(--line); }
+.lv-ktab tbody th i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.lv-ktab td { text-align: right; padding: 4px 0 4px 8px; border-top: 1px solid var(--line); white-space: nowrap; color: #c4c9d1; }
+.lv-ktab td.v { padding-left: 12px; }
+.lv-ktab tbody tr:hover { background: var(--panel-2); }
+.lv-kv { display: grid; grid-template-columns: 1fr 34px 66px; align-items: center; gap: 6px; }
+.lv-kv b { font-weight: 700; color: var(--text); text-align: right; }
+.lv-kv em { font-style: normal; font-size: 11.5px; color: var(--muted); text-align: right; }
+.lv-db { display: block; height: 8px; border-radius: 4px; background: #2c3139; overflow: hidden; }
+.lv-db i { display: block; height: 100%; border-radius: 4px; min-width: 2px; }
+
+/* 왼쪽 2·3: 100% 쌓기 막대 */
+.lv-stacks { display: grid; gap: 5px; }
+.lv-sr { display: grid; grid-template-columns: 46px 1fr; align-items: center; gap: 8px; }
+.lv-sl { font-size: 12.5px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-bar { display: flex; gap: 2px; min-width: 0; }
+.lv-bar i { display: flex; align-items: center; justify-content: center; flex-basis: 0; min-width: 2px; overflow: hidden; white-space: nowrap; border-radius: 3px; cursor: default;
+  font-style: normal; font-size: 11px; font-weight: 700; color: #101216; font-variant-numeric: tabular-nums; }
+.lv-bar i:hover { filter: brightness(1.2); }
+.lv-bar.big { height: 20px; }
+.lv-bar.thin { height: 8px; opacity: 0.85; }
+.lv-bar.none { height: 8px; background: var(--panel-2); border-radius: 3px; }
+.lv-sr.thin .lv-sl { font-size: 11.5px; font-weight: 500; color: var(--faint); }
+.lv-key { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.lv-key span { display: inline-flex; align-items: center; gap: 5px; }
+.lv-key i { width: 9px; height: 9px; border-radius: 2px; }
+.lv-key .lv-kn { color: var(--faint); }
+
+/* 왼쪽 3: 처리 방식 범례 2열 (값 포함) */
+.lv-lg { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; margin-top: 8px; }
+.lv-lgc + .lv-lgc { position: relative; }
+.lv-lgc + .lv-lgc::before { content: ""; position: absolute; left: -13px; top: 2px; bottom: 2px; border-left: 1px solid #3a3f48; }
+.lv-lgr { display: grid; grid-template-columns: 1fr auto; align-items: center; height: 21px; font-size: 12.5px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.lv-lgr:first-child { border-top: 0; }
+.lv-lgr b { font-weight: 600; }
+.lv-lgn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #c4c9d1; }
+.lv-lgn i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* 오른쪽 1: 흐름 */
+.lv-trends { display: grid; gap: 4px; }
+.lv-tr { min-width: 0; }
+.lv-trh { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; }
+.lv-trh b { font-weight: 600; }
+.lv-trh span { font-size: 11px; color: var(--faint); }
+.lv-trh em { margin-left: auto; font-style: normal; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lv-trh em b.up { color: var(--accent); }
+.lv-trh em b.dn { color: #7fb4e8; }
+.lv-trc { height: 62px; }
+.lv-trc svg { display: block; width: 100%; height: 100%; }
+.lv-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.lv-area { fill: rgba(245, 165, 36, 0.08); }
+.lv-tv { fill: var(--text); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; }
+
+/* 오른쪽 2·3: 마을·시설 목록 */
+.lv-vils, .lv-facs { display: grid; gap: 1px; }
+.lv-vr, .lv-fr { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 64px 56px; align-items: center; gap: 6px; width: 100%; padding: 3px 4px; border: 0; border-radius: 6px;
+  background: none; color: inherit; font: inherit; font-size: 12.5px; text-align: left; font-variant-numeric: tabular-nums; }
+.lv-fr { grid-template-columns: minmax(0, 1fr) 64px 60px; }
+.lv-vr { cursor: pointer; }
+.lv-vr:hover, .lv-fr:hover { background: var(--panel-2); }
+.lv-vr .no { color: var(--faint); text-align: right; }
+.lv-vn, .lv-fn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #c4c9d1; }
+.lv-vn b { color: var(--text); font-weight: 600; }
+.lv-vu { color: var(--faint); margin-right: 4px; font-size: 11.5px; }
+.lv-vk { font-size: 11px; font-weight: 700; color: #14161b; background: var(--c); border-radius: 4px; padding: 0 5px; }
+.lv-vr .track, .lv-fr .track { height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.lv-vr .fill, .lv-fr .fill { display: block; height: 100%; background: var(--accent); opacity: 0.8; border-radius: 999px; }
+.lv-vr .val, .lv-fr .val { text-align: right; color: var(--muted); }
+.lv-more { margin: 3px 0 0 4px; font-size: 11.5px; color: var(--faint); }
+.lv-facs .lv-sum { margin-bottom: 4px; }
+
+/* 순위: 줄어든 값 */
+.lv .rank-row .fill.neg { background: #86b6ef; }
+
+/* 지표 칩은 한 줄 (묶음 이름 + 짧은 칩) */
+.lv .chips { flex-wrap: nowrap; overflow-x: auto; }
+
+/* 한 화면 맞춤: 마을 목록이 남는 높이를 쓴다 */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .lv #p-vil { flex: 1 1 0; min-height: 200px; display: flex; flex-direction: column; }
+  .lv #p-vil .lv-vils { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; align-content: start; }
+  .lv #p-fac { flex: 0 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .lv #p-court, .lv #p-proc { flex: 0 0 auto; }
+  .lv #p-kind { flex: 0 0 auto; }
+}
+
+/* 폰: 마을 줄의 막대는 감춘다 */
+@media (max-width: 760px) {
+  .lv-vr { grid-template-columns: 18px minmax(0, 1fr) auto 56px; }
+  .lv-vr .track { display: none; }
+}
+
+/* 낮은 화면: 흐름 그림을 줄여 아래 패널이 잘리지 않게 */
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
+  .lv-trc { height: 46px; }
+  .lv-trends { gap: 2px; }
+  .lv #p-vil { min-height: 170px; }
+}
