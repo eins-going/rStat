@@ -87,6 +87,7 @@
           <div class="map-wrap" id="map-wrap">
             <span class="seg view-seg" id="view-seg" role="group" aria-label="보기"><button type="button" data-view="map" aria-pressed="true">교역 지도</button><button type="button" data-view="link" aria-pressed="false" title="영향력계수·감응도계수로 본 도내 산업의 위치">핵심 부문 진단</button></span>
             <svg id="map" role="img" aria-label="시도 지도"></svg>
+            <button class="reset" id="map-home" type="button" hidden>처음 크기로</button>
             <svg id="scatter" role="img" aria-label="영향력계수·감응도계수 산점도" hidden></svg>
             <div class="tip" id="tip" hidden></div>
           </div>
@@ -146,6 +147,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <script src="data/geo.js"></script>
   <script src="data/rio.js"></script>
+  <script src="assets/mappan.js"></script>
   <script src="assets/rio.js"></script>
   <script src="assets/legendpick.js"></script>
   <script src="assets/about.js"></script>

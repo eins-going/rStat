@@ -88,6 +88,7 @@
 #map[hidden], #scatter[hidden] { display: none; }
 .ri-label { fill: #f5f6f8; font-size: 12px; font-weight: 600; pointer-events: none; paint-order: stroke; stroke: rgba(10, 11, 14, 0.8); stroke-width: 3px; }
 .ri-label.sel { font-size: 13.5px; fill: var(--accent); }
+.flows .halo, .flows .arrow, .ri-sido { vector-effect: non-scaling-stroke; }
 .flows .halo { fill: none; stroke: rgba(10, 11, 14, 0.55); stroke-linecap: round; pointer-events: none; }
 .flows .arrow { fill: none; stroke: #eef0f3; stroke-linecap: round; opacity: 0.9; cursor: default; }
 .ri-arrow-key { display: inline-block; width: 18px; height: 3px; background: #eef0f3; border-radius: 2px; }

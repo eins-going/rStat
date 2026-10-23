@@ -372,7 +372,8 @@
   const zoom = d3.zoom()
     .scaleExtent([1, 24])
     .clickDistance(4)
-    .filter((e) => !e.button && (e.type === "mousedown" || (panMode && (e.type === "wheel" || e.type === "touchstart"))))
+    // 마우스 끌기는 언제나, 휠은 한 화면 맞춤(넓은 화면)이나 Ctrl+휠·손 단추일 때, 터치는 손 단추를 켰을 때만 (페이지 스크롤을 뺏지 않게)
+    .filter((e) => !e.button && (e.type === "mousedown" || (e.type === "wheel" && (panMode || e.ctrlKey || window.matchMedia("(min-width: 1281px) and (min-height: 720px)").matches)) || (e.type === "touchstart" && panMode)))
     .on("start", (e) => { if (e.sourceEvent?.type !== "wheel") $("#map-wrap").classList.toggle("grabbing", !!e.sourceEvent); })
     .on("zoom", (e) => {
       if (silent) return;

@@ -157,17 +157,35 @@
     defs.selectAll("marker").data([0]).join("marker").attr("id", "ri-arrow").attr("viewBox", "0 0 10 10").attr("refX", 6).attr("refY", 5)
       .attr("markerUnits", "userSpaceOnUse").attr("markerWidth", 13).attr("markerHeight", 13).attr("orient", "auto")
       .selectAll("path").data([0]).join("path").attr("d", "M0,0 L10,5 L0,10 z").attr("fill", "#eef0f3");
-    mapSvg.selectAll("g.sidos").data([0]).join("g").attr("class", "sidos")
+    // 끌기·확대는 g.world 하나에 transform으로 (assets/mappan.js). 크기가 바뀌면 처음 시점으로
+    const world = mapSvg.selectAll("g.world").data([0]).join("g").attr("class", "world");
+    world.selectAll("g.sidos").data([0]).join("g").attr("class", "sidos")
       .selectAll("path").data(sidoFeatures, (d) => d.properties.key).join("path")
       .attr("class", "region ri-sido").attr("d", path).attr("tabindex", 0).attr("role", "button")
       .on("mousemove", (e, d) => showMapTip(e, d.properties.key))
       .on("mouseleave", () => { tip.hidden = true; })
       .on("click", (e, d) => setSido(d.properties.key === state.sido ? NATION : d.properties.key))
       .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSido(d.properties.key); } });
-    mapSvg.selectAll("g.flows").data([0]).join("g").attr("class", "flows");
-    mapSvg.selectAll("g.labels").data([0]).join("g").attr("class", "labels");
+    world.selectAll("g.flows").data([0]).join("g").attr("class", "flows");
+    world.selectAll("g.labels").data([0]).join("g").attr("class", "labels");
+    setMapView(d3.zoomIdentity);
+    pan.sync(d3.zoomIdentity);
     paintMap();
   }
+  // 확대해도 이름 글씨·화살표 굵기·화살촉은 화면에서 같은 크기로 (배율로 나눈다)
+  let viewK = 1;
+  function setMapView(t) {
+    viewK = t.k;
+    mapSvg.select("g.world").attr("transform", t);
+    mapSvg.select("#ri-arrow").attr("markerWidth", 13 / t.k).attr("markerHeight", 13 / t.k);
+    fitLabels();
+    $("#map-home").hidden = t.k === 1 && t.x === 0 && t.y === 0;
+  }
+  function fitLabels() {
+    mapSvg.selectAll("g.labels text").style("font-size", function () { return `${(this.classList.contains("sel") ? 13.5 : 12) / viewK}px`; }).style("stroke-width", `${3 / viewK}px`);
+  }
+  const pan = window.rstatPan(mapSvg, (t) => { tip.hidden = true; setMapView(t); });
+  $("#map-home").addEventListener("click", () => { setMapView(d3.zoomIdentity); pan.sync(d3.zoomIdentity); });
 
   function metricValues() {
     const m = state.metric, s = state.sido;
@@ -210,6 +228,7 @@
     mapSvg.select("g.labels").selectAll("text").data(SIDOS.filter((k) => show.has(k)), (k) => k).join("text")
       .attr("x", (k) => anchor.get(k)[0] + (LABEL_DX[k]?.[0] || 0)).attr("y", (k) => anchor.get(k)[1] + 4 + (LABEL_DX[k]?.[1] || 0)).attr("text-anchor", "middle")
       .attr("class", (k) => `ri-label${k === s ? " sel" : ""}`).text((k) => short(k));
+    fitLabels();
     // 범례
     const e = list.length > 1 ? [d3.min(list), ...q.quantiles(), d3.max(list)] : [];
     $("#legend").innerHTML = `<span class="title">${esc(itemLabel())} ${m.label}${m.flow ? ` <span style="color:var(--faint);font-weight:400">${short(s)} 기준</span>` : ""}</span>`

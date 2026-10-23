@@ -659,13 +659,14 @@
   }
 
   // ---------- 확대·축소·이동 ----------
-  // + − 버튼은 언제나, 끌기와 휠은 손 버튼을 켰을 때만 지도를 움직인다 (페이지 스크롤을 뺏지 않게)
+  // + − 버튼은 언제나, 마우스 끌기·휠 확대도 언제나(좁은 화면의 휠은 Ctrl+휠), 터치는 손 버튼을 켰을 때만
   let panMode = false;
   let silent = false; // 지역 선택으로 시점을 옮길 때는 zoom 이벤트를 무시한다
   const zoom = d3.zoom()
     .scaleExtent([1, 48])
     .clickDistance(4)
-    .filter((e) => !e.button && (e.type === "mousedown" || (panMode && (e.type === "wheel" || e.type === "touchstart"))))
+    // 마우스 끌기는 언제나, 휠은 한 화면 맞춤(넓은 화면)이나 Ctrl+휠·손 단추일 때, 터치는 손 단추를 켰을 때만 (페이지 스크롤을 뺏지 않게)
+    .filter((e) => !e.button && (e.type === "mousedown" || (e.type === "wheel" && (panMode || e.ctrlKey || window.matchMedia("(min-width: 1281px) and (min-height: 720px)").matches)) || (e.type === "touchstart" && panMode)))
     .on("start", (e) => { if (e.sourceEvent?.type !== "wheel") $("#map-wrap").classList.toggle("grabbing", !!e.sourceEvent); })
     .on("zoom", (e) => {
       if (silent) return;
