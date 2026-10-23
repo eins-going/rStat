@@ -27,9 +27,9 @@
 .lv-ktab td { text-align: right; padding: 4px 0 4px 8px; border-top: 1px solid var(--line); white-space: nowrap; color: #c4c9d1; }
 .lv-ktab td.v { padding-left: 12px; }
 .lv-ktab tbody tr:hover { background: var(--panel-2); }
-.lv-kv { display: grid; grid-template-columns: 1fr 34px 66px; align-items: center; gap: 6px; }
+.lv-kv { display: grid; grid-template-columns: 1fr 34px 74px; align-items: center; gap: 6px; }
 .lv-kv b { font-weight: 700; color: var(--text); text-align: right; }
-.lv-kv em { font-style: normal; font-size: 11.5px; color: var(--muted); text-align: right; }
+.lv-kv em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--text); text-align: right; }
 .lv-db { display: block; height: 8px; border-radius: 4px; background: #2c3139; overflow: hidden; }
 .lv-db i { display: block; height: 100%; border-radius: 4px; min-width: 2px; background: var(--accent); opacity: 0.85; }
 
