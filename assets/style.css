@@ -488,6 +488,13 @@ body {
 .legend .title { color: var(--text); font-weight: 600; margin-right: 4px; }
 .legend .row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .legend .sw { width: 14px; height: 10px; border-radius: 2px; }
+/* 범례를 누르면 그 구간만 지도에 (assets/legendpick.js) */
+.legend .row.lp { cursor: pointer; padding: 1px 6px; margin: -1px -6px; border-radius: 6px; border: 1px solid transparent; transition: opacity 0.15s, background 0.15s; }
+.legend .row.lp:hover { background: var(--panel-2); }
+.legend .row.lp:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.legend .row.lp-on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.legend .row.lp-dim { opacity: 0.45; }
+#map .lp-off { opacity: 0.08 !important; }
 
 .reset {
   position: absolute;
