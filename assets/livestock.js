@@ -81,7 +81,7 @@
     { key: "dairy", group: "사육", chip: "젖소", label: "젖소 사육 마릿수", unit: "마리", get: heads("젖소"), fmt: head, note: `${LAST}년 전국오염원조사의 젖소 마릿수 (가축동향조사와 조사 기준이 다릅니다)` },
   ];
   const DEFAULT_METRIC = METRICS[0];
-  const state = { key: NATION, metric: DEFAULT_METRIC, pk: null, ruleOpen: false };
+  const state = { key: NATION, metric: DEFAULT_METRIC, pk: null, ck: null, ruleOpen: false };
 
   // ---------- 선택 ----------
   const selSido = $("#sido"), selSgg = $("#sgg");
@@ -379,30 +379,42 @@
   // ---------- 왼쪽 2: 농장 규모 — 농가·마릿수·분뇨 도넛 셋 (허가·신고·신고미만) ----------
   // 규모는 순서가 있어 한 가지 색의 세 단계(큰 농장이 가장 밝다, dataviz --ordinal 검증, 바탕 #1d2026)
   const COURT_COL = { 허가: "#f2b48a", 신고: "#e0793f", 신고미만: "#b4501f" };
+  const COURT_KINDS = ["돼지", "한우", "젖소", "닭"];
   function renderCourts() {
-    const k = state.key, c = R(k).c;
+    const k = state.key, r = R(k);
+    // 축종 단추: 그 지역에 농가가 있는 축종만 (닭은 분뇨가 거의 0이라도 농가·마릿수 구성을 본다)
+    const has = (kd) => (r.ck?.[L.kinds.indexOf(kd)] ?? []).some((x) => x[0] > 0);
+    if (state.ck && !has(state.ck)) state.ck = null;
+    const kind = state.ck;
+    $("#court-seg").innerHTML = [null, ...COURT_KINDS.filter(has)].map((kd) => `<button type="button" data-k="${kd ?? ""}" aria-pressed="${kd === kind}">${kd ?? "전체"}</button>`).join("");
+    $$("#court-seg button").forEach((bt) => bt.addEventListener("click", () => { state.ck = bt.dataset.k || null; renderCourts(); }));
+    const c = kind ? r.ck[L.kinds.indexOf(kind)] : r.c;
     const cols = [["농가", 0, (v) => `${nf0.format(v)}곳`], ["마릿수", 1, head], ["분뇨", 2, (v) => `하루 ${ton(v)}`]];
     const R0 = 56, R1 = 30;
     const arc = d3.arc().innerRadius(R1).outerRadius(R0).padAngle(0.03).cornerRadius(2);
     const donut = ([n, j, f]) => {
       const t = sum(c.map((x) => x[j]));
-      if (!t) return `<div class="lv-dn"><svg viewBox="-58 -58 116 116"><circle r="43" fill="none" stroke="#2f333b" stroke-width="26"/><text class="lv-dc" y="4">${n}</text></svg></div>`;
+      if (!(j === 2 ? t >= 1 : t > 0)) return `<div class="lv-dn"><svg viewBox="-58 -58 116 116"><circle r="43" fill="none" stroke="#2f333b" stroke-width="26"/><text class="lv-dc" y="1">${n}</text><text class="lv-dv" y="15">거의 0</text></svg></div>`;
       const parts = L.courts.map((cn, i) => ({ n: cn, v: c[i][j], p: (c[i][j] / t) * 100 }));
       const arcs = d3.pie().sort(null).value((d) => d.v)(parts);
-      return `<div class="lv-dn"><svg viewBox="-58 -58 116 116">${arcs.map((a) => `<path d="${arc(a)}" fill="${COURT_COL[a.data.n]}" data-tip="<b>${esc(fullLabel(k))} ${COURT_NAME[a.data.n]}</b> ${n} ${f(a.data.v)}<br>${n}의 ${pct(a.data.p)}<br>${COURT_WHY[a.data.n]}"></path>`).join("")}
+      return `<div class="lv-dn"><svg viewBox="-58 -58 116 116">${arcs.map((a) => `<path d="${arc(a)}" fill="${COURT_COL[a.data.n]}" data-tip="<b>${esc(fullLabel(k))}${kind ? ` ${kind}` : ""} ${COURT_NAME[a.data.n]}</b> ${n} ${f(a.data.v)}<br>${n}의 ${pct(a.data.p)}<br>${COURT_WHY[a.data.n]}"></path>`).join("")}
         ${arcs.filter((a) => a.data.p >= 9).map((a) => { const [x, y] = arc.centroid(a); return a.data.p >= 22 ? `<text class="lv-dl" x="${x}" y="${y - 3}">${COURT_SHORT[a.data.n]}</text><text class="lv-dl" x="${x}" y="${y + 9}">${nf0.format(a.data.p)}%</text>` : `<text class="lv-dl" x="${x}" y="${y + 4}">${nf0.format(a.data.p)}%</text>`; }).join("")}
         <text class="lv-dc" y="1">${n}</text><text class="lv-dv" y="15">${j === 2 ? ton(t) : big(t)}</text></svg></div>`;
     };
     $("#courts").innerHTML = `<div class="lv-dns">${cols.map(donut).join("")}</div>`;
-    const tf = sum(c.map((x) => x[0])), tm = sum(c.map((x) => x[2]));
-    $("#court-sum").innerHTML = tf && tm ? `허가 규모 축사는 농가의 <b>${pct((c[0][0] / tf) * 100)}</b>지만 분뇨의 <b class="hi">${pct((c[0][2] / tm) * 100)}</b>를 냅니다`
-      + `<br><span>신고미만 축사는 농가 ${pct((c[2][0] / tf) * 100)}, 분뇨 ${pct((c[2][2] / tm) * 100)}</span>` : "";
-    $("#court-note").innerHTML = `<span class="lv-dkey">${L.courts.map((n) => `<span data-tip="<b>${COURT_NAME[n]}</b> ${COURT_WHY[n]}"><i style="background:${COURT_COL[n]}"></i>${COURT_SHORT[n]}</span>`).join("")}</span>`
-      + "가축분뇨법상 축사를 지을 때 허가를 받거나 신고하는 규모";
+    // 결론 문장은 분뇨로, 분뇨가 거의 없는 축종(닭 등)은 마릿수로 견준다
+    const tf = sum(c.map((x) => x[0])), tm = sum(c.map((x) => x[2])), th = sum(c.map((x) => x[1]));
+    const [mj, mn, mt, josa] = tm >= 1 ? [2, "분뇨", tm, "를 냅니다"] : [1, "마릿수", th, "를 기릅니다"];
+    const who = kind ? `${kind} ` : "";
+    $("#court-sum").innerHTML = tf && mt ? `${who}허가 규모 축사는 농가의 <b>${pct((c[0][0] / tf) * 100)}</b>지만 ${mn}의 <b class="hi">${pct((c[0][mj] / mt) * 100)}</b>${josa}`
+      + `<br><span>${who}신고미만 축사는 농가 ${pct((c[2][0] / tf) * 100)}, ${mn} ${pct((c[2][mj] / mt) * 100)}</span>` : "";
+    $("#court-note").innerHTML = `<button type="button" class="lv-q" id="court-rule" aria-expanded="false" title="누르면 허가·신고 기준 설명">법적규제 구분 ▾</button>`
+      + `<span class="lv-dkey">${L.courts.map((n) => `<span data-tip="<b>${COURT_NAME[n]}</b> ${COURT_WHY[n]}"><i style="background:${COURT_COL[n]}"></i>${COURT_SHORT[n]}</span>`).join("")}</span>`;
+    $("#court-rule").addEventListener("click", () => { state.ruleOpen = !state.ruleOpen; renderCourtRule(); });
     renderCourtRule();
   }
 
-  // 기준 상자: 머리의 '기준' 단추를 누르면 패널 위에 겹쳐 띄운다 (농경지 토양의 적성등급 정의와 같은 방식)
+  // 기준 상자: '법적규제 구분' 단추를 누르면 패널 위에 겹쳐 띄운다 (농경지 토양의 적성등급 정의와 같은 방식)
   function renderCourtRule() {
     const btn = $("#court-rule");
     btn.textContent = `법적규제 구분 ${state.ruleOpen ? "▴" : "▾"}`;
@@ -415,11 +427,11 @@
       <table class="lv-rtab"><thead><tr><th>축종</th><th>허가 대상</th><th>신고 대상</th></tr></thead>
       <tbody>${COURT_RULE.map(([n, a, b]) => `<tr><th>${n}</th><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody></table>
       <p class="lv-defsrc">축사 면적 기준. 소·젖소는 운동장 면적 기준도 있고, 방목은 마릿수로 신고합니다. 근거: 가축분뇨의 관리 및 이용에 관한 법률 시행령.</p></div>`);
+    // 단추가 패널 아래쪽에 있어 상자는 단추 위로 연다 (열 아래로 넘치면 잘린다)
     const pr = $("#p-court").getBoundingClientRect(), br = btn.getBoundingClientRect();
-    $("#court-box").style.top = `${br.bottom - pr.top + 6}px`;
+    $("#court-box").style.bottom = `${pr.bottom - br.top + 6}px`;
     $("#court-box .lv-defx").addEventListener("click", () => { state.ruleOpen = false; renderCourtRule(); });
   }
-  $("#court-rule").addEventListener("click", () => { state.ruleOpen = !state.ruleOpen; renderCourtRule(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.ruleOpen) { state.ruleOpen = false; renderCourtRule(); } });
 
   // ---------- 왼쪽 3: 처리 방식 — 방법마다 한 줄 (막대 0~100%, 전국은 막대 위 눈금과 옆 칸) ----------

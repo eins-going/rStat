@@ -82,7 +82,8 @@ def main():
     zeros = lambda: [0.0] * n  # noqa: E731
     series = collections.defaultdict(lambda: {"farm": zeros(), "man": zeros(), "self": zeros(), "h": {k: zeros() for k in KINDS[:5]}})
     detail = collections.defaultdict(lambda: {"k": [[0, 0, 0.0] for _ in KINDS], "c": [[0, 0, 0.0] for _ in COURTS], "p": [0.0] * len(PROCS),
-                                                        "pk": [[0.0] * len(PROCS) for _ in KINDS]})
+                                                        "pk": [[0.0] * len(PROCS) for _ in KINDS],
+                                                        "ck": [[[0, 0, 0.0] for _ in COURTS] for _ in KINDS]})
     villages = collections.defaultdict(lambda: {"man": 0.0, "farm": 0, "heads": 0, "kind": collections.Counter()})
     unmapped = collections.Counter()
 
@@ -111,7 +112,8 @@ def main():
             if y != last:
                 continue
             dd = detail[k]
-            for row, j in ((dd["k"], KINDS.index(kind)), (dd["c"], COURTS.index(COURT_OF.get(r["COURTRULEDIV"], "신고미만")))):
+            ci = COURTS.index(COURT_OF.get(r["COURTRULEDIV"], "신고미만"))
+            for row, j in ((dd["k"], KINDS.index(kind)), (dd["c"], ci), (dd["ck"][KINDS.index(kind)], ci)):
                 row[j][0] += farms
                 row[j][1] += heads
                 row[j][2] += man
@@ -157,6 +159,7 @@ def main():
                 dd[f] = [[a + b for a, b in zip(x, z)] for x, z in zip(dd[f], sd[f])]
             dd["p"] = [a + b for a, b in zip(dd["p"], sd["p"])]
             dd["pk"] = [[a + b for a, b in zip(x, z)] for x, z in zip(dd["pk"], sd["pk"])]
+            dd["ck"] = [[[a + b for a, b in zip(x, z)] for x, z in zip(xs, zs)] for xs, zs in zip(dd["ck"], sd["ck"])]
             fac[up] += fac.get(k, [])
     vgroups = collections.defaultdict(list)
     for (k, code), v in villages.items():
@@ -177,6 +180,7 @@ def main():
             "c": [[round(a), round(b), r1(c)] for a, b, c in dd["c"]],
             "p": [r1(x) for x in dd["p"]],
             "pk": [[r1(x) for x in row] for row in dd["pk"]],  # 축종(KINDS) × 처리 방법(PROCS)
+            "ck": [[[round(a), round(b), r1(c)] for a, b, c in row] for row in dd["ck"]],  # 축종 × 법적규제 × [농가, 마릿수, 분뇨]
             "nv": len(vs),
             "v": [[u, v["emd"], v["ri"], r1(v["man"]), KINDS.index(v["kind"].most_common(1)[0][0]), round(v["farm"]), round(v["heads"])]
                   for u, v in vs[:TOP_VILLAGES]],
