@@ -371,7 +371,8 @@
   let silent = false;
   const zoom = d3.zoom()
     .scaleExtent([1, 24])
-    .filter((e) => panMode && !e.button && (e.type === "wheel" || e.type === "mousedown" || e.type === "touchstart"))
+    .clickDistance(4)
+    .filter((e) => !e.button && (e.type === "mousedown" || (panMode && (e.type === "wheel" || e.type === "touchstart"))))
     .on("start", (e) => { if (e.sourceEvent?.type !== "wheel") $("#map-wrap").classList.toggle("grabbing", !!e.sourceEvent); })
     .on("zoom", (e) => {
       if (silent) return;

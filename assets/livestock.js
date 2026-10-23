@@ -50,8 +50,8 @@
   const manOf = (k) => R(k)?.t.man[YN] ?? null;
 
   // 축사 규모: 가축분뇨법은 축사(배출시설)를 지을 때 면적이 크면 시장·군수의 허가를, 중간이면 신고를 받게 한다. 원자료의 '법적규제' 칸
-  const COURT_NAME = { 허가: "큰 축사", 신고: "중간 축사", 신고미만: "작은 축사" };
-  const COURT_SHORT = { 허가: "큰", 신고: "중간", 신고미만: "작은" };
+  const COURT_NAME = { 허가: "허가 규모", 신고: "신고 규모", 신고미만: "신고미만" };
+  const COURT_SHORT = { 허가: "허가", 신고: "신고", 신고미만: "미만" };
   const COURT_WHY = { 허가: "허가를 받아야 짓는 규모 (예: 돼지 축사 1,000㎡ 이상)", 신고: "신고하고 짓는 규모 (예: 돼지 축사 50~1,000㎡)", 신고미만: "허가·신고가 필요 없는 규모 (예: 돼지 축사 50㎡ 미만)" };
   // 축종별 기준 (가축분뇨법 시행령, 축사 면적. 소·젖소는 운동장 면적 기준도 있다)
   const COURT_RULE = [["돼지", "1,000㎡ 이상", "50~1,000㎡"], ["소·말", "900㎡ 이상", "100~900㎡"], ["젖소", "900㎡ 이상", "100~900㎡"],
@@ -74,7 +74,7 @@
     { key: "man", group: "분뇨", chip: "발생량", label: "가축분뇨 발생량", unit: "톤/일", get: manOf, fmt: ton, note: `${LAST}년 하루 가축분뇨 발생량(폐수 + 고형물). 수질오염원을 셈하는 값이라 닭·오리 등 가금은 거의 0으로 잡힙니다` },
     { key: "ha", group: "분뇨", chip: "1ha당", label: "경지 1ha당 한 해 가축분뇨", unit: "톤/ha", get: perHa, fmt: (v) => (ok(v) ? `${nf0.format(v)}톤` : "–"), note: `${LAST}년 한 해 가축분뇨 ÷ ${L.landYear}년 경지면적(농업면적조사). 경지 500ha 미만은 뺍니다` },
     { key: "chg", group: "분뇨", chip: "10년 증감", label: `가축분뇨 발생량 증감 (${LAST - 10}→${LAST})`, unit: "%", get: change10, fmt: (v) => (ok(v) ? `${v > 0 ? "+" : ""}${nf0.format(v)}%` : "–"), diverge: true, note: `${LAST - 10}년 대비 ${LAST}년 가축분뇨 발생량 증감률. 두 해 모두 하루 10톤 이상인 시군만` },
-    { key: "court", group: "규모", chip: "큰 축사", label: "큰 축사(허가 대상)의 분뇨 비중", unit: "%", get: courtShare, fmt: pct, note: "분뇨 중 큰 축사에서 나오는 비중. 큰 축사는 가축분뇨법상 허가를 받아야 짓는 규모(예: 돼지 축사 1,000㎡ 이상). 하루 10톤 이상인 시군만" },
+    { key: "court", group: "규모", chip: "허가 규모", label: "허가 규모 축사의 분뇨 비중", unit: "%", get: courtShare, fmt: pct, note: "분뇨 중 허가 규모 축사에서 나오는 비중. 가축분뇨법상 허가를 받아야 짓는 큰 축사(예: 돼지 축사 1,000㎡ 이상). 하루 10톤 이상인 시군만" },
     { key: "out", group: "처리", chip: "위탁·공공", label: "위탁·공공처리 비중", unit: "%", get: outShare, fmt: pct, note: "분뇨 중 농가가 스스로 처리하지 않고 재활용업체·공공처리시설 등에 맡기는 비중. 하루 10톤 이상인 시군만" },
     { key: "pig", group: "사육", chip: "돼지", label: "돼지 사육 마릿수", unit: "마리", get: heads("돼지"), fmt: head, note: `${LAST}년 전국오염원조사의 돼지 마릿수 (가축동향조사·총조사와 조사 기준이 다릅니다)` },
     { key: "cow", group: "사육", chip: "한우", label: "한우 사육 마릿수", unit: "마리", get: heads("한우"), fmt: head, note: `${LAST}년 전국오염원조사의 한우 마릿수 (가축동향조사와 조사 기준이 다릅니다)` },
@@ -238,10 +238,18 @@
   function applyView(animate) {
     const world = mapSvg.select("g.world");
     view = targetView();
+    pan.sync(view);
     if (animate && !reduceMotion) world.transition().duration(700).ease(d3.easeCubicInOut).attr("transform", view);
     else world.interrupt().attr("transform", view);
     drawLabels(view, animate);
   }
+  // 마우스로 끌면 지도가 따라 움직인다 (assets/mappan.js)
+  const pan = window.rstatPan(mapSvg, (t) => {
+    view = t;
+    mapSvg.select("g.world").interrupt().attr("transform", t);
+    tip.hidden = true;
+    drawLabels(t, false);
+  });
 
   const pickSido = (k) => level(state.key) === 0 || sidoOf(k) !== sidoOf(state.key);
   function onRegionClick(k) {
@@ -387,10 +395,10 @@
     };
     $("#courts").innerHTML = `<div class="lv-dns">${cols.map(donut).join("")}</div>`;
     const tf = sum(c.map((x) => x[0])), tm = sum(c.map((x) => x[2]));
-    $("#court-sum").innerHTML = tf && tm ? `큰 축사는 농가의 <b>${pct((c[0][0] / tf) * 100)}</b>지만 분뇨의 <b class="hi">${pct((c[0][2] / tm) * 100)}</b>를 냅니다`
-      + `<br><span>작은 축사는 농가 ${pct((c[2][0] / tf) * 100)}, 분뇨 ${pct((c[2][2] / tm) * 100)}</span>` : "";
+    $("#court-sum").innerHTML = tf && tm ? `허가 규모 축사는 농가의 <b>${pct((c[0][0] / tf) * 100)}</b>지만 분뇨의 <b class="hi">${pct((c[0][2] / tm) * 100)}</b>를 냅니다`
+      + `<br><span>신고미만 축사는 농가 ${pct((c[2][0] / tf) * 100)}, 분뇨 ${pct((c[2][2] / tm) * 100)}</span>` : "";
     $("#court-note").innerHTML = `<span class="lv-dkey">${L.courts.map((n) => `<span data-tip="<b>${COURT_NAME[n]}</b> ${COURT_WHY[n]}"><i style="background:${COURT_COL[n]}"></i>${COURT_SHORT[n]}</span>`).join("")}</span>`
-      + "큰·중간은 가축분뇨법상 축사를 지을 때 허가·신고를 받는 규모";
+      + "가축분뇨법상 축사를 지을 때 허가를 받거나 신고하는 규모";
     renderCourtRule();
   }
 
@@ -403,8 +411,8 @@
     if (!state.ruleOpen) return;
     $("#p-court").insertAdjacentHTML("beforeend", `<div class="lv-defs" id="court-box" role="dialog" aria-label="축사 규모 기준">
       <div class="lv-defh"><b>법적규제 구분이란</b><button type="button" class="lv-defx" aria-label="닫기">✕</button></div>
-      <p>가축분뇨법은 가축분뇨가 나오는 축사(배출시설)를 지을 때 면적에 따라 시장·군수의 <b>허가</b>를 받거나 <b>신고</b>하게 합니다. 원자료의 '법적규제' 칸이 이 구분(허가·신고·신고미만)이고, 이 화면은 허가 대상을 큰 축사, 신고 대상을 중간 축사, 신고미만을 작은 축사라고 부릅니다.</p>
-      <table class="lv-rtab"><thead><tr><th>축종</th><th>큰 축사 <small>허가</small></th><th>중간 축사 <small>신고</small></th></tr></thead>
+      <p>가축분뇨법은 가축분뇨가 나오는 축사(배출시설)를 지을 때 면적에 따라 시장·군수의 <b>허가</b>를 받거나 <b>신고</b>하게 합니다. 원자료의 '법적규제' 칸이 이 구분이고, 신고미만은 신고 대상보다 작아 둘 다 필요 없는 축사입니다.</p>
+      <table class="lv-rtab"><thead><tr><th>축종</th><th>허가 대상</th><th>신고 대상</th></tr></thead>
       <tbody>${COURT_RULE.map(([n, a, b]) => `<tr><th>${n}</th><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody></table>
       <p class="lv-defsrc">축사 면적 기준. 소·젖소는 운동장 면적 기준도 있고, 방목은 마릿수로 신고합니다. 근거: 가축분뇨의 관리 및 이용에 관한 법률 시행령.</p></div>`);
     const pr = $("#p-court").getBoundingClientRect(), br = btn.getBoundingClientRect();

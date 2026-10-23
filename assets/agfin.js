@@ -266,12 +266,22 @@
   function applyView(animate) {
     const world = mapSvg.select("g.world");
     view = targetView();
+    pan.sync(view);
     if (animate && !reduceMotion) world.transition().duration(700).ease(d3.easeCubicInOut).attr("transform", view);
     else world.interrupt().attr("transform", view);
     sizeDots();
     drawLabels(view, animate);
     drawFocus(animate);
   }
+  // 마우스로 끌면 지도가 따라 움직인다 (assets/mappan.js)
+  const pan = window.rstatPan(mapSvg, (t) => {
+    view = t;
+    mapSvg.select("g.world").interrupt().attr("transform", t);
+    tip.hidden = true;
+    sizeDots();
+    drawLabels(t, false);
+    drawFocus(false);
+  });
   // 고른 조합 표식: 지표와 상관없이 본점 자리에 고리와 이름 (지도 배율과 상관없이 같은 크기)
   function drawFocus(animate) {
     const c = state.coop && BY_CODE.get(state.coop);

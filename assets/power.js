@@ -315,10 +315,17 @@
   function applyView(animate) {
     const world = mapSvg.select("g.world");
     const t = targetView();
+    pan.sync(t);
     if (animate && !reduceMotion) world.transition().duration(700).ease(d3.easeCubicInOut).attr("transform", t);
     else world.interrupt().attr("transform", t);
     drawLabels(t, animate);
   }
+  // 마우스로 끌면 지도가 따라 움직인다 (assets/mappan.js)
+  const pan = window.rstatPan(mapSvg, (t) => {
+    mapSvg.select("g.world").interrupt().attr("transform", t);
+    tip.hidden = true;
+    drawLabels(t, false);
+  });
 
   // 전국 화면이나 다른 시도의 시군을 누르면 그 시도로, 고른 시도 안의 시군은 그 시군으로 (다시 누르면 시도로)
   const pickSido = (k) => level(state.key) === 0 || sidoOf(k) !== sidoOf(state.key);

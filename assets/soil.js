@@ -261,10 +261,18 @@
   function applyView(animate) {
     const world = mapSvg.select("g.world");
     view = targetView();
+    pan.sync(view);
     if (animate && !reduceMotion) world.transition().duration(700).ease(d3.easeCubicInOut).attr("transform", view);
     else world.interrupt().attr("transform", view);
     drawLabels(view, animate);
   }
+  // 마우스로 끌면 지도가 따라 움직인다 (assets/mappan.js)
+  const pan = window.rstatPan(mapSvg, (t) => {
+    view = t;
+    mapSvg.select("g.world").interrupt().attr("transform", t);
+    tip.hidden = true;
+    drawLabels(t, false);
+  });
 
   const pickSido = (k) => level(state.key) === 0 || sidoOf(k) !== sidoOf(state.key);
   function onRegionClick(k) {

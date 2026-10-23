@@ -539,6 +539,9 @@ body {
 .zoom-ctl button:disabled { color: var(--faint); opacity: 0.5; cursor: default; }
 .zoom-ctl button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
 .zoom-ctl svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* 지도는 마우스로 끌어 옮길 수 있다: 바탕은 손 모양, 지역 위는 누를 수 있는 손가락 */
+.map-wrap svg { cursor: grab; }
+.map-wrap.grabbing svg, .map-wrap.grabbing .region { cursor: grabbing; }
 .map-wrap.panning svg, .map-wrap.panning .region, .map-wrap.panning .unit-od { cursor: grab; }
 .map-wrap.panning.grabbing svg, .map-wrap.panning.grabbing .region, .map-wrap.panning.grabbing .unit-od { cursor: grabbing; }
 

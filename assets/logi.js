@@ -664,7 +664,8 @@
   let silent = false; // 지역 선택으로 시점을 옮길 때는 zoom 이벤트를 무시한다
   const zoom = d3.zoom()
     .scaleExtent([1, 48])
-    .filter((e) => panMode && !e.button && (e.type === "wheel" || e.type === "mousedown" || e.type === "touchstart"))
+    .clickDistance(4)
+    .filter((e) => !e.button && (e.type === "mousedown" || (panMode && (e.type === "wheel" || e.type === "touchstart"))))
     .on("start", (e) => { if (e.sourceEvent?.type !== "wheel") $("#map-wrap").classList.toggle("grabbing", !!e.sourceEvent); })
     .on("zoom", (e) => {
       if (silent) return;
