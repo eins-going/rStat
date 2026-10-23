@@ -982,6 +982,7 @@ body {
 .ab-card img { width: 240px; height: auto; max-height: 52vh; object-fit: contain; } /* 인물 윤곽대로 오린 투명 그림 */
 .ab-card figcaption { display: flex; flex-direction: column; gap: 6px; }
 .ab-card b { font-size: 22px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
+.ab-msg { max-width: 30em; margin: 4px 0 6px; font-size: 14.5px; line-height: 1.75; color: #c4c9d1; text-wrap: balance; word-break: keep-all; }
 .ab-card a { font-size: 14px; color: var(--accent); text-decoration: none; }
 .ab-card a:hover { text-decoration: underline; }
 @media (max-width: 760px) {
