@@ -105,8 +105,17 @@
   .lv #p-vil { flex: 1 1 0; min-height: 200px; display: flex; flex-direction: column; }
   .lv #p-vil .lv-vils { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; align-content: start; }
   .lv #p-fac { flex: 0 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-  .lv #p-court, .lv #p-proc { flex: 0 0 auto; }
-  .lv #p-kind { flex: 0 0 auto; }
+  /* 왼쪽은 남는 높이를 셋이 나눈다: 표·목록은 줄 간격이 벌어지고, 도넛은 커진다 (오른쪽과 바닥을 맞춤) */
+  .lv .col-left > .panel { display: flex; flex-direction: column; flex: 1 0 auto; min-height: 0; }
+  .lv #p-court { flex: 1.6 1 auto; } /* 높이가 모자라면 도넛만 작아진다 */
+  .lv #kinds { flex: 1 1 auto; display: flex; }
+  .lv #kinds .lv-ktab { height: 100%; }
+  .lv #courts { flex: 1 1 auto; min-height: 80px; display: flex; }
+  .lv .lv-dns { flex: 1 1 auto; grid-template-rows: minmax(0, 1fr); }
+  .lv .lv-dn { min-height: 0; align-items: center; }
+  .lv .lv-dn svg { width: auto; height: 100%; max-width: 100%; max-height: 150px; }
+  .lv #procs { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; }
+  .lv .lv-pr { flex: 1 1 auto; max-height: 30px; }
 }
 
 /* 폰: 마을 줄의 막대는 감춘다 */
@@ -120,7 +129,6 @@
   .lv-trc { height: 46px; }
   .lv-trends { gap: 2px; }
   .lv #p-vil { min-height: 170px; }
-  .lv-dn svg { max-width: 80px; }
   .lv-ktab tbody th, .lv-ktab td { padding-top: 2px; padding-bottom: 2px; }
   .lv-pr { height: 18px; }
   .lv-sum, .lv-lead { margin-bottom: 4px; }
