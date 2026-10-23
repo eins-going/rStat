@@ -98,7 +98,7 @@
     { key: "income", group: "농협", chip: "순이익", label: "당기순이익", src: "coop", fmt: eokS, div: true, note: "점 하나가 농·축협 본점. 공시 당기순이익(반기 누계: 6월은 상반기, 12월은 1년)" },
   ];
   const DEFAULT_METRIC = METRICS[0];
-  const state = { key: NATION, y: DEFAULT_YEAR, h: NP.length - 1, metric: DEFAULT_METRIC, coop: null, focus: false, sort: "assets", cat: "paid" };
+  const state = { key: NATION, y: DEFAULT_YEAR, h: NP.length - 1, metric: DEFAULT_METRIC, coop: null, focus: false, sort: "assets", cat: "paid", q: "", qi: 0 };
   const metricVal = (m, k) => (m.src === "ins" ? ins(k, state.y, m.key) : null);
 
   // ---------- 선택 ----------
@@ -637,26 +637,82 @@
     ["npl", "고정이하", (c) => val(c, "npl", state.h), (c) => pct(val(c, "npl", state.h))],
     ["income", "순이익", (c) => val(c, "income", state.h), (c) => { const v = val(c, "income", state.h); return `<span class="${ok(v) && v < 0 ? "af-neg" : ""}">${eokS(v)}</span>`; }],
   ];
+  // ---------- 조합 찾기: 파일 찾기처럼 입력하는 대로 전국 조합을 좁힌다 ----------
+  // 맞는 정도: 이름 앞 → 이름 속 → 초성(ㅅㅇㅊㅅ) → 글자를 띄엄띄엄(서축). 같은 이름이 여러 곳이라 지역을 함께 보인다
+  const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+  const choOf = (t) => [...t].map((ch) => { const c = ch.charCodeAt(0) - 0xac00; return c >= 0 && c < 11172 ? CHO[Math.floor(c / 588)] : ch; }).join("");
+  const norm = (t) => t.replace(/\s+/g, "").toLowerCase();
+  const subseq = (q, t) => { let i = 0; for (const ch of t) if (ch === q[i]) i++; return i === q.length; };
+  function matchScore(c, q) {
+    const n = norm(c.n);
+    if (n.startsWith(q)) return 0;
+    if (n.includes(q)) return 1;
+    if (/^[ㄱ-ㅎ]+$/.test(q)) { const ch = choOf(n); return ch.startsWith(q) ? 2 : ch.includes(q) ? 3 : subseq(q, ch) ? 5 : null; }
+    return subseq(q, n) ? 4 : null;
+  }
+  const coopHome = (c) => (c.k === "L" ? c.r : coopSido(c)); // 지역농협은 본점 시군, 축협·품목농협은 시도
+  const homeLabel = (c) => { const k = coopHome(c); return level(k) === 2 ? fullLabel(k) : shortLabel(k); };
+  function searchHits() {
+    const q = norm(state.q || "");
+    if (!q) return null;
+    return COOPS.filter((c) => alive(c, state.h)).map((c) => [c, matchScore(c, q)]).filter(([, sc]) => sc != null)
+      .sort((a, b) => a[1] - b[1] || (val(b[0], "assets", state.h) ?? -1) - (val(a[0], "assets", state.h) ?? -1)).map(([c]) => c);
+  }
+  function openHit(c) {
+    state.q = "";
+    $("#coop-q").value = "";
+    const home = coopHome(c);
+    if (home !== state.key) select(home);
+    pickCoop(c.c, true);
+  }
+  const qBox = $("#coop-q");
+  qBox.addEventListener("input", () => { state.q = qBox.value; state.qi = 0; renderList(); });
+  qBox.addEventListener("keydown", (e) => {
+    const hits = searchHits();
+    if (e.key === "Escape") { qBox.value = ""; state.q = ""; renderList(); return; }
+    if (!hits?.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      state.qi = Math.max(0, Math.min(hits.length - 1, (state.qi || 0) + (e.key === "ArrowDown" ? 1 : -1)));
+      renderList();
+    } else if (e.key === "Enter") { e.preventDefault(); openHit(hits[state.qi || 0]); }
+  });
+
   function renderList() {
-    const list = scopeCoops();
+    const hits = searchHits();
+    const list = hits ?? scopeCoops();
     const k = state.key;
-    $("#list-scope").textContent = `(${fullLabel(k)}${level(k) === 2 ? " 지역농협" : ""})`;
+    $("#list-scope").textContent = hits ? "(전국에서 찾기)" : `(${fullLabel(k)}${level(k) === 2 ? " 지역농협" : ""})`;
     const by = { L: 0, X: 0, I: 0 };
     list.forEach((c) => { by[c.k]++; });
-    $("#list-count").textContent = level(k) === 2 ? `${list.length}곳` : `지역농협 ${by.L} · 축협 ${by.X} · 품목 ${by.I}`;
+    $("#list-count").textContent = hits ? `${nf0.format(hits.length)}곳` : level(k) === 2 ? `${list.length}곳` : `지역농협 ${by.L} · 축협 ${by.X} · 품목 ${by.I}`;
     const [key, , get] = COLS.find((x) => x[0] === state.sort);
-    const sorted = list.slice().sort((a, b) => (key === "n" ? get(a).localeCompare(get(b), "ko") : (get(b) ?? -Infinity) - (get(a) ?? -Infinity)));
+    const sorted = hits ?? list.slice().sort((a, b) => (key === "n" ? get(a).localeCompare(get(b), "ko") : (get(b) ?? -Infinity) - (get(a) ?? -Infinity)));
     const cur = currentCoop();
-    $("#coop-table").innerHTML = `<thead><tr>${COLS.map(([f, t]) => `<th><button type="button" data-s="${f}" aria-pressed="${state.sort === f}">${t}</button></th>`).join("")}</tr></thead>
-      <tbody>${sorted.map((c) => `<tr data-c="${c.c}" class="${c === cur ? "sel" : ""}" tabindex="0">${COLS.map(([, , , cell]) => `<td>${cell(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+    const nameCell = (c) => `${COLS[0][3](c)}${hits ? ` <span class="af-home">${esc(homeLabel(c))}</span>` : ""}`;
+    $("#coop-table").innerHTML = `<thead><tr>${COLS.map(([f, t]) => `<th><button type="button" data-s="${f}" aria-pressed="${!hits && state.sort === f}"${hits ? " disabled" : ""}>${t}</button></th>`).join("")}</tr></thead>
+      <tbody>${sorted.length ? sorted.map((c, i) => `<tr data-c="${c.c}" class="${hits ? (i === (state.qi || 0) ? "act" : "") : c === cur ? "sel" : ""}" tabindex="0">${COLS.map(([, , , cell], j) => `<td>${j ? cell(c) : nameCell(c)}</td>`).join("")}</tr>`).join("")
+        : `<tr class="af-none"><td colspan="${COLS.length}">'${esc(state.q)}'에 맞는 조합이 없습니다</td></tr>`}</tbody>`;
     $$("#coop-table [data-s]").forEach((b) => b.addEventListener("click", () => { state.sort = b.dataset.s; renderList(); }));
-    $$("#coop-table tbody tr").forEach((tr) => {
-      tr.addEventListener("click", () => pickCoop(tr.dataset.c, true));
-      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") pickCoop(tr.dataset.c, true); });
+    $$("#coop-table tbody tr[data-c]").forEach((tr) => {
+      const go = () => (hits ? openHit(BY_CODE.get(tr.dataset.c)) : pickCoop(tr.dataset.c, true));
+      tr.addEventListener("click", go);
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
     });
-    $("#list-note").textContent = level(k) === 2
-      ? "지역농협만 시군에 놓았습니다. 축협·품목농협은 사업 구역이 여러 시군에 걸쳐 시도 화면에서 봅니다."
-      : "지역농협은 본점 시군, 축협·품목농협은 금감원이 정한 시도에 놓았습니다. 열 이름을 누르면 정렬됩니다.";
+    $("#list-note").textContent = hits
+      ? "↑↓로 고르고 Enter, 또는 누르면 그 조합의 지역으로 갑니다. Esc는 지우기. 초성(ㅅㅇㅊㅅ)으로도 찾습니다."
+      : level(k) === 2
+        ? "지역농협만 시군에 놓았습니다. 축협·품목농협은 사업 구역이 여러 시군에 걸쳐 시도 화면에서 봅니다."
+        : "지역농협은 본점 시군, 축협·품목농협은 금감원이 정한 시도에 놓았습니다. 열 이름을 누르면 정렬됩니다.";
+    if (hits) {
+      const act = $("#coop-table tr.act"), wrap = $(".af-table-wrap");
+      if (act) {
+        const head = $("#coop-table thead").offsetHeight;
+        if (act.offsetTop - head < wrap.scrollTop) wrap.scrollTop = act.offsetTop - head;
+        else if (act.offsetTop + act.offsetHeight > wrap.scrollTop + wrap.clientHeight) wrap.scrollTop = act.offsetTop + act.offsetHeight - wrap.clientHeight;
+      }
+      return;
+    }
     // 고른 조합 줄이 보이게 목록 칸만 움직인다 (scrollIntoView는 페이지까지 움직인다)
     const selRow = $("#coop-table tr.sel"), wrap = $(".af-table-wrap");
     if (selRow) {

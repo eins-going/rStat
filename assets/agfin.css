@@ -135,3 +135,15 @@ rect.af-ysel { fill: rgba(255, 255, 255, 0.05); stroke: rgba(245, 165, 36, 0.45)
 }
 .af #p-cat h2 .h2-scope { font-size: 11px; font-weight: 400; color: var(--faint); margin-left: 4px; }
 .af #p-cat h2 .h2-scope b { font-weight: 600; }
+
+/* 조합 찾기 (파일 찾기처럼 입력하는 대로 전국 조합을 좁힌다) */
+.af-search { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; padding: 0 8px; height: 30px; border: 1px solid #3a3f48; border-radius: 8px; background: var(--panel-2); color: var(--muted); }
+.af-search:focus-within { border-color: var(--accent); color: var(--accent); }
+.af-search svg { width: 14px; height: 14px; flex: none; }
+.af-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: 13px; }
+.af-search input::placeholder { color: var(--faint); }
+.af-home { margin-left: 4px; font-size: 11px; color: var(--muted); }
+.af-table tbody tr.act { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.af-table th button:disabled { cursor: default; }
+.af-table tr.af-none td { padding: 10px 6px; text-align: left; color: var(--faint); cursor: default; }
+.af-table td:first-child { max-width: 170px; }
