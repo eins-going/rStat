@@ -397,13 +397,13 @@
   // 기준 상자: 머리의 '기준' 단추를 누르면 패널 위에 겹쳐 띄운다 (농경지 토양의 적성등급 정의와 같은 방식)
   function renderCourtRule() {
     const btn = $("#court-rule");
-    btn.textContent = state.ruleOpen ? "기준 ▴" : "기준 ▾";
+    btn.textContent = `법적규제 구분 ${state.ruleOpen ? "▴" : "▾"}`;
     btn.setAttribute("aria-expanded", state.ruleOpen);
     $("#court-box")?.remove();
     if (!state.ruleOpen) return;
     $("#p-court").insertAdjacentHTML("beforeend", `<div class="lv-defs" id="court-box" role="dialog" aria-label="축사 규모 기준">
-      <div class="lv-defh"><b>축사 규모 기준</b><button type="button" class="lv-defx" aria-label="닫기">✕</button></div>
-      <p>가축분뇨법은 가축분뇨가 나오는 축사(배출시설)를 지을 때 면적에 따라 시장·군수의 <b>허가</b>를 받거나 <b>신고</b>하게 합니다. 이 화면은 허가 대상을 큰 축사, 신고 대상을 중간 축사, 그보다 작은 곳을 작은 축사라고 부릅니다.</p>
+      <div class="lv-defh"><b>법적규제 구분이란</b><button type="button" class="lv-defx" aria-label="닫기">✕</button></div>
+      <p>가축분뇨법은 가축분뇨가 나오는 축사(배출시설)를 지을 때 면적에 따라 시장·군수의 <b>허가</b>를 받거나 <b>신고</b>하게 합니다. 원자료의 '법적규제' 칸이 이 구분(허가·신고·신고미만)이고, 이 화면은 허가 대상을 큰 축사, 신고 대상을 중간 축사, 신고미만을 작은 축사라고 부릅니다.</p>
       <table class="lv-rtab"><thead><tr><th>축종</th><th>큰 축사 <small>허가</small></th><th>중간 축사 <small>신고</small></th></tr></thead>
       <tbody>${COURT_RULE.map(([n, a, b]) => `<tr><th>${n}</th><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody></table>
       <p class="lv-defsrc">축사 면적 기준. 소·젖소는 운동장 면적 기준도 있고, 방목은 마릿수로 신고합니다. 근거: 가축분뇨의 관리 및 이용에 관한 법률 시행령.</p></div>`);
