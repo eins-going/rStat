@@ -1,6 +1,6 @@
 # 자료 수집 현황
 
-`python scripts/update.py status`가 2026-10-24 07:40에 만든 문서입니다. 계획은 `scripts/update_plan.toml`, 실행은 이 PC의 systemd 사용자 타이머(`rstat-update.timer`, 매일)입니다.
+`python scripts/update.py status`가 2026-10-25 07:34에 만든 문서입니다. 계획은 `scripts/update_plan.toml`, 실행은 이 PC의 systemd 사용자 타이머(`rstat-update.timer`, 매일)입니다.
 
 | 자료 | 화면 | 방식 | 자료 시점 | 마지막 성공 | 상태 | 다음 |
 |---|---|---|---|---|---|---|
