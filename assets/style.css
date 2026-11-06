@@ -513,9 +513,14 @@ body {
 .reset:hover { border-color: var(--accent); }
 
 /* 시군 화면: 통계 지도 ↔ 위성 지도 (위성은 assets/farm.js를 고를 때 불러온다) */
-.view-seg { position: absolute; left: 4px; top: 4px; z-index: 2; border: 1px solid var(--line); }
+.view-seg { position: absolute; left: 4px; top: 4px; z-index: 2; }
 .view-seg[hidden] { display: none; }
-.view-seg button { font-size: 12px; padding: 3px 10px; }
+/* 위성지도 보기: 통계 지도 위에서 눈에 띄게 (강조색과 다른 파랑, 굵은 글씨) */
+.view-btn { font: inherit; font-size: 13px; font-weight: 700; padding: 5px 12px; border: 0; border-radius: 8px; background: #2f7de1; color: #fff; cursor: pointer; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35); }
+.view-btn:hover { background: #3d8cf0; }
+.view-btn.back { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+.view-btn.back:hover { border-color: var(--accent); }
+.view-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .view-seg.loading { cursor: progress; opacity: 0.7; }
 
 /* 지도 확대·축소·이동 */

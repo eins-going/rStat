@@ -299,13 +299,17 @@
   }
 
   const viewSeg = $("#view-seg");
-  viewSeg.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  // 단추 하나: 통계 지도일 때는 '위성지도 보기', 위성지도일 때는 '통계지도 보기'
+  const viewBtn = $("#view-btn");
+  viewBtn.addEventListener("click", () => setView(state.view === "sat" ? "stats" : "sat"));
 
   // 통계 지도 ↔ 자세히 보기. 자세히 보기는 시군에서만 고를 수 있고, 다른 시군을 고르면 그 시군으로 옮겨 간다
   async function setView(v) {
     if (level(state.key) !== 2) v = "stats";
     state.view = v;
-    viewSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === v));
+    viewBtn.textContent = v === "sat" ? "통계지도 보기" : "위성지도 보기";
+    viewBtn.classList.toggle("back", v === "sat");
+    viewBtn.title = v === "sat" ? "시군 통계 지도로 돌아가기" : "항공영상·팜맵 필지·유통시설";
     syncHash();
     if (v === "stats") { window.FarmView?.hide(); return; }
     const k = state.key;
