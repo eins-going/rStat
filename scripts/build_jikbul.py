@@ -50,7 +50,7 @@ def cat_of(name, part=""):
         return "FTA"
     if re.search(r"경영이양", n):
         return "경영이양"
-    if re.search(r"행정|이행점검|토양검사|사업관리|운영비|관리비|도우미|입력요원|운영지원", n):
+    if re.search(r"행정|이행점검|토양검사|사업관리|운영비|관리비|도우미|입력요원|운영지원|보조인력|생활임금|수당", n):
         return "행정·점검"
     if re.search(r"친환경축산|안전축산|축산물직불|친환경안전", n):
         return "친환경축산"

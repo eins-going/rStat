@@ -415,10 +415,19 @@
     if (level(k) === 2 && !noUnitBudget(k)) {
       $("#list-title").firstChild.textContent = "직불금 ";
       $("#list-scope").textContent = `(${fullLabel(k)})`;
-      const rows = (J.biz[k]?.[i] || []).filter((r) => SHOWN.includes(r[1]));
-      $("#list-count").textContent = rows.length ? `${rows.length}개 사업` : "";
-      tbl.innerHTML = `<thead><tr><th>사업</th><th>분류</th><th>예산</th><th>지방비</th><th>지출</th></tr></thead><tbody>${rows.length
-        ? rows.map(([n, c, amt, , sd, sg, ep]) => `<tr><td title="${esc(n)}">${esc(n)}</td><td><span class="jb-tag">${CAT_SHORT[c] || c}</span></td><td>${eok1(amt)}</td><td>${sd + sg ? eok1(sd + sg) : "–"}</td><td>${eok1(ep)}</td></tr>`).join("")
+      // 묶음 순서: 공익직불(기본형 → 선택형 → 행정비) → 국비 직불(FTA·경영이양·옛 쌀·밭) → 지자체 자체. 묶음 안에서는 예산 큰 순
+      const GROUPS = [["공익직불 · 기본형", ["기본형"]], ["공익직불 · 선택형", J.select], ["공익직불 · 행정비", ["행정·점검"]],
+        ["그 밖의 국비 직불", ["FTA", "경영이양", "옛 직불"]], ["지자체 자체 직불", ["자체·기타"]]];
+      const all = (J.biz[k]?.[i] || []).filter((r) => SHOWN.includes(r[1]));
+      const rows = GROUPS.flatMap(([g, cats]) => {
+        const rs = all.filter((r) => cats.includes(r[1])).sort((a, b) => b[2] - a[2]);
+        return rs.length ? [[g, rs.reduce((t, r) => t + r[2], 0)], ...rs] : [];
+      });
+      $("#list-count").textContent = all.length ? `${all.length}개 사업` : "";
+      tbl.innerHTML = `<thead><tr><th>사업</th><th>분류</th><th>예산</th><th>지방비</th><th>지출</th></tr></thead><tbody>${all.length
+        ? rows.map((r) => r.length === 2
+          ? `<tr class="jb-grp"><td colspan="2">${esc(r[0])}</td><td>${eok1(r[1])}</td><td colspan="2"></td></tr>`
+          : (([n, c, amt, , sd, sg, ep]) => `<tr><td title="${esc(n)}">${esc(n)}</td><td><span class="jb-tag">${CAT_SHORT[c] || c}</span></td><td>${eok1(amt)}</td><td>${sd + sg ? eok1(sd + sg) : "–"}</td><td>${eok1(ep)}</td></tr>`)(r)).join("")
         : `<tr class="af-none"><td colspan="5">${J.biz[k] ? "사업 목록은 최근 두 해만 싣습니다" : "직불 사업이 없습니다"}</td></tr>`}</tbody>`;
       $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 분류의 '기본형·선택'은 공익직불(농식품부 구성), '지자체 자체'는 지방비 단독 직불입니다. FTA 피해보전은 국비 사업이라 일부 도·시군이 시도비로 적은 몫도 국비로 셉니다. 임업·수산 직불은 뺐습니다.";
       return;
