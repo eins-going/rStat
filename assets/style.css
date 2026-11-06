@@ -71,9 +71,9 @@ body {
 }
 
 /* 화면 전환 탭 */
-.brand-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-.tabs { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-.tabs a { color: var(--muted); text-decoration: none; font-size: 12.5px; padding: 3px 10px; border-radius: 7px; white-space: nowrap; }
+.brand-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tabs { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 2px; }
+.tabs a { color: var(--muted); text-decoration: none; font-size: 12.5px; padding: 3px 7px; border-radius: 7px; white-space: nowrap; }
 .tabs a:hover { color: var(--text); }
 .tabs a[aria-current="page"] { color: #14161b; background: var(--accent); font-weight: 700; }
 .tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -607,7 +607,7 @@ body {
   .select select { width: 100%; }
 }
 @media (max-width: 400px) {
-  .tabs a { padding: 3px 7px; }
+  .tabs a { padding: 3px 5px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -630,14 +630,22 @@ body {
 .src-btn:hover, .src-btn[aria-expanded="true"] { color: var(--accent); }
 .panel-head .head-right { display: flex; align-items: center; gap: 8px; }
 
+/* 노트북 폭(1281~1440px): 메뉴와 고르기 칸이 한 줄에 들어가게 메뉴 글자·여백을 조금 줄인다 */
+@media (min-width: 1281px) and (max-width: 1440px) {
+  .brand-wrap { gap: 8px; }
+  .tabs a { font-size: 12px; padding: 3px 5px; }
+  .about-btn { padding: 0 7px; font-size: 12px; }
+}
+
 /* 한 화면 맞춤: 넓고 충분히 높은 화면에서는 페이지를 창 높이에 맞춘다 */
 @media (min-width: 1281px) and (min-height: 720px) {
   :root { --gap: 10px; }
   html, body { height: 100%; overflow: hidden; }
   .app { height: 100vh; display: flex; flex-direction: column; max-width: 1760px; padding: 0 18px 8px; }
-  .topbar { padding: 8px 0; }
-  .select { padding: 3px 4px 3px 10px; }
-  .select select { padding: 3px 28px 3px 8px; font-size: 13px; }
+  .topbar { padding: 8px 0; gap: 10px; }
+  .controls { gap: 6px; }
+  .select { padding: 3px 4px 3px 8px; gap: 6px; }
+  .select select { padding: 3px 24px 3px 7px; font-size: 13px; background-position: right 8px center; }
   .ticker { margin: 0 0 10px; }
   .ticker-track { padding: 5px 0; }
   .tk { padding: 2px 8px; font-size: 12px; }
@@ -982,7 +990,7 @@ body {
 .chart-tip[hidden] { display: none; }
 
 /* 만든이 버튼 (assets/about.js) — 누르면 만든이 화면(about.html) */
-.about-btn { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; padding: 0 12px; font-size: 12.5px; color: var(--muted); text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; white-space: nowrap; }
+.about-btn { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; padding: 0 9px; font-size: 12.5px; color: var(--muted); text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; white-space: nowrap; }
 .about-btn:hover { color: var(--text); border-color: #4a4f59; }
 .about-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .about-btn[aria-current="page"] { color: #14161b; background: var(--accent); border-color: var(--accent); font-weight: 700; }

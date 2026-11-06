@@ -85,7 +85,7 @@
     { key: "select", group: "규모", chip: "선택형", label: "선택형 공익직불 예산", get: (k, i) => sumC(k, i, J.select), fmt: milS, note: "경관보전·친환경·전략작물·저탄소 직불" },
     { key: "farm", group: "견주기", chip: "농가당", label: "농가당 공익직불 예산", get: (k, i) => { const a = pub(k, i), h = hh(k); return ok(a) && h ? (a * 1e6) / h : null; }, fmt: manS, note: `예산 ÷ 농가 수(${J.den.years.households}년 농림어업조사)` },
     { key: "ha", group: "견주기", chip: "ha당", label: "경지 1ha당 공익직불 예산", get: (k, i) => { const a = pub(k, i), l = land(k); return ok(a) && l ? (a * 1e6) / l : null; }, fmt: manS, note: `예산 ÷ 경지면적(${J.den.years.land}년 농업면적조사)` },
-    { key: "share", group: "견주기", chip: "농업예산 중", label: "농업·농촌 예산 중 공익직불 비중", get: (k, i) => { const a = pub(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "그 지자체의 농업·농촌 분야 세출 예산(지방재정365 기능별) 가운데 공익직불 몫" },
+    { key: "share", group: "견주기", chip: "농업예산", label: "농업·농촌 예산 중 공익직불 비중", get: (k, i) => { const a = pub(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "그 지자체의 농업·농촌 분야 세출 예산(지방재정365 기능별) 가운데 공익직불 몫" },
     { key: "local", group: "재원·집행", chip: "지방비", label: "공익직불 예산 중 지방비 비율", get: (k, i) => { const a = pub(k, i); return a ? ((pub(k, i, "sido") + pub(k, i, "sigun")) / a) * 100 : null; }, fmt: (v) => pctS(v), note: "시도비+시군비 ÷ 예산. 기본형은 거의 국비라, 지방비는 주로 경관보전·친환경 매칭과 지자체가 얹어 주는 몫" },
     { key: "exec", group: "재원·집행", chip: "집행률", label: "공익직불 집행률", get: (k, i) => { const a = pub(k, i); return a ? (pub(k, i, "ep") / a) * 100 : null; }, fmt: (v) => pctS(v), note: "지출액 ÷ 예산. 직불금은 11~12월에 지급되어 올해 값은 연말에야 채워진다" },
   ];

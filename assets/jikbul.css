@@ -3,9 +3,9 @@
 .jb-dim { color: var(--faint); font-size: 11px; }
 
 /* 재원: 국비·시도비·시군비 */
-.jb-fn, .af-stack-key i.jb-fn { background: #9aa1ad; }
+.jb-fn, .af-stack-key i.jb-fn { background: #f5a524; }
 .jb-fs, .af-stack-key i.jb-fs { background: #5fb3ff; }
-.jb-fg, .af-stack-key i.jb-fg { background: #f5a524; }
+.jb-fg, .af-stack-key i.jb-fg { background: #5fb37c; }
 .af-stack-key em { font-style: normal; color: var(--faint); font-size: 10.5px; }
 
 /* 유형별 */
