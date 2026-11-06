@@ -51,3 +51,21 @@ rect.gh-b-keep { fill: #5fb3ff; }
 }
 .jb-table tr.jb-grp td { padding-top: 7px; font-size: 11px; font-weight: 600; color: var(--faint); border-top: 0; }
 .jb-table tr.jb-grp td:nth-child(2) { text-align: right; }
+/* 고향사랑기금 둘째 상자: 비교·사업 */
+.gh-seg { display: inline-flex; gap: 2px; }
+.gh-seg button { font: inherit; font-size: 11px; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+.gh-seg button[aria-pressed="true"] { color: #14161b; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.gh-cmp { display: grid; align-content: start; gap: 2px; overflow-y: auto; min-height: 0; flex: 1; }
+.gh-cmp[hidden], .gh-biz-wrap[hidden] { display: none; }
+.gh-cr { display: grid; grid-template-columns: 64px 1fr 58px 34px; align-items: center; gap: 6px; font: inherit; font-size: 12px; color: var(--muted); background: none; border: 0; padding: 2px; border-radius: 5px; cursor: pointer; text-align: left; }
+.gh-cr:hover { background: rgba(255, 255, 255, 0.04); }
+.gh-cr.sel { color: var(--text); background: rgba(245, 165, 36, 0.10); }
+.gh-cr .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gh-cr b { color: var(--text); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.gh-cr em { font-style: normal; font-size: 11px; color: var(--faint); text-align: right; font-variant-numeric: tabular-nums; }
+.gh-biz-wrap { flex: 1; min-height: 0; }
+/* 둘째 상자는 남는 높이를 쓰고 안에서만 스크롤 (한 화면 모드) */
+@media (min-width: 1281px) and (min-height: 720px) {
+  .jb #p-gsplit { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .jb #p-gsize, .jb #p-gyears { flex: 0 0 auto; }
+}
