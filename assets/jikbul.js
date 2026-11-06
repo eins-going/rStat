@@ -84,7 +84,7 @@
   const METRICS = [
     { key: "amt", group: "규모", chip: "예산", label: "공익직불 예산", get: (k, i) => pub(k, i), fmt: milS, note: "기본형·선택형·행정비를 더한 예산현액(추경·이월 반영)" },
     { key: "basic", group: "규모", chip: "기본형", label: "기본형 공익직불 예산", get: (k, i) => sumC(k, i, ["기본형"]), fmt: milS, note: "소농·면적직불. 지자체가 얹어 주는 몫(시군비)도 함께" },
-    { key: "select", group: "규모", chip: "선택형", label: "선택형 공익직불 예산", get: (k, i) => sumC(k, i, J.select), fmt: milS, note: "경관보전·친환경·전략작물·저탄소 직불" },
+    { key: "select", group: "규모", chip: "선택형", label: "선택형 공익직불 예산", get: (k, i) => sumC(k, i, J.select), fmt: milS, note: "농식품부 선택형: 친환경농업·친환경안전축산물·경관보전·전략작물 직불(저탄소 등 종류를 적지 않은 선택형 포함)" },
     { key: "farm", group: "견주기", chip: "농가당", label: "농가당 공익직불 예산", get: (k, i) => { const a = pub(k, i), h = hh(k); return ok(a) && h ? (a * 1e6) / h : null; }, fmt: manS, note: `예산 ÷ 농가 수(${J.den.years.households}년 농림어업조사)` },
     { key: "ha", group: "견주기", chip: "ha당", label: "경지 1ha당 공익직불 예산", get: (k, i) => { const a = pub(k, i), l = land(k); return ok(a) && l ? (a * 1e6) / l : null; }, fmt: manS, note: `예산 ÷ 경지면적(${J.den.years.land}년 농업면적조사)` },
     { key: "share", group: "견주기", chip: "농업예산", label: "농업·농촌 예산 중 공익직불 비중", get: (k, i) => { const a = pub(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "그 지자체의 농업·농촌 분야 세출 예산(지방재정365 기능별) 가운데 공익직불 몫" },
@@ -399,45 +399,49 @@
       + (isFull(P.length - 1) ? "" : `<span>${pShort(P.length - 1)}: ${+P.at(-1).d.slice(4, 6)}월 말 기준(흐리게)</span>`);
   }
 
-  // ---------- 왼쪽 가운데: 세부사업 / 하위 지역 ----------
-  const CAT_SHORT = { 기본형: "기본", 경관보전: "경관", 친환경: "친환경", 전략작물: "전략", 저탄소: "탄소", "행정·점검": "행정", 임업: "임업", 수산: "수산", FTA: "FTA", 경영이양: "이양", "옛 직불": "옛", "자체·기타": "자체" };
+  // ---------- 왼쪽 가운데: 직불금 / 하위 지역 ----------
+  // 분류 이름 (공익직불 구성은 농식품부 안내: 기본형 = 소농·면적직불, 선택형 = 친환경농업·친환경안전축산물·경관보전·전략작물)
+  const CAT_SHORT = { 기본형: "기본형", 친환경: "선택·친환경", 친환경축산: "선택·축산", 경관보전: "선택·경관", 전략작물: "선택·전략작물", "선택형 기타": "선택형",
+    "행정·점검": "행정비", "자체·기타": "지자체 자체", FTA: "FTA 피해보전", 경영이양: "경영이양", "옛 직불": "옛 쌀·밭직불" };
+  const FARM_REFS = J.refs.filter((c) => c !== "임업" && c !== "수산");   // 임업·수산 직불은 싣지 않는다
+  const SHOWN = [...PUB, ...FARM_REFS];
   function renderList() {
     const k = state.key, i = state.p;
     const tbl = $("#list-table");
     if (level(k) === 2 && !noUnitBudget(k)) {
-      $("#list-title").firstChild.textContent = "세부사업 ";
+      $("#list-title").firstChild.textContent = "직불금 ";
       $("#list-scope").textContent = `(${fullLabel(k)})`;
-      const rows = (J.biz[k]?.[i] || []);
+      const rows = (J.biz[k]?.[i] || []).filter((r) => SHOWN.includes(r[1]));
       $("#list-count").textContent = rows.length ? `${rows.length}개 사업` : "";
       tbl.innerHTML = `<thead><tr><th>사업</th><th>분류</th><th>예산</th><th>지방비</th><th>지출</th></tr></thead><tbody>${rows.length
-        ? rows.map(([n, c, amt, , sd, sg, ep]) => `<tr class="${PUB.includes(c) ? "" : "jb-ref"}"><td title="${esc(n)}">${esc(n)}</td><td><span class="jb-tag">${CAT_SHORT[c] || c}</span></td><td>${eok1(amt)}</td><td>${sd + sg ? eok1(sd + sg) : "–"}</td><td>${eok1(ep)}</td></tr>`).join("")
+        ? rows.map(([n, c, amt, , sd, sg, ep]) => `<tr><td title="${esc(n)}">${esc(n)}</td><td><span class="jb-tag">${CAT_SHORT[c] || c}</span></td><td>${eok1(amt)}</td><td>${sd + sg ? eok1(sd + sg) : "–"}</td><td>${eok1(ep)}</td></tr>`).join("")
         : `<tr class="af-none"><td colspan="5">${J.biz[k] ? "사업 목록은 최근 두 해만 싣습니다" : "직불 사업이 없습니다"}</td></tr>`}</tbody>`;
-      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 흐린 줄은 공익직불이 아닌 직불(임업·수산·자체 사업 등).";
+      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 분류의 '기본형·선택'은 공익직불(농식품부 구성), '지자체 자체'는 지자체가 제 돈으로 주는 직불입니다. 임업·수산 직불은 뺐습니다.";
       return;
     }
     // 전국: 시도별, 시도: 시군별
     const pk = noUnitBudget(k) ? sidoOf(k) : k;
     const kids = childrenOf(pk).filter((c) => !noUnitBudget(c));
-    $("#list-title").firstChild.textContent = level(pk) === 0 ? "시도별 " : "시군별 ";
+    $("#list-title").firstChild.textContent = level(pk) === 0 ? "시도별 직불금 " : "시군별 직불금 ";
     $("#list-scope").textContent = `(${fullLabel(pk)})`;
     const COLS = [
       ["n", "지역", (c) => label(c)],
-      ["amt", "예산", (c) => pub(c, i)],
+      ["amt", "공익직불", (c) => pub(c, i)],
       ["basic", "기본형", (c) => sumC(c, i, ["기본형"])],
       ["select", "선택형", (c) => sumC(c, i, J.select)],
-      ["ha", "ha당", (c) => (land(c) && ok(pub(c, i)) ? (pub(c, i) * 1e6) / land(c) : null)],
+      ["own", "자체", (c) => sumC(c, i, ["자체·기타"])],
     ];
     const [, , get] = COLS.find((x) => x[0] === state.sort) || COLS[1];
     const rows = kids.map((c) => c).sort((a, b) => (state.sort === "n" ? get(a).localeCompare(get(b), "ko") : (get(b) ?? -Infinity) - (get(a) ?? -Infinity)));
     $("#list-count").textContent = `${rows.length}곳`;
     tbl.innerHTML = `<thead><tr>${COLS.map(([f, t]) => `<th><button type="button" data-s="${f}" aria-pressed="${state.sort === f}">${t}</button></th>`).join("")}</tr></thead>
-      <tbody>${rows.map((c) => `<tr data-k="${c}" tabindex="0"><td>${esc(level(c) === 1 ? T.sidos[c].short : label(c))}</td><td>${eok1(pub(c, i))}</td><td>${eok1(sumC(c, i, ["기본형"]))}</td><td>${eok1(sumC(c, i, J.select))}</td><td>${(() => { const v = COLS[4][2](c); return ok(v) ? nf0.format(v / 1e4) : "–"; })()}</td></tr>`).join("")}</tbody>`;
+      <tbody>${rows.map((c) => `<tr data-k="${c}" tabindex="0"><td>${esc(level(c) === 1 ? T.sidos[c].short : label(c))}</td><td>${eok1(pub(c, i))}</td><td>${eok1(sumC(c, i, ["기본형"]))}</td><td>${eok1(sumC(c, i, J.select))}</td><td>${(() => { const v = sumC(c, i, ["자체·기타"]); return v ? eok1(v) : "–"; })()}</td></tr>`).join("")}</tbody>`;
     $$("#list-table [data-s]").forEach((b) => b.addEventListener("click", () => { state.sort = b.dataset.s; renderList(); }));
     $$("#list-table tbody tr[data-k]").forEach((tr) => {
       tr.addEventListener("click", () => select(tr.dataset.k));
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(tr.dataset.k); });
     });
-    $("#list-note").textContent = `금액 억원, ha당은 만원. 줄을 누르면 그 지역으로 갑니다.${pk === "39" ? " 제주는 행정시라 예산이 도에만 있습니다." : ""}`;
+    $("#list-note").textContent = `금액 억원. 공익직불 = 기본형+선택형+행정비, 자체 = 지자체가 제 돈으로 주는 직불. 줄을 누르면 그 지역으로 갑니다.${pk === "39" ? " 제주는 행정시라 예산이 도에만 있습니다." : ""}`;
   }
 
   // ---------- 검증 한 줄 (꼬리말): 시군 예산 국비 합 ÷ e-나라지표 정부 예산(기본형+선택형) ----------

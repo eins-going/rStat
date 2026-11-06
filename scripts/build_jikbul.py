@@ -24,9 +24,12 @@ from regions import ROOT, SIDOS, UNIT_KEYS, unit_of  # noqa: E402
 
 RAW = os.path.join(ROOT, "db", "raw", "jikbul")
 OUT = os.path.join(ROOT, "data", "jikbul.js")
-CATS = ["기본형", "경관보전", "친환경", "전략작물", "저탄소", "행정·점검"]
-SELECT = ["경관보전", "친환경", "전략작물", "저탄소"]   # 선택형
-REFS = ["임업", "수산", "FTA", "경영이양", "옛 직불", "자체·기타"]   # 옛 직불: 2019년까지의 쌀소득보전·밭농업 직불(2020년 잔여 지급 등)
+# 공익직불 구성은 농식품부 안내(mafra.go.kr/gong/2593)를 따른다:
+#   기본형(소농직불금·면적직불금) / 선택형(친환경농업·친환경안전축산물·경관보전·전략작물). 저탄소 프로그램 등 이름으로 못 가른 선택형은 '선택형 기타'.
+CATS = ["기본형", "친환경", "친환경축산", "경관보전", "전략작물", "선택형 기타", "행정·점검"]
+SELECT = ["친환경", "친환경축산", "경관보전", "전략작물", "선택형 기타"]   # 선택형
+# 공익직불이 아닌 직불. 화면에는 농업 직불(자체·FTA·경영이양·옛 직불)만 보이고 임업·수산은 뺀다(사용자 2026-11-07)
+REFS = ["자체·기타", "FTA", "경영이양", "옛 직불", "임업", "수산"]   # 옛 직불: 2020년 국비로 남은 쌀소득보전·밭농업 직불
 F = ["amt", "nat", "sido", "sigun", "ep"]     # 금액 칸
 
 
@@ -37,7 +40,9 @@ def cat_of(name, part=""):
     part = part or ""
     if "일반행정" in part:
         return None
-    if re.search(r"어가|수산|어선원|어업|양식|배합사료|해양", n):
+    if re.search(r"수출", n):
+        return "자체·기타"   # '농수산 수출 특화품목 직불금' 등 지자체 자체 사업
+    if re.search(r"어가|(?<!농)수산|어선원|어업|양식|배합사료|해양", n):
         return "수산"
     if re.search(r"임업|산림", n):
         return "임업"
@@ -47,14 +52,16 @@ def cat_of(name, part=""):
         return "경영이양"
     if re.search(r"행정|이행점검|토양검사|사업관리|운영비|관리비|도우미|입력요원|운영지원", n):
         return "행정·점검"
+    if re.search(r"친환경축산|안전축산|축산물직불|친환경안전", n):
+        return "친환경축산"
     if re.search(r"경관보전|경관작물", n):
         return "경관보전"
     if re.search(r"전략작물|전락작물|논이모작|논활용", n):
         return "전략작물"
-    if re.search(r"친환경농업|친환경축산|유기|무농약|친환경생태|친환경직접지불", n):
+    if re.search(r"친환경농업|유기|무농약|친환경생태|친환경직접지불|친환경직불", n):
         return "친환경"
-    if re.search(r"탄소", n):
-        return "저탄소"
+    if re.search(r"탄소|선택형", n):
+        return "선택형 기타"   # 저탄소 프로그램, '공익직불사업(선택형)'처럼 종류를 적지 않은 선택형
     if re.search(r"기본형|공익직불|공익형직불|공익형직접지불|공익증진|공익기능증진|공익기능직접지불|공익직접지불|기본직불|소농직불|면적직불", n):
         return "기본형"   # '(자체)'·'(시비)'가 붙은 기본형은 지자체가 얹어 주는 몫 → 기본형의 시군비로 드러난다
     if re.search(r"자체|군비|시비|도비|지방비|지자체|농가군비", n):
@@ -107,6 +114,8 @@ def main():
             c = cat_of(r["dbiz_nm"], r.get("part_nm"))
             if c is None:
                 continue
+            if c == "옛 직불" and int(r["fyr"]) >= 2021 and not r.get("bdg_ntep"):
+                c = "자체·기타"   # 2021년부터 쌀·밭 직불은 국비가 없다 → 지자체가 제 돈으로 주는 자체 직불(예: 고창 쌀소득보전직접지불제)
             v = [(r.get(k) or 0) / 1e6 for k in ("bdg_cash_amt", "bdg_ntep", "capep", "sggep", "ep_amt")]
             if not v[0] and not v[4]:
                 continue

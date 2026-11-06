@@ -16,7 +16,7 @@ line.jb-ext { stroke: #fff; stroke-width: 2; stroke-dasharray: 3 2; }
 /* 세부사업 표 (왼쪽 가운데, 남는 높이를 쓴다 — agfin.css .af #p-list) */
 .jb-table td:first-child { max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .jb-table tr.jb-ref td { color: var(--faint); }
-.jb-tag { display: inline-block; font-size: 10.5px; padding: 0 5px; border-radius: 4px; background: var(--panel-2); color: var(--muted); }
+.jb-tag { display: inline-block; white-space: nowrap; font-size: 10.5px; padding: 0 5px; border-radius: 4px; background: var(--panel-2); color: var(--muted); }
 
 /* 오른쪽: 고향사랑기금 (옛 고향사랑기금 화면에서 옮김) */
 .gh-line { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
