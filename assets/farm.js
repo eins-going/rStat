@@ -241,7 +241,7 @@
     setFacilities(geometry, st.unit);
   }
 
-  // 필지를 볼 만큼 확대하면 덮개를 걷는다 (2013년 경계라 실제 경계와 어긋나는 곳이 있다)
+  // 필지를 볼 만큼 확대하면 덮개를 걷는다 (단순화한 경계라 실제 경계와 어긋나는 곳이 있다)
   function syncMask() {
     mask?.setStyle({ fillOpacity: map.getZoom() >= 14 ? 0 : 0.28 });
   }
@@ -441,7 +441,7 @@
     return polys.some(([outer, ...holes]) => inRing(x, y, outer) && !holes.some((h) => inRing(x, y, h)));
   }
 
-  // 경계는 2013년 것을 단순화해 시군 끝자락의 시설이 밖으로 빠지거나 이웃 시군 시설이 들어온다.
+  // 경계를 단순화해 시군 끝자락의 시설이 밖으로 빠지거나 이웃 시군 시설이 들어온다.
   // 그래서 주소의 시군(sgg, build_facilities.py가 붙인다)이 이 시군이면 경계 밖 3km까지 담고,
   // 경계 안이어도 주소가 다른 시군이면 뺀다. 광역시 '○○시부'는 주소가 구 단위라 경계로만 가린다.
   const stem = (s) => (s || "").replace(/(시|군)$/, "");

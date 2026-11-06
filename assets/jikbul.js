@@ -219,10 +219,11 @@
       const f = (s ? unitFeatures : sidoFeatures).find((d) => d.properties.key === k);
       return path.area(f) * v.k * v.k < (s ? 260 : 120);
     };
-    const name = (k) => (level(k) === 1 ? T.sidos[k].short : (label(k).endsWith("시부") ? "시부" : label(k).replace(/(시|군|구)$/, "")));
+    const name = (k) => (level(k) === 1 ? (!s && k === "36" ? "전남광주" : T.sidos[k].short) : (label(k).endsWith("시부") ? "시부" : label(k).replace(/(시|군|구)$/, "")));
     const inView = (k) => { const [x, y] = pos(k); return x > 20 && x < size.w - 20 && y > 16 && y < size.h - 10; };
     const ctx = s ? SIDO_CODES.filter((c) => c !== s && inView(c)) : [];
-    const data = [...keys.filter((k) => !small(k) && Number.isFinite(pos(k)[0])), ...ctx];
+    // 전국 화면: 광주·전남은 통합(2026년 7월) 전 기준으로 나눠 그리되 이름은 '전남광주' 하나로 단다
+    const data = [...keys.filter((k) => !small(k) && Number.isFinite(pos(k)[0]) && (s || k !== "24")), ...ctx];
     const sel = mapSvg.select("g.labels").selectAll("text").data(data, (k) => k).join("text")
       .attr("class", (k) => `region-label${level(k) === 1 ? " sido-label" : ""}${s && level(k) === 1 ? " ctx" : ""}${k === state.key ? " sel" : ""}`)
       .attr("x", (k) => pos(k)[0]).attr("y", (k) => pos(k)[1] + 4).text(name);

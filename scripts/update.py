@@ -285,7 +285,8 @@ def period_of(src):
             c = duckdb.connect(os.path.join(ROOT, "db", "agrix.duckdb"), read_only=True)
             return f"{c.sql('SELECT max(year) FROM corp_sgg').fetchone()[0]}년까지"
         if src["id"] == "geo":
-            return "2013 경계 + 현행 시군 규칙"
+            v = read_js("data/geo.js")["version"]
+            return f"행정동 경계 {v[3:7]}-{v[7:9]}-{v[9:]} 판"
         if src["id"] == "nhcoop":
             h = read_js("data/nhcoop.js")["periods"][-1]
             return f"{h[:4]}년 {int(h[4:])}월 말까지"
@@ -569,6 +570,9 @@ def dataset_period(ds):
         if kind == "livestock":
             y = read_js("data/livestock.js")["years"]
             return f"{y[0]}~{y[-1]}년"
+        if kind == "geo":
+            v = read_js("data/geo.js")["version"]
+            return f"{v[3:7]}-{v[7:9]}-{v[9:]} 판"
         if kind == "static":
             return arg
     except Exception as e:

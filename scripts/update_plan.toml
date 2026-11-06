@@ -472,23 +472,25 @@ where = "새 기준년 지역표가 나오면 받아 다시 만든다"
 
 [[source]]
 id = "geo"
-name = "지도 경계 (국가데이터처 2013 행정경계 → 현행 시군)"
+name = "지도 경계 (국가데이터처 SGIS 행정동 경계 → 현행 시군)"
 page = "모든 지도"
 method = "event"
 commands = [["scripts/build_geo.py"]]
 outputs = ["data/geo.js"]
 how = [
-  "행정구역이 바뀔 때만 scripts/build_geo.py의 규칙을 고치고 돌린다.",
-  "미반영: 2026년 7월 인천 개편(중구·동구 → 제물포구·영종구, 서구 → 서구·검단구). 한전 자료는 7월부터 새 구로 오고 서구·검단구가 빠져 있다.",
+  "원자료: vuski/admdongkor 행정동 경계(CC BY 4.0, 원자료 국가데이터처 SGIS). 지금 판 ver20261001 (2026년 7월 인천 구 개편·전남광주통합특별시 반영).",
+  "분기마다 `scripts/build_geo.py --check`로 새 판(verYYYYMMDD)이 나왔는지 보고, 행정구역이 바뀌었으면 build_geo.py의 판(VER)과 규칙을 고쳐 돌린다 (npx mapshaper 필요).",
+  "광주·전남은 통계가 나뉘어 나오므로 통합 전 기준(광주 24, 전남 36)으로 나눠 그린다. 전국 지도의 시도 이름만 '전남광주'로 묶어 적는다.",
+  "geo.js에는 시군 단위(municipalities, 168개)와 서울·광역시 자치구(gus, 70개)가 같은 경계선을 함께 쓰며 들어 있다.",
 ]
 
 [[source.dataset]]
 name = "시군 경계"
-origin = "국가데이터처 2013 행정경계 (southkorea-maps) → 현행 시군 규칙"
+origin = "국가데이터처 SGIS 행정동 경계 (vuski/admdongkor) → 현행 시군 규칙"
 freq = "개편 때"
-cadence = "행정구역이 바뀔 때"
-period = "static:2013 경계"
-where = "개편 때 경계 규칙을 고친다 (2026년 7월 인천 개편 미반영)"
+cadence = "행정구역이 바뀔 때 (분기마다 새 판 확인)"
+period = "geo:"
+where = "새 판이 나오면 scripts/build_geo.py의 VER을 바꿔 다시 만든다"
 
 [[source]]
 id = "nhcoop"
