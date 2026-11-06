@@ -218,7 +218,29 @@ def check_livestock(old, new):
     return not problems, changes, problems
 
 
-CHECKS = {"kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
+def check_jikbul(old, new):
+    changes, problems = [], []
+    tag = lambda d: d["periods"][-1]["d"] if d and d["periods"] else ""  # noqa: E731
+    a, b = tag(old), tag(new)
+    if b < a:
+        problems.append(f"마지막 시점이 뒤로 갔다 ({a} → {b})")
+    elif a != b:
+        changes.append(f"공익직불 {a or '–'} → {b}")
+    i = len(new["periods"]) - 1
+    units = sum(1 for k, v in new["regions"].items() if "|" in k and v[i][0][0])
+    if units < 140:
+        problems.append(f"마지막 시점 기본형이 있는 시군이 {units}곳뿐이다")
+    # e-나라지표(정부 예산)와 시군 예산 국비 합이 크게 어긋나면 분류 규칙이 깨졌다고 본다
+    sel = [new["cats"].index(c) for c in new["cats"] if c != "행정·점검"]
+    for j, p in enumerate(new["periods"]):
+        ext = new["ext"]["공익직불"][j]
+        nat = sum(new["regions"]["00"][j][c][1] for c in sel)
+        if ext and not 0.8 <= nat / ext <= 1.1:
+            problems.append(f"{p['y']}년 국비 합이 e-나라지표의 {nat / ext * 100:.0f}%")
+    return not problems, changes, problems
+
+
+CHECKS = {"jikbul": ("data/jikbul.js", check_jikbul), "kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
           "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities),
           "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs),
           "soil": ("data/soil.js", check_soil), "livestock": ("data/livestock.js", check_livestock)}
@@ -257,6 +279,9 @@ def period_of(src):
         if src["id"] == "livestock":
             y = read_js("data/livestock.js")["years"]
             return f"{y[0]}~{y[-1]}년"
+        if src["id"] == "jikbul":
+            p = read_js("data/jikbul.js")["periods"]
+            return f"{p[0]['y']}~{p[-1]['y']}년 ({int(p[-1]['d'][4:6])}월 말)까지"
         if src["id"] == "apfs":
             p = read_js("data/apfs.js")["periods"][-1]
             return f"{p['y']}년" + ("" if p["m"] == 12 else f" {p['m']}월 누계") + "까지"
@@ -509,6 +534,9 @@ def dataset_period(ds):
         if kind == "nhcoop":
             h = read_js("data/nhcoop.js")["periods"][-1]
             return f"{h[:4]}년 {int(h[4:])}월 말"
+        if kind == "jikbul":
+            p = read_js("data/jikbul.js")["periods"]
+            return f"{p[0]['y']}~{p[-2]['y']}년 · 올해 {int(p[-1]['d'][4:6])}월 말"
         if kind == "apfs":
             p = read_js("data/apfs.js")["periods"]
             done = [x for x in p if x["m"] == 12]

@@ -530,6 +530,25 @@ cadence = "매달 누계, 연말 확정"
 period = "apfs"
 
 [[source]]
+id = "jikbul"
+name = "공익직불 예산 (지방재정365 세부사업)"
+page = "공익직불"
+method = "auto"
+schedule = { kind = "monthly", day = 10 }
+commands = [["scripts/fetch_jikbul.py"], ["scripts/build_jikbul.py"]]
+outputs = ["data/jikbul.js"]
+check = "jikbul"
+keys = ["lofin365_open_api_key"]
+note = "지방재정365 Open API '세부사업별 세출현황'을 지자체 코드 없이 세부사업명('직불'·'직접지불'·'공익기능')으로 전국을 받는다. 지난 연도는 12월 31일 값을 한 번(작년은 4월까지 매달 다시), 올해는 매달 가장 최근 달 말일 값. 검증용으로 e-나라지표 '직접지불금 현황'(농식품부)도 받아 국비 합과 견준다(80~110% 밖이면 배포하지 않음)."
+
+[[source.dataset]]
+name = "공익직불 예산 (기본형·경관보전·친환경·전략작물·저탄소·행정비, 시군 예산현액·국비·지방비·지출)"
+origin = "지방재정365 세부사업별 세출현황 (QWGJK)"
+freq = "연 (올해는 월)"
+cadence = "매달 10일 확인"
+period = "jikbul"
+
+[[source]]
 id = "soil"
 name = "농경지 토양 (농촌진흥청 토양도 기반 토양특성 통계 · 농경지화학성 통계)"
 page = "농경지 토양"

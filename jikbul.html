@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>공익직불</title>
+  <meta name="description" content="지자체 예산에 편성된 농업 공익직불(기본형·선택형) 예산을 시군 단위로 봅니다. 지방재정365 세부사업 예산을 모아 농가당·경지 ha당으로 견주고, 농림축산식품부 예산과 맞춰 봅니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/power.css">
+  <link rel="stylesheet" href="assets/agfin.css">
+  <link rel="stylesheet" href="assets/jikbul.css">
+</head>
+<body class="pw af jb">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>지역농업 현황판</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="rio">지역산업연관표(농업)</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+          <a href="employ">농업고용</a>
+          <a href="agfin">농업금융보험</a>
+          <a href="jikbul" aria-current="page">공익직불</a>
+          <a href="soil">농경지 토양</a>
+          <a href="livestock">축산 환경</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+        <label class="select">
+          <span>연도</span>
+          <select id="year"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="공익직불 예산">
+        <article class="panel" id="p-sum">
+          <header class="panel-head">
+            <h2>공익직불 예산 <span class="h2-scope" id="sum-scope"></span></h2>
+            <span class="chip" data-year></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">예산</span>
+              <span class="stat-value"><b data-v="amt"></b><small data-u="amt"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">농가당</span>
+              <span class="stat-value"><b data-v="farm"></b><small data-u="farm"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">경지 1ha당</span>
+              <span class="stat-value"><b data-v="ha"></b><small data-u="ha"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">농업·농촌 예산 중</span>
+              <span class="stat-value"><b data-v="share"></b><small data-u="share"></small></span>
+            </div>
+          </div>
+          <h3 class="sub-head">누가 내나 <span>국비 · 시도비 · 시군비</span></h3>
+          <div class="af-stack" id="fund-stack"></div>
+          <div class="af-stack-key" id="fund-key"></div>
+          <p class="af-line" id="exec-line"></p>
+        </article>
+
+        <article class="panel" id="p-cat">
+          <header class="panel-head">
+            <h2>유형별 <span class="h2-scope">기본형 · 선택형 · 행정</span></h2>
+            <span class="chip" id="cat-unit"></span>
+          </header>
+          <div class="jb-cats" id="cat-bars"></div>
+          <p class="note" id="cat-note"></p>
+        </article>
+
+        <article class="panel" id="p-years">
+          <header class="panel-head">
+            <h2>연도별 예산</h2>
+            <span class="chip" id="years-range"></span>
+          </header>
+          <div class="chart jb-years" id="chart-years" aria-label="연도별 공익직불 예산"></div>
+          <div class="pw-key" id="years-key"></div>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 공익직불</h1>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="지역 지도"></svg>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="pw-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="세부사업과 검증">
+        <article class="panel" id="p-list">
+          <header class="panel-head">
+            <h2 id="list-title">세부사업 <span class="h2-scope" id="list-scope"></span></h2>
+            <span class="chip" id="list-count"></span>
+          </header>
+          <div class="af-table-wrap">
+            <table class="af-table jb-table" id="list-table"></table>
+          </div>
+          <p class="note" id="list-note"></p>
+        </article>
+
+        <article class="panel" id="p-check">
+          <header class="panel-head">
+            <h2 id="check-title">농식품부 예산과 맞춰 보기</h2>
+            <span class="chip">억원</span>
+          </header>
+          <div id="check"></div>
+          <h3 class="sub-head">공익직불이 아닌 직불 <span id="ref-scope"></span></h3>
+          <div class="jb-refs" id="refs"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p title="지방재정365 Open API '세부사업별 세출현황'에서 세부사업명에 '직불'·'직접지불'·'공익기능'이 든 사업을 모두 받아, 이름 규칙과 부문(농업·임업·해양수산)으로 나눴습니다. 예산은 예산현액(추경·이월 반영), 지난 연도는 12월 31일, 올해는 가장 최근 달 말일 기준입니다. 도 본청 예산은 시군으로 내려가는 국비라 합계에서 빼고 시군 예산을 더했습니다(시군이 없는 세종·제주는 본청). 농가 수·경지면적은 국가데이터처 농림어업조사·농업면적조사, 농업·농촌 예산은 지방재정365 기능별 세출입니다.">자료: 지방재정365 세부사업별 세출현황(시군 예산현액) · e-나라지표 직접지불금 현황(농림축산식품부) · 국가데이터처 농림어업조사·농업면적조사. 사업 이름 규칙으로 모은 값이라 지자체 표기에 따라 빠지거나 섞인 사업이 있을 수 있습니다.</p>
+      <p id="built"></p>
+      <p class="foot-link"><a href="status">자료 수집 현황</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/jikbul.js"></script>
+  <script src="assets/mappan.js"></script>
+  <script src="assets/jikbul.js"></script>
+  <script src="assets/legendpick.js"></script>
+  <script src="assets/about.js"></script>
+</body>
+</html>
