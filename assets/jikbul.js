@@ -1,6 +1,8 @@
 (() => {
-  // 공익직불 — 지자체 예산에 편성된 농업 공익직불(기본형·선택형) 예산 (data/jikbul.js, 지방재정365 세부사업)
-  // 시도·전국 값은 시군 합계(도 본청은 시군으로 내려가는 국비라 빼고, 시군이 없는 세종·제주만 본청).
+  // 공익직불·고향사랑기금 — 왼쪽·지도는 지자체 예산에 편성된 농업 공익직불(기본형·선택형) 예산 (data/jikbul.js, 지방재정365 세부사업),
+  // 오른쪽은 고향사랑기금 회계 (data/gohyang.js, 2023년부터). 둘 다 지방재정365 세부사업별 세출현황이다.
+  // 시도·전국 값: 공익직불은 시군 합계(도 본청은 시군으로 내려가는 국비라 빼고, 시군이 없는 세종·제주만 본청),
+  //               고향사랑기금은 본청 + 시군(본청도 따로 기부를 받아 기금을 굴린다). 자료마다 제 규칙을 따른다.
   // 지도·지역 체계는 농업금융보험(agfin.js)·농사용 전기(power.js)와 같다.
   const J = window.AGRI_JIKBUL;
   const T = window.AGRI_TOPO;
@@ -123,7 +125,7 @@
     const s = SIDO_CODES.find((c) => T.sidos[c].name === a || T.sidos[c].short === a);
     state.key = s ? (b && UNITS_BY_SIDO[s].find((k) => label(k) === b)) || s : NATION;
     const q = new URLSearchParams(location.search);
-    const pi = P.findIndex((p) => String(p.y) === q.get("y"));
+    const pi = P.findIndex((p) => String(p.y) === q.get("y") || p.d === q.get("y")); // 옛 고향사랑기금 주소(?y=20241231)도 받는다
     state.p = pi >= 0 ? pi : DEFAULT_P;
     state.metric = METRICS.find((m) => m.key === q.get("m")) || DEFAULT_METRIC;
   }
@@ -352,25 +354,6 @@
       : "";
   }
 
-  // 유형별: 막대(예산) · 금액 · 지방비 비율
-  const CAT_COLOR = { 기본형: "#f5a524", 경관보전: "#5fb37c", 친환경: "#8fd17a", 전략작물: "#5fb3ff", 저탄소: "#b48cff", "행정·점검": "#6d7380" };
-  function renderCats() {
-    const k = scopeKey(), i = state.p;
-    const rows = PUB.map((c) => { const v = cell(k, i, c) || [0, 0, 0, 0, 0]; return { c, amt: v[0], loc: v[2] + v[3] }; });
-    const max = Math.max(...rows.map((r) => r.amt), 0) || 1;
-    $("#cat-unit").textContent = "억원 · 지방비";
-    $("#cat-bars").innerHTML = rows.map((r) => `
-      <div class="jb-cat${r.amt ? "" : " zero"}" title="${esc(r.c)} ${milS(r.amt)} · 지방비 ${milS(r.loc)}">
-        <span class="jb-cl"><i style="background:${CAT_COLOR[r.c]}"></i>${esc(r.c)}${J.select.includes(r.c) ? "<em>선택형</em>" : ""}</span>
-        <span class="af-track"><i style="width:${(r.amt / max) * 100}%;background:${CAT_COLOR[r.c]}"></i></span>
-        <b>${eok1(r.amt)}</b><span class="jb-loc">${r.amt ? pctS((r.loc / r.amt) * 100, 0) : ""}</span>
-      </div>`).join("");
-    const top = rows.slice().sort((a, b) => b.amt - a.amt)[0];
-    const sel = rows.filter((r) => J.select.includes(r.c)).reduce((s, r) => s + r.amt, 0);
-    const all = rows.reduce((s, r) => s + r.amt, 0);
-    $("#cat-note").textContent = all ? `${top.c}이 ${pctS((top.amt / all) * 100, 0)}, 선택형이 ${pctS((sel / all) * 100, 0)}입니다. 오른쪽 끝 숫자는 그 유형 예산 가운데 지방비(시도비+시군비) 비율.` : "자료 없음";
-  }
-
   // 연도별: 기본형·선택형·행정 쌓은 막대. 전국은 농식품부 예산(e-나라지표, 기본형+선택형)을 점으로
   function frame(el, h0) {
     const w = el.clientWidth || 300, h = el.clientHeight || h0;
@@ -416,7 +399,7 @@
       + (isFull(P.length - 1) ? "" : `<span>${pShort(P.length - 1)}: ${+P.at(-1).d.slice(4, 6)}월 말 기준(흐리게)</span>`);
   }
 
-  // ---------- 오른쪽: 세부사업 / 하위 지역 ----------
+  // ---------- 왼쪽 가운데: 세부사업 / 하위 지역 ----------
   const CAT_SHORT = { 기본형: "기본", 경관보전: "경관", 친환경: "친환경", 전략작물: "전략", 저탄소: "탄소", "행정·점검": "행정", 임업: "임업", 수산: "수산", FTA: "FTA", 경영이양: "이양", "옛 직불": "옛", "자체·기타": "자체" };
   function renderList() {
     const k = state.key, i = state.p;
@@ -457,22 +440,127 @@
     $("#list-note").textContent = `금액 억원, ha당은 만원. 줄을 누르면 그 지역으로 갑니다.${pk === "39" ? " 제주는 행정시라 예산이 도에만 있습니다." : ""}`;
   }
 
-  // ---------- 오른쪽 아래: 검증과 참고 직불 ----------
-  function renderCheck() {
-    const rows = P.map((_, i) => {
-      const loc = sumC(NATION, i, PUB.filter((c) => c !== "행정·점검"), "nat");
-      const ext = J.ext["공익직불"][i];
-      return { i, loc, ext, r: ext ? (loc / ext) * 100 : null };
+  // ---------- 검증 한 줄 (꼬리말): 시군 예산 국비 합 ÷ e-나라지표 정부 예산(기본형+선택형) ----------
+  function renderCheckLine() {
+    const rs = P.map((_, i) => {
+      const loc = sumC(NATION, i, PUB.filter((c) => c !== "행정·점검"), "nat"), ext = J.ext["공익직불"][i];
+      return ext ? (loc / ext) * 100 : null;
+    }).filter(ok);
+    if (!rs.length) return;
+    const t = `${P[0].y}–${P.at(-1).y}년 시군 예산 국비 합은 e-나라지표 정부 예산(기본형+선택형)의 ${nf0.format(Math.floor(d3.min(rs)))}~${nf0.format(Math.floor(d3.max(rs)))}%입니다.`;
+    $("#check-line").textContent = t;
+    const foot = $("#foot-src");
+    foot.title += `\n검증: ${t} 시군을 거치지 않는 몫과 사업 이름이 규칙에 안 걸린 지자체만큼 덜 잡힙니다.`;
+    if (window.AGRI_GOHYANG?.check?.text) foot.title += `\n고향사랑기금 검증: ${window.AGRI_GOHYANG.check.text}`;
+  }
+
+  // ---------- 오른쪽: 고향사랑기금 (data/gohyang.js · 고향사랑기금 화면에서 옮김) ----------
+  // 고른 연도(공익직불 연도)와 같은 해를 쓴다. 고향사랑기부제는 2023년에 시작해 그 앞 해는 자료가 없다.
+  // 제주시·서귀포시는 따로 모금하지 않아 제주도 본청 한 곳(시도 값)을 보인다.
+  const G = window.AGRI_GOHYANG;
+  const GY = G.years;
+  const GF = Object.fromEntries(G.fields.map((f, i) => [f, i]));
+  const gyLabel = (j) => (GY[j].full ? `${GY[j].y}년` : `${GY[j].y}년 (${+GY[j].ymd.slice(4, 6)}월 말)`);
+  const gyShort = (j) => (GY[j].full ? `${GY[j].y}` : `${String(GY[j].y).slice(2)}.${+GY[j].ymd.slice(4, 6)}`);
+  const gYear = (i) => GY.findIndex((y) => y.y === P[i].y);
+  const gJeju = (k) => level(k) === 2 && sidoOf(k) === "39";
+  const gScope = (k) => (gJeju(k) ? "39" : k);
+  const grow = (k, j) => (j >= 0 ? G.regions[k]?.[j] ?? null : null);
+  const gget = (k, j, f) => grow(k, j)?.[GF[f]] ?? null;
+  const GOVN = {};
+  for (const [, r] of G.govs) GOVN[r] = (GOVN[r] || 0) + 1;
+  // 백만원 → 억·조 (기금은 작은 지자체가 많아 1억 아래는 만원까지)
+  const gmil = (v) => (!ok(v) ? ["–", ""] : Math.abs(v) >= 1e6 ? [nf1.format(v / 1e6), "조원"] : Math.abs(v) >= 1000 ? [nf0.format(v / 100), "억원"] : Math.abs(v) >= 10 ? [nf1.format(v / 100), "억원"] : v === 0 ? ["0", "원"] : [nf0.format(v * 100), "만원"]);
+  const gmilS = (v) => gmil(v).join("");
+  const G_START = GY[0].y;
+
+  function renderGSize() {
+    const k0 = state.key, k = gScope(k0), j = gYear(state.p);
+    $("#g-scope").textContent = `(${fullLabel(k)}${gJeju(k0) ? " 본청" : ""})`;
+    $("#g-year").textContent = j >= 0 ? gyLabel(j) : pLabel(state.p);
+    $("#g-stats").hidden = j < 0;
+    let note = "";
+    if (gJeju(k0)) note = "제주시·서귀포시는 따로 모금하지 않습니다. 제주도 본청 한 곳이 기금을 굴려 그 값을 보입니다.";
+    else if (level(k) < 2) note = "시도·전국 값은 본청 기금과 시군 기금을 더한 값입니다(본청도 기부를 받습니다. 공익직불은 시군만 더함).";
+    else if (label(k).endsWith("시부") && GOVN[k] > 1) note = `구 ${GOVN[k]}곳의 기금을 더한 값입니다.`;
+    $("#g-note").textContent = note;
+    if (j < 0) {
+      $("#g-line").innerHTML = `고향사랑기부제는 <b>${G_START}년</b>에 시작해 ${P[state.p].y}년에는 기금이 없습니다. 연도를 ${G_START}년 이후로 고르면 보입니다.`;
+      return;
+    }
+    const sz = gget(k, j, "size"), ep = gget(k, j, "bizEp"), kp = gget(k, j, "keep"), n = gget(k, j, "nBiz");
+    setStat("size", gmil(sz));
+    setStat("bizEp", gmil(ep));
+    setStat("keep", gmil(kp));
+    setStat("nBiz", ok(n) ? [nf0.format(n), "개"] : ["–", ""]);
+    const govN = G.counts[k]?.[j] ?? 0;
+    let line;
+    if (ok(sz) && sz > 0) {
+      const per = (v) => nf0.format(((v || 0) / sz) * 100);
+      line = `기금 100원 가운데 사업에 <b>${per(ep)}원</b>을 썼고 <b>${per(kp)}원</b>은 남겨 두었습니다`;
+      if (!GY[j].full) line = `${+GY[j].ymd.slice(4, 6)}월 말까지 ` + line.replace("썼고", "썼고(아직 연중)");
+      if (level(k) < 2 && govN) line += ` · 기금 회계 ${nf0.format(govN)}곳`;
+    } else line = "이 해에는 고향사랑기금 회계 행이 없습니다";
+    $("#g-line").innerHTML = line;
+  }
+
+  // 돈의 갈래: 기금 예산현액을 사업(쓴 돈·남은 예산)·운영·넘김·적립으로 나눈 띠 하나 + 기금 밖 일반회계 운영비
+  const G_SPLIT = [
+    { f: "bizEp", t: "사업에 쓴 돈", c: "var(--accent)" },
+    { f: "bizLeft", t: "사업 예산 중 안 쓴 돈", c: "rgba(245,165,36,0.35)" },
+    { f: "run", t: "운영(답례품·홍보 등)", c: "#b48cff" },
+    { f: "move", t: "다른 회계로 넘김", c: "#8a909c" },
+    { f: "keep", t: "남겨 둔 돈(적립)", c: "#5fb3ff" },
+  ];
+  function renderGSplit() {
+    const k = gScope(state.key), j = gYear(state.p);
+    const r = grow(k, j);
+    const v = r ? { bizEp: r[GF.bizEp], bizLeft: Math.max(0, r[GF.biz] - r[GF.bizEp]), run: r[GF.run], move: r[GF.move], keep: r[GF.keep] } : {};
+    const tot = G_SPLIT.reduce((s, x) => s + (v[x.f] || 0), 0);
+    $("#g-split-unit").textContent = r ? `합계 ${gmilS(r[GF.size])}` : "";
+    $("#g-split-bar").hidden = !tot;
+    $("#g-split-bar").innerHTML = tot ? G_SPLIT.filter((x) => v[x.f] > 0).map((x) => `<i style="flex-grow:${v[x.f] / tot};background:${x.c}" title="${x.t} ${gmilS(v[x.f])}"></i>`).join("") : "";
+    $("#g-split-rows").innerHTML = tot
+      ? G_SPLIT.map((x) => `<div class="gh-sr"><span><i style="background:${x.c}"></i>${x.t}</span><b>${gmilS(v[x.f])}</b><em>${nf0.format(((v[x.f] || 0) / tot) * 100)}%</em></div>`).join("")
+        + `<div class="gh-sr gh-out"><span><i></i>기금 밖 일반회계 운영비</span><b>${gmilS(r[GF.gen])}</b><em>쓴 돈 ${gmilS(r[GF.genEp])}</em></div>`
+      : `<p class="af-empty">${j < 0 ? `고향사랑기부제는 ${G_START}년 시작` : "자료 없음"}</p>`;
+    $("#g-split-note").textContent = j < 0 ? "" : "갈래는 사업 이름으로 나눈 자체 기준입니다. 남겨 둔 돈은 계획(예산)이라 실제 연말 잔액과 다를 수 있습니다.";
+  }
+
+  // 연도별: 해마다 막대 셋(굴린 돈 회색 · 사업 지출 주황 · 남겨 둔 돈 파랑). 막대를 누르면 그 해로 간다
+  const GYB = [["size", "gh-b-size", "기금이 굴린 돈"], ["bizEp", "gh-b-biz", "사업에 쓴 돈"], ["keep", "gh-b-keep", "남겨 둔 돈"]];
+  function drawGYears() {
+    const k = gScope(state.key), el = $("#chart-gyears"), cur = gYear(state.p);
+    const { svg, w, h } = frame(el, 140);
+    $("#gyears-range").textContent = `${gyShort(0)}~${gyShort(GY.length - 1)}`;
+    const rows = GY.map((_, j) => ({ j, size: gget(k, j, "size"), bizEp: gget(k, j, "bizEp"), keep: gget(k, j, "keep") }));
+    const top = d3.max(rows, (r) => Math.max(r.size || 0, r.bizEp || 0, r.keep || 0));
+    if (!top) { svg.append("text").attr("x", 8).attr("y", 20).attr("class", "pw-empty").text("자료 없음"); $("#gyears-key").innerHTML = ""; return; }
+    const m = { l: 44, r: 6, t: 8, b: 18 };
+    const x = d3.scaleBand().domain(rows.map((r) => r.j)).range([m.l, w - m.r]).padding(0.24);
+    const x2 = d3.scaleBand().domain(GYB.map((b) => b[0])).range([0, x.bandwidth()]).padding(0.08);
+    const y = d3.scaleLinear().domain([0, top * 1.05]).nice(3).range([h - m.b, m.t]);
+    svg.append("g").attr("class", "pw-axis").selectAll("g").data(y.ticks(3)).join("g").call((g) => {
+      g.append("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", (d) => y(d)).attr("y2", (d) => y(d));
+      g.append("text").attr("x", m.l - 5).attr("y", (d) => y(d) + 4).attr("text-anchor", "end").text((d) => (d ? gmilS(d) : "0"));
     });
-    $("#check").innerHTML = `<table class="af-mini jb-check"><thead><tr><th>연도</th><th>농식품부 예산</th><th>시군 예산 국비 합</th><th>비율</th></tr></thead><tbody>${rows.map((r) => `
-      <tr class="${r.i === state.p ? "sel" : ""}"><td>${pShort(r.i)}</td><td>${ok(r.ext) ? nf0.format(r.ext / 100) : "–"}</td><td>${nf0.format(r.loc / 100)}</td><td>${pctS(r.r)}</td></tr>`).join("")}</tbody></table>
-      <p class="note jb-check-note">기본형+선택형. 왼쪽은 e-나라지표 '직접지불금 현황'의 정부 예산, 가운데는 이 화면이 모은 시군 예산의 국비입니다. 시군을 거치지 않는 몫과 사업 이름이 규칙에 안 걸린 지자체만큼 덜 잡힙니다.</p>`;
-    const k = scopeKey(), i = state.p;
-    $("#ref-scope").textContent = `${fullLabel(k)} · ${pLabel(i)}`;
-    const refs = J.refs.map((c) => [c, cell(k, i, c)?.[0] || 0]);
-    const max = Math.max(...refs.map(([, v]) => v), 0) || 1;
-    const NOTE = { 임업: "임업·산림 공익직불(산림청)", 수산: "수산 공익직불·소규모어가 등(해수부)", FTA: "FTA 피해보전직불", 경영이양: "경영이양직불", "옛 직불": "2019년까지의 쌀·밭 직불 잔여분", "자체·기타": "청년 취농직불·토종농산물 등 지자체 자체 직불" };
-    $("#refs").innerHTML = refs.map(([c, v]) => `<div class="af-bar-row" title="${esc(NOTE[c])}"><span class="af-bar-l">${esc(c)}<em>${esc(NOTE[c])}</em></span><span class="af-track"><i style="width:${(v / max) * 100}%;background:#6d7380"></i></span><b>${v ? milS(v) : "–"}</b></div>`).join("");
+    const grp = svg.append("g").selectAll("g").data(rows).join("g").attr("transform", (r) => `translate(${x(r.j)},0)`);
+    grp.filter((r) => r.j === cur).append("rect").attr("class", "af-ysel").attr("x", -3).attr("width", x.bandwidth() + 6).attr("y", m.t - 4).attr("height", h - m.t - m.b + 4);
+    for (const [f, cls, t] of GYB) {
+      grp.filter((r) => ok(r[f])).append("rect").attr("class", cls)
+        .attr("x", x2(f)).attr("width", x2.bandwidth()).attr("y", (r) => y(r[f])).attr("height", (r) => y(0) - y(r[f]))
+        .classed("af-partial", (r) => !GY[r.j].full)
+        .append("title").text((r) => `${gyLabel(r.j)} ${t} ${gmilS(r[f])}`);
+    }
+    svg.append("g").attr("class", "pw-axis").selectAll("text").data(rows).join("text")
+      .attr("x", (r) => x(r.j) + x.bandwidth() / 2).attr("y", h - 4).attr("text-anchor", "middle").text((r) => gyShort(r.j));
+    const pOf = (j) => P.findIndex((p) => p.y === GY[j].y);
+    svg.append("g").selectAll("rect").data(rows.filter((r) => pOf(r.j) >= 0)).join("rect").attr("x", (r) => x(r.j)).attr("width", x.bandwidth()).attr("y", 0).attr("height", h)
+      .attr("fill", "transparent").style("cursor", "pointer").on("click", (e, r) => { state.p = pOf(r.j); render(false); })
+      .append("title").text((r) => `${gyLabel(r.j)} 보기`);
+    $("#gyears-key").innerHTML = GYB.map(([, cls, t]) => `<span><i class="${cls}"></i>${t}</span>`).join("")
+      + (GY.at(-1).full ? "" : `<span>${gyShort(GY.length - 1)}: 연중(흐리게)</span>`)
+      + (cur < 0 ? `<span>${G_START}년 시작</span>` : "");
   }
 
   // ---------- 가운데 제목 ----------
@@ -491,10 +579,11 @@
     syncURL();
     renderHero();
     renderSum();
-    renderCats();
     drawYears();
     renderList();
-    renderCheck();
+    renderGSize();
+    renderGSplit();
+    drawGYears();
     paintMap();
     renderRank();
     applyView(animate);
@@ -509,7 +598,8 @@
   renderChips();
   drawMap();
   render(false);
-  $("#built").textContent = `${pLabel(P.length - 1)}까지 · ${J.built} 작성`;
+  renderCheckLine();
+  $("#built").textContent = `${pLabel(P.length - 1)}까지 · ${[J.built, G.built].sort().at(-1)} 작성`;
   let mw = 0, mh = 0;
   new ResizeObserver(([e]) => {
     const { width, height } = e.contentRect;
@@ -518,13 +608,16 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  new ResizeObserver((entries) => {
+  const chartRO = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;
       const drawn = e.target._wh;
       if (drawn && Math.abs(drawn[0] - width) < 1 && Math.abs(drawn[1] - height) < 1) continue;
-      drawYears();
+      if (e.target.id === "chart-gyears") drawGYears();
+      else drawYears();
     }
-  }).observe($("#chart-years"));
+  });
+  chartRO.observe($("#chart-years"));
+  chartRO.observe($("#chart-gyears"));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
 })();

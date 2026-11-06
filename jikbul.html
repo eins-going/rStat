@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>공익직불</title>
-  <meta name="description" content="지자체 예산에 편성된 농업 공익직불(기본형·선택형) 예산을 시군 단위로 봅니다. 지방재정365 세부사업 예산을 모아 농가당·경지 ha당으로 견주고, 농림축산식품부 예산과 맞춰 봅니다.">
+  <title>공익직불·고향사랑기금</title>
+  <meta name="description" content="지자체 예산에 편성된 농업 공익직불(기본형·선택형) 예산과 고향사랑기금을 시군 단위로 봅니다. 공익직불은 세부사업 예산을 농가당·경지 ha당으로 견주고, 고향사랑기금은 기금 규모·사업에 쓴 돈·남겨 둔 돈을 지방재정365 세부사업 집행 자료로 봅니다.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/power.css">
@@ -26,10 +26,9 @@
           <a href="power">농사용 전기</a>
           <a href="employ">농업고용</a>
           <a href="agfin">농업금융보험</a>
-          <a href="jikbul" aria-current="page">공익직불</a>
+          <a href="jikbul" aria-current="page">공익직불·고향사랑</a>
           <a href="soil">농경지 토양</a>
           <a href="livestock">축산 환경</a>
-          <a href="gohyang">고향사랑기금</a>
         </nav>
       </div>
       <div class="controls">
@@ -49,7 +48,7 @@
     </header>
 
     <main class="grid">
-      <section class="col col-left" aria-label="공익직불 예산">
+      <section class="col col-left" aria-label="공익직불 예산과 세부사업">
         <article class="panel" id="p-sum">
           <header class="panel-head">
             <h2>공익직불 예산 <span class="h2-scope" id="sum-scope"></span></h2>
@@ -79,13 +78,15 @@
           <p class="af-line" id="exec-line"></p>
         </article>
 
-        <article class="panel" id="p-cat">
+        <article class="panel" id="p-list">
           <header class="panel-head">
-            <h2>유형별 <span class="h2-scope">기본형 · 선택형 · 행정</span></h2>
-            <span class="chip" id="cat-unit"></span>
+            <h2 id="list-title">세부사업 <span class="h2-scope" id="list-scope"></span></h2>
+            <span class="chip" id="list-count"></span>
           </header>
-          <div class="jb-cats" id="cat-bars"></div>
-          <p class="note" id="cat-note"></p>
+          <div class="af-table-wrap">
+            <table class="af-table jb-table" id="list-table"></table>
+          </div>
+          <p class="note" id="list-note"></p>
         </article>
 
         <article class="panel" id="p-years">
@@ -100,7 +101,7 @@
 
       <section class="center" aria-label="지도">
         <div class="hero">
-          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 공익직불</h1>
+          <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> 공익직불·고향사랑기금</h1>
         </div>
         <div class="map-card" id="map-card">
           <div class="chipbar">
@@ -117,32 +118,57 @@
         </div>
       </section>
 
-      <section class="col col-right" aria-label="세부사업과 검증">
-        <article class="panel" id="p-list">
+      <section class="col col-right" aria-label="고향사랑기금">
+        <article class="panel" id="p-gsize">
           <header class="panel-head">
-            <h2 id="list-title">세부사업 <span class="h2-scope" id="list-scope"></span></h2>
-            <span class="chip" id="list-count"></span>
+            <h2>기금 규모 <span class="h2-scope" id="g-scope"></span></h2>
+            <span class="chip" id="g-year"></span>
           </header>
-          <div class="af-table-wrap">
-            <table class="af-table jb-table" id="list-table"></table>
+          <div class="stats two" id="g-stats">
+            <div class="stat">
+              <span class="stat-label" title="고향사랑기금 회계 세출 예산현액 합계. 전년에 남긴 돈과 그해 들어올 기부금 예상을 합친 크기">기금이 굴린 돈</span>
+              <span class="stat-value"><b data-v="size"></b><small data-u="size"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label" title="사업 갈래의 지출액 (지방재정365 집행 기준)">사업에 쓴 돈</span>
+              <span class="stat-value"><b data-v="bizEp"></b><small data-u="bizEp"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label" title="보전지출·예치금 등으로 잡은 돈. 그해 쓰지 않고 다음 해로 넘길 계획인 돈">남겨 둔 돈</span>
+              <span class="stat-value"><b data-v="keep"></b><small data-u="keep"></small></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">기금사업</span>
+              <span class="stat-value"><b data-v="nBiz"></b><small data-u="nBiz"></small></span>
+            </div>
           </div>
-          <p class="note" id="list-note"></p>
+          <p class="gh-line" id="g-line"></p>
+          <p class="note" id="g-note"></p>
         </article>
 
-        <article class="panel" id="p-check">
+        <article class="panel" id="p-gsplit">
           <header class="panel-head">
-            <h2 id="check-title">농식품부 예산과 맞춰 보기</h2>
-            <span class="chip">억원</span>
+            <h2>돈의 갈래 <span class="h2-scope">예산현액 기준</span></h2>
+            <span class="chip" id="g-split-unit"></span>
           </header>
-          <div id="check"></div>
-          <h3 class="sub-head">공익직불이 아닌 직불 <span id="ref-scope"></span></h3>
-          <div class="jb-refs" id="refs"></div>
+          <div class="gh-split" id="g-split-bar" aria-label="기금 예산의 갈래"></div>
+          <div class="gh-split-rows" id="g-split-rows"></div>
+          <p class="note" id="g-split-note"></p>
+        </article>
+
+        <article class="panel" id="p-gyears">
+          <header class="panel-head">
+            <h2>연도별 규모와 사업 지출</h2>
+            <span class="chip" id="gyears-range"></span>
+          </header>
+          <div class="chart jb-gyears" id="chart-gyears" aria-label="연도별 고향사랑기금 규모와 사업 지출"></div>
+          <div class="pw-key" id="gyears-key"></div>
         </article>
       </section>
     </main>
 
     <footer class="foot">
-      <p title="지방재정365 Open API '세부사업별 세출현황'에서 세부사업명에 '직불'·'직접지불'·'공익기능'이 든 사업을 모두 받아, 이름 규칙과 부문(농업·임업·해양수산)으로 나눴습니다. 예산은 예산현액(추경·이월 반영), 지난 연도는 12월 31일, 올해는 가장 최근 달 말일 기준입니다. 도 본청 예산은 시군으로 내려가는 국비라 합계에서 빼고 시군 예산을 더했습니다(시군이 없는 세종·제주는 본청). 농가 수·경지면적은 국가데이터처 농림어업조사·농업면적조사, 농업·농촌 예산은 지방재정365 기능별 세출입니다.">자료: 지방재정365 세부사업별 세출현황(시군 예산현액) · e-나라지표 직접지불금 현황(농림축산식품부) · 국가데이터처 농림어업조사·농업면적조사. 사업 이름 규칙으로 모은 값이라 지자체 표기에 따라 빠지거나 섞인 사업이 있을 수 있습니다.</p>
+      <p title="공익직불: 지방재정365 Open API '세부사업별 세출현황'에서 세부사업명에 '직불'·'직접지불'·'공익기능'이 든 사업을 모두 받아, 이름 규칙과 부문(농업·임업·해양수산)으로 나눴습니다. 예산은 예산현액(추경·이월 반영), 지난 연도는 12월 31일, 올해는 가장 최근 달 말일 기준입니다. 도 본청 예산은 시군으로 내려가는 국비라 시도·전국 합계에서 빼고 시군 예산을 더했습니다(시군이 없는 세종·제주는 본청). 농가 수·경지면적은 국가데이터처 농림어업조사·농업면적조사, 농업·농촌 예산은 지방재정365 기능별 세출입니다.&#10;고향사랑기금: 같은 세부사업별 세출현황에서 회계 이름에 '고향사랑'이 든 행(고향사랑기금 회계)과 사업 이름에 '고향사랑'이 든 다른 회계 행만 남겼습니다. 갈래(사업·운영·넘김·적립)는 사업 이름으로 나눈 자체 기준입니다. 시도 본청도 따로 기부를 받아 기금을 굴리므로 시도·전국 값은 본청과 시군을 더했습니다. 지자체별 모금액·기부 건수는 공개 API·파일이 없어 싣지 못했습니다." id="foot-src">자료: 지방재정365 세부사업별 세출현황(공익직불 시군 예산현액 · 고향사랑기금 회계 예산현액·지출액, 모금액 아님) · e-나라지표 직접지불금 현황 · 국가데이터처 농림어업조사·농업면적조사. <span id="check-line"></span></p>
       <p id="built"></p>
       <p class="foot-link"><a href="status">자료 수집 현황</a></p>
     </footer>
@@ -152,6 +178,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <script src="data/geo.js"></script>
   <script src="data/jikbul.js"></script>
+  <script src="data/gohyang.js"></script>
   <script src="assets/mappan.js"></script>
   <script src="assets/jikbul.js"></script>
   <script src="assets/legendpick.js"></script>

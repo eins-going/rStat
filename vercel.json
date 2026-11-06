@@ -3,6 +3,8 @@
   "regions": ["icn1"],
   "redirects": [
     { "source": "/producers", "destination": "/", "permanent": false },
-    { "source": "/facilities", "destination": "/", "permanent": false }
+    { "source": "/facilities", "destination": "/", "permanent": false },
+    { "source": "/gohyang", "destination": "/jikbul", "permanent": false },
+    { "source": "/gohyang.html", "destination": "/jikbul", "permanent": false }
   ]
 }

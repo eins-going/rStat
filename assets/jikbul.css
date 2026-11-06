@@ -1,4 +1,4 @@
-/* 공익직불 (jikbul.html, assets/jikbul.js) — 지도·순위·칩·표는 style.css·power.css·agfin.css를 그대로 쓴다 */
+/* 공익직불·고향사랑기금 (jikbul.html, assets/jikbul.js) — 지도·순위·칩·표는 style.css·power.css·agfin.css를 그대로 쓴다 */
 
 .jb-dim { color: var(--faint); font-size: 11px; }
 
@@ -8,27 +8,44 @@
 .jb-fg, .af-stack-key i.jb-fg { background: #5fb37c; }
 .af-stack-key em { font-style: normal; color: var(--faint); font-size: 10.5px; }
 
-/* 유형별 */
-.jb-cats { display: grid; gap: 5px; }
-.jb-cat { display: grid; grid-template-columns: 104px 1fr 44px 34px; align-items: center; gap: 8px; font-size: 12px; }
-.jb-cat.zero { opacity: 0.45; }
-.jb-cat b { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
-.jb-cl { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); white-space: nowrap; overflow: hidden; }
-.jb-cl i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
-.jb-cl em { font-style: normal; color: var(--faint); font-size: 10px; }
-.jb-loc { color: var(--faint); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
-
 /* 연도별 */
 .jb-years { height: 130px; margin-top: 4px; }
 line.jb-ext { stroke: #fff; stroke-width: 2; stroke-dasharray: 3 2; }
 .pw-key i.jb-k-ext { height: 0; border-top: 2px dashed #fff; background: none; }
 
-/* 오른쪽 표 */
+/* 세부사업 표 (왼쪽 가운데, 남는 높이를 쓴다 — agfin.css .af #p-list) */
 .jb-table td:first-child { max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .jb-table tr.jb-ref td { color: var(--faint); }
 .jb-tag { display: inline-block; font-size: 10.5px; padding: 0 5px; border-radius: 4px; background: var(--panel-2); color: var(--muted); }
-.jb-check tr.sel td { color: var(--accent); }
-.jb-check-note { margin-top: 4px; }
-.jb-refs { display: grid; gap: 4px; }
-.jb-refs .af-bar-row { grid-template-columns: 1fr 70px auto; }
-.jb-refs .af-bar-l em { display: none; }
+
+/* 오른쪽: 고향사랑기금 (옛 고향사랑기금 화면에서 옮김) */
+.gh-line { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.gh-line b { color: var(--text); font-variant-numeric: tabular-nums; }
+#g-note:empty, #g-split-note:empty, #g-split-unit:empty, #g-stats[hidden] { display: none; }
+.gh-split { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--panel-2); gap: 2px; }
+.gh-split[hidden] { display: none; }
+.gh-split i { display: block; flex-basis: 0; min-width: 2px; }
+.gh-split-rows { display: grid; gap: 1px; margin-top: 7px; }
+.gh-sr { display: grid; grid-template-columns: 1fr auto 44px; align-items: baseline; gap: 8px; font-size: 12px; color: var(--muted); padding: 2px 0; }
+.gh-sr span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gh-sr i { flex: none; width: 9px; height: 9px; border-radius: 2px; }
+.gh-sr b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.gh-sr em { font-style: normal; font-size: 11px; color: var(--faint); text-align: right; font-variant-numeric: tabular-nums; }
+.gh-sr.gh-out { margin-top: 3px; padding-top: 5px; border-top: 1px dashed #3a3f48; grid-template-columns: 1fr auto auto; }
+.gh-sr.gh-out i { background: transparent; outline: 1px dashed #8a909c; outline-offset: -1px; }
+.jb-gyears { height: 140px; margin-top: 4px; }
+rect.gh-b-size { fill: #6d7380; }
+rect.gh-b-biz { fill: var(--accent); }
+rect.gh-b-keep { fill: #5fb3ff; }
+.pw-key i.gh-b-size, .pw-key i.gh-b-biz, .pw-key i.gh-b-keep { height: 9px; }
+.pw-key i.gh-b-size { background: #6d7380; }
+.pw-key i.gh-b-biz { background: var(--accent); }
+.pw-key i.gh-b-keep { background: #5fb3ff; }
+
+@media (min-width: 1281px) and (min-height: 720px) {
+  .jb #p-gyears { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; }
+  .jb #p-gyears .jb-gyears { flex: 1 1 0; height: auto; min-height: 90px; }
+}
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
+  .jb #g-split-note { display: none; }
+}
