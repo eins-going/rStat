@@ -420,7 +420,7 @@
       tbl.innerHTML = `<thead><tr><th>사업</th><th>분류</th><th>예산</th><th>지방비</th><th>지출</th></tr></thead><tbody>${rows.length
         ? rows.map(([n, c, amt, , sd, sg, ep]) => `<tr><td title="${esc(n)}">${esc(n)}</td><td><span class="jb-tag">${CAT_SHORT[c] || c}</span></td><td>${eok1(amt)}</td><td>${sd + sg ? eok1(sd + sg) : "–"}</td><td>${eok1(ep)}</td></tr>`).join("")
         : `<tr class="af-none"><td colspan="5">${J.biz[k] ? "사업 목록은 최근 두 해만 싣습니다" : "직불 사업이 없습니다"}</td></tr>`}</tbody>`;
-      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 분류의 '기본형·선택'은 공익직불(농식품부 구성), '지자체 자체'는 지방비 단독 직불입니다. 임업·수산 직불은 뺐습니다.";
+      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 분류의 '기본형·선택'은 공익직불(농식품부 구성), '지자체 자체'는 지방비 단독 직불입니다. FTA 피해보전은 국비 사업이라 일부 도·시군이 시도비로 적은 몫도 국비로 셉니다. 임업·수산 직불은 뺐습니다.";
       return;
     }
     // 전국: 시도별, 시도: 시군별

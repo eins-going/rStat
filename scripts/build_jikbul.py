@@ -117,6 +117,11 @@ def main():
             if c == "옛 직불" and int(r["fyr"]) >= 2021 and not r.get("bdg_ntep"):
                 c = "자체·기타"   # 2021년부터 쌀·밭 직불은 국비가 없다 → 지자체가 제 돈으로 주는 자체 직불(예: 고창 쌀소득보전직접지불제)
             v = [(r.get(k) or 0) / 1e6 for k in ("bdg_cash_amt", "bdg_ntep", "capep", "sggep", "ep_amt")]
+            if c == "FTA" and v[2]:
+                # FTA 피해보전직불금은 국가 사업(FTA 이행지원기금)인데 전남·경남·충북·제주는 도 본청부터 '시도비'로 적고
+                # 도를 거쳐 받은 시군도 시도비로 적는다(같은 사업을 경북·충남 등은 국비로 적음). 시도비 표기분을 국비로 본다.
+                v[1] += v[2]
+                v[2] = 0.0
             if not v[0] and not v[4]:
                 continue
             pl = place(r)
