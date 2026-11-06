@@ -532,7 +532,7 @@ period = "apfs"
 [[source]]
 id = "jikbul"
 name = "공익직불 예산 (지방재정365 세부사업)"
-page = "공익직불·고향사랑"
+page = "직불금·고향사랑"
 method = "auto"
 schedule = { kind = "monthly", day = 10 }
 commands = [["scripts/fetch_jikbul.py"], ["scripts/build_jikbul.py"]]
@@ -551,7 +551,7 @@ period = "jikbul"
 [[source]]
 id = "gohyang"
 name = "고향사랑기금 (지방재정365 세부사업 집행)"
-page = "공익직불·고향사랑"
+page = "직불금·고향사랑"
 method = "auto"
 schedule = { kind = "monthly", day = 5 }
 commands = [["scripts/fetch_gohyang.py"], ["scripts/build_gohyang.py"]]
