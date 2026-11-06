@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>직불금·고향사랑기금</title>
-  <meta name="description" content="지자체 예산에 편성된 농업 공익직불(기본형·선택형) 예산과 고향사랑기금을 시군 단위로 봅니다. 공익직불은 세부사업 예산을 농가당·경지 ha당으로 견주고, 고향사랑기금은 기금 규모·사업에 쓴 돈·남겨 둔 돈을 지방재정365 세부사업 집행 자료로 봅니다.">
+  <meta name="description" content="지자체 예산에 편성된 농업 직불금(공익직불·지자체 자체 직불) 예산과 고향사랑기금을 시군 단위로 봅니다. 공익직불은 세부사업 예산을 농가당·경지 ha당으로 견주고, 고향사랑기금은 기금 회계 예산현액·지출·적립·미집행을 지방재정365 세부사업 집행 자료로 봅니다.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/power.css">
@@ -72,7 +72,7 @@
               <span class="stat-value"><b data-v="share"></b><small data-u="share"></small></span>
             </div>
           </div>
-          <h3 class="sub-head">누가 내나 <span>국비 · 시도비 · 시군비</span></h3>
+          <h3 class="sub-head">재원 <span>국비 · 시도비 · 시군비</span></h3>
           <div class="af-stack" id="fund-stack"></div>
           <div class="af-stack-key" id="fund-key"></div>
           <p class="af-line" id="exec-line"></p>
@@ -126,19 +126,19 @@
           </header>
           <div class="stats two" id="g-stats">
             <div class="stat">
-              <span class="stat-label" title="고향사랑기금 회계 세출 예산현액 합계. 전년에 남긴 돈과 그해 들어올 기부금 예상을 합친 크기">기금이 굴린 돈</span>
+              <span class="stat-label" title="고향사랑기금 회계 세출 예산현액 합계(전년 이월 + 그해 기부금 예상)">예산현액</span>
               <span class="stat-value"><b data-v="size"></b><small data-u="size"></small></span>
             </div>
             <div class="stat">
-              <span class="stat-label" title="기금 회계에서 실제로 나간 돈(지출액 합계, 예치·적립 제외). 사업이든 답례품·홍보든 모두">기금에서 쓴 돈</span>
+              <span class="stat-label" title="기금 회계 지출액 합계(예치·적립 제외, 사업·운영 모두)">지출</span>
               <span class="stat-value"><b data-v="spent"></b><small data-u="spent"></small></span>
             </div>
             <div class="stat">
-              <span class="stat-label" title="굴린 돈 − 쓴 돈. 적립·예치로 잡았든 쓰지 못했든 모두">쓰지 않은 돈</span>
+              <span class="stat-label" title="예산현액 − 지출(적립·예치·미집행)">적립·미집행</span>
               <span class="stat-value"><b data-v="unspent"></b><small data-u="unspent"></small></span>
             </div>
             <div class="stat">
-              <span class="stat-label" title="쓴 돈 ÷ 굴린 돈">쓴 비율</span>
+              <span class="stat-label" title="지출 ÷ 예산현액">집행률</span>
               <span class="stat-value"><b data-v="rate"></b><small data-u="rate"></small></span>
             </div>
           </div>
@@ -148,20 +148,20 @@
 
         <article class="panel" id="p-gsplit">
           <header class="panel-head">
-            <h2>고향사랑기금 쓰임 <span class="h2-scope">모든 지자체 같은 기준</span></h2>
+            <h2>고향사랑기금 집행 <span class="h2-scope">전 지자체 동일 기준</span></h2>
             <span class="chip" id="g-split-unit"></span>
           </header>
-          <div class="gh-split" id="g-split-bar" aria-label="기금에서 쓴 돈과 쓰지 않은 돈"></div>
+          <div class="gh-split" id="g-split-bar" aria-label="지출과 적립·미집행"></div>
           <div class="gh-split-rows" id="g-split-rows"></div>
           <p class="note" id="g-split-note"></p>
         </article>
 
         <article class="panel" id="p-gyears">
           <header class="panel-head">
-            <h2>고향사랑기금 연도별 <span class="h2-scope">굴린 돈·쓴 돈</span></h2>
+            <h2>고향사랑기금 연도별 <span class="h2-scope">예산현액·지출</span></h2>
             <span class="chip" id="gyears-range"></span>
           </header>
-          <div class="chart jb-gyears" id="chart-gyears" aria-label="연도별 고향사랑기금 굴린 돈과 쓴 돈"></div>
+          <div class="chart jb-gyears" id="chart-gyears" aria-label="연도별 고향사랑기금 예산현액과 지출"></div>
           <div class="pw-key" id="gyears-key"></div>
         </article>
       </section>

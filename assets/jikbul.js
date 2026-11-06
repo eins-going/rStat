@@ -86,15 +86,15 @@
 
   // ---------- 지도 지표 ----------
   const METRICS = [
-    { key: "amt", group: "규모", chip: "직불금", label: "직불금 예산", get: (k, i) => tot(k, i), fmt: milS, note: "공익직불(기본형·선택형·행정비)과 지자체 자체·FTA 피해보전 등 농업 직불을 더한 예산현액(추경·이월 반영). 임업·수산 직불은 뺐다" },
-    { key: "basic", group: "규모", chip: "기본형", label: "기본형 공익직불 예산", get: (k, i) => sumC(k, i, ["기본형"]), fmt: milS, note: "소농·면적직불. 지자체가 얹어 주는 몫(시군비)도 함께" },
-    { key: "own", group: "규모", chip: "자체", label: "지자체 자체 직불 예산", get: (k, i) => sumC(k, i, ["자체·기타"]), fmt: milS, note: "공익직불이 아니라 지자체가 제 돈으로 주는 직불(쌀·밭 소득보전, 수출 특화품목 등)" },
+    { key: "amt", group: "규모", chip: "직불금", label: "직불금 예산", get: (k, i) => tot(k, i), fmt: milS, note: "공익직불(기본형·선택형·행정비) + 지자체 자체·FTA 피해보전 등 농업 직불 예산현액(추경·이월 반영). 임업·수산 제외" },
+    { key: "basic", group: "규모", chip: "기본형", label: "기본형 공익직불 예산", get: (k, i) => sumC(k, i, ["기본형"]), fmt: milS, note: "소농·면적직불. 시군비 가산분 포함" },
+    { key: "own", group: "규모", chip: "자체", label: "지자체 자체 직불 예산", get: (k, i) => sumC(k, i, ["자체·기타"]), fmt: milS, note: "지방비 단독 직불(쌀·밭 소득보전, 수출 특화품목 등). 공익직불 아님" },
     { key: "select", group: "규모", chip: "선택형", label: "선택형 공익직불 예산", get: (k, i) => sumC(k, i, J.select), fmt: milS, note: "농식품부 선택형: 친환경농업·친환경안전축산물·경관보전·전략작물 직불(저탄소 등 종류를 적지 않은 선택형 포함)" },
     { key: "farm", group: "견주기", chip: "농가당", label: "농가당 직불금 예산", get: (k, i) => { const a = tot(k, i), h = hh(k); return ok(a) && h ? (a * 1e6) / h : null; }, fmt: manS, note: `예산 ÷ 농가 수(${J.den.years.households}년 농림어업조사)` },
     { key: "ha", group: "견주기", chip: "ha당", label: "경지 1ha당 직불금 예산", get: (k, i) => { const a = tot(k, i), l = land(k); return ok(a) && l ? (a * 1e6) / l : null; }, fmt: manS, note: `예산 ÷ 경지면적(${J.den.years.land}년 농업면적조사)` },
     { key: "share", group: "견주기", chip: "농업예산", label: "농업·농촌 예산 중 직불금 비중", get: (k, i) => { const a = tot(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "그 지자체의 농업·농촌 분야 세출 예산(지방재정365 기능별) 가운데 직불금 몫" },
-    { key: "local", group: "재원·집행", chip: "지방비", label: "직불금 예산 중 지방비 비율", get: (k, i) => { const a = tot(k, i); return a ? ((tot(k, i, "sido") + tot(k, i, "sigun")) / a) * 100 : null; }, fmt: (v) => pctS(v), note: "시도비+시군비 ÷ 예산. 공익직불 기본형은 거의 국비라, 지방비는 주로 지자체 자체 직불·경관보전·친환경 매칭과 지자체가 얹어 주는 몫" },
-    { key: "exec", group: "재원·집행", chip: "집행률", label: "직불금 집행률", get: (k, i) => { const a = tot(k, i); return a ? (tot(k, i, "ep") / a) * 100 : null; }, fmt: (v) => pctS(v), note: "지출액 ÷ 예산. 직불금은 11~12월에 지급되어 올해 값은 연말에야 채워진다" },
+    { key: "local", group: "재원·집행", chip: "지방비", label: "직불금 예산 중 지방비 비율", get: (k, i) => { const a = tot(k, i); return a ? ((tot(k, i, "sido") + tot(k, i, "sigun")) / a) * 100 : null; }, fmt: (v) => pctS(v), note: "(시도비+시군비) ÷ 예산현액. 기본형은 국비 중심이라 지방비는 주로 자체 직불·선택형 매칭·시군비 가산분" },
+    { key: "exec", group: "재원·집행", chip: "집행률", label: "직불금 집행률", get: (k, i) => { const a = tot(k, i); return a ? (tot(k, i, "ep") / a) * 100 : null; }, fmt: (v) => pctS(v), note: "지출액 ÷ 예산현액. 직불금은 11~12월 지급이라 올해 값은 연말 확정" },
   ];
   const DEFAULT_METRIC = METRICS[0];
   const state = { key: NATION, p: DEFAULT_P, metric: DEFAULT_METRIC, sort: "amt" };
@@ -420,7 +420,7 @@
       tbl.innerHTML = `<thead><tr><th>사업</th><th>분류</th><th>예산</th><th>지방비</th><th>지출</th></tr></thead><tbody>${rows.length
         ? rows.map(([n, c, amt, , sd, sg, ep]) => `<tr><td title="${esc(n)}">${esc(n)}</td><td><span class="jb-tag">${CAT_SHORT[c] || c}</span></td><td>${eok1(amt)}</td><td>${sd + sg ? eok1(sd + sg) : "–"}</td><td>${eok1(ep)}</td></tr>`).join("")
         : `<tr class="af-none"><td colspan="5">${J.biz[k] ? "사업 목록은 최근 두 해만 싣습니다" : "직불 사업이 없습니다"}</td></tr>`}</tbody>`;
-      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 분류의 '기본형·선택'은 공익직불(농식품부 구성), '지자체 자체'는 지자체가 제 돈으로 주는 직불입니다. 임업·수산 직불은 뺐습니다.";
+      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 분류의 '기본형·선택'은 공익직불(농식품부 구성), '지자체 자체'는 지방비 단독 직불입니다. 임업·수산 직불은 뺐습니다.";
       return;
     }
     // 전국: 시도별, 시도: 시군별
@@ -505,15 +505,15 @@
     let line;
     if (ok(sz) && sz > 0) {
       const per = (v) => nf0.format(((v || 0) / sz) * 100);
-      line = `기금 100원 가운데 <b>${per(sp)}원</b>을 썼고 <b>${per(sz - sp)}원</b>은 쓰지 않았습니다`;
-      if (gen) line += ` · 기금 밖 일반회계에서 답례품·홍보 등에 ${gmilS(gen)}`;
-      if (!GY[j].full) line = `${+GY[j].ymd.slice(4, 6)}월 말까지 ` + line.replace("썼고", "썼고(아직 연중)");
+      line = `집행률 <b>${per(sp)}%</b> · 적립·미집행 <b>${per(sz - sp)}%</b>`;
+      if (gen) line += ` · 일반회계 운영비 ${gmilS(gen)}`;
+      if (!GY[j].full) line = `${+GY[j].ymd.slice(4, 6)}월 말까지 ` + line.replace("집행률", "집행률(연중)");
       if (level(k) < 2 && govN) line += ` · 기금 회계 ${nf0.format(govN)}곳`;
     } else line = "이 해에는 고향사랑기금 회계 행이 없습니다";
     $("#g-line").innerHTML = line;
   }
 
-  // 기금 돈의 쓰임: 모든 지자체에 같은 기준인 값만 — 기금 회계 전체의 굴린 돈(예산현액)을 쓴 돈(지출액, 예치·적립 제외)과 쓰지 않은 돈으로.
+  // 고향사랑기금 집행: 전 지자체 동일 기준 — 기금 회계 예산현액을 지출(예치·적립 제외)과 적립·미집행으로.
   // 사업·운영·적립 갈래는 지자체마다 이름 붙이는 방식이 달라(답례품을 기금/일반회계 어디에 두나, 적립 줄을 두나) 견줄 수 없어 나누지 않는다(사용자 2026-11-07).
   function gSpent(k, j) {
     const r = grow(k, j);
@@ -523,20 +523,20 @@
     const k = gScope(state.key), j = gYear(state.p);
     const r = grow(k, j);
     const sz = r ? r[GF.size] || 0 : 0, sp = gSpent(k, j) || 0, un = Math.max(0, sz - sp);
-    $("#g-split-unit").textContent = r ? `굴린 돈 ${gmilS(sz)}` : "";
+    $("#g-split-unit").textContent = r ? `예산현액 ${gmilS(sz)}` : "";
     $("#g-split-bar").hidden = !sz;
-    $("#g-split-bar").innerHTML = sz ? [[sp, "var(--accent)", "쓴 돈"], [un, "#5fb3ff", "쓰지 않은 돈"]].filter(([v]) => v > 0)
+    $("#g-split-bar").innerHTML = sz ? [[sp, "var(--accent)", "지출"], [un, "#5fb3ff", "적립·미집행"]].filter(([v]) => v > 0)
       .map(([v, c, t]) => `<i style="flex-grow:${v / sz};background:${c}" title="${t} ${gmilS(v)}"></i>`).join("") : "";
     $("#g-split-rows").innerHTML = sz
-      ? `<div class="gh-sr"><span><i style="background:var(--accent)"></i>기금에서 쓴 돈</span><b>${gmilS(sp)}</b><em>${nf0.format((sp / sz) * 100)}%</em></div>`
-        + `<div class="gh-sr"><span><i style="background:#5fb3ff"></i>쓰지 않은 돈(적립·미집행)</span><b>${gmilS(un)}</b><em>${nf0.format((un / sz) * 100)}%</em></div>`
-        + `<div class="gh-sr gh-out"><span><i></i>기금 밖 일반회계 고향사랑 비용</span><b>${gmilS(r[GF.gen])}</b><em>쓴 돈 ${gmilS(r[GF.genEp])}</em></div>`
+      ? `<div class="gh-sr"><span><i style="background:var(--accent)"></i>지출</span><b>${gmilS(sp)}</b><em>${nf0.format((sp / sz) * 100)}%</em></div>`
+        + `<div class="gh-sr"><span><i style="background:#5fb3ff"></i>적립·미집행</span><b>${gmilS(un)}</b><em>${nf0.format((un / sz) * 100)}%</em></div>`
+        + `<div class="gh-sr gh-out"><span><i></i>일반회계 운영비(답례품·홍보)</span><b>${gmilS(r[GF.gen])}</b><em>지출 ${gmilS(r[GF.genEp])}</em></div>`
       : `<p class="af-empty">${j < 0 ? `고향사랑기부제는 ${G_START}년 시작` : "자료 없음"}</p>`;
-    $("#g-split-note").textContent = j < 0 ? "" : "지자체마다 사업·운영·적립을 나누어 적는 방식이 달라 그 갈래는 나누지 않았습니다. 답례품·홍보비를 일반회계로 쓰는 곳이 많아 기금 밖 비용을 따로 보입니다.";
+    $("#g-split-note").textContent = j < 0 ? "" : "사업·운영·적립 구분은 지자체마다 달라 합쳐 봅니다. 답례품·홍보비를 일반회계로 집행하는 곳이 많아 일반회계 운영비를 따로 둡니다.";
   }
 
-  // 연도별: 해마다 막대 셋(굴린 돈 회색 · 쓴 돈 주황 · 쓰지 않은 돈 파랑). 막대를 누르면 그 해로 간다
-  const GYB = [["size", "gh-b-size", "기금이 굴린 돈"], ["spent", "gh-b-biz", "쓴 돈"], ["unspent", "gh-b-keep", "쓰지 않은 돈"]];
+  // 연도별: 해마다 막대 셋(예산현액 회색 · 지출 주황 · 적립·미집행 파랑). 막대를 누르면 그 해로 간다
+  const GYB = [["size", "gh-b-size", "예산현액"], ["spent", "gh-b-biz", "지출"], ["unspent", "gh-b-keep", "적립·미집행"]];
   function drawGYears() {
     const k = gScope(state.key), el = $("#chart-gyears"), cur = gYear(state.p);
     const { svg, w, h } = frame(el, 140);
