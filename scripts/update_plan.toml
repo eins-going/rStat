@@ -549,6 +549,25 @@ cadence = "매달 10일 확인"
 period = "jikbul"
 
 [[source]]
+id = "gohyang"
+name = "고향사랑기금 (지방재정365 세부사업 집행)"
+page = "고향사랑기금"
+method = "auto"
+schedule = { kind = "monthly", day = 5 }
+commands = [["scripts/fetch_gohyang.py"], ["scripts/build_gohyang.py"]]
+outputs = ["data/gohyang.js"]
+check = "gohyang"
+keys = ["lofin365_open_api_key"]
+note = "지방재정365 '세부사업별 세출현황'은 사업명으로만 걸러지는데 기금 안 지정기부 사업은 이름에 '고향사랑'이 없어, 하루치 전국 약 48만 행(약 480번 호출, 5~25분)을 받아 고향사랑기금 회계 행만 남긴다. 지난 해 12월 31일은 한 번만, 올해는 새 월말이 생기면 받는다. 모금액(결산)이 아니라 예산현액·지출액이다(지자체별 모금액은 공개 API·파일이 없다)."
+
+[[source.dataset]]
+name = "고향사랑기금 회계 세부사업 예산현액·지출액 (지자체 243곳)"
+origin = "지방재정365 세부사업별 세출현황(QWGJK)"
+freq = "월 (지난 해는 12월 31일)"
+cadence = "매월 5일 확인"
+period = "gohyang"
+
+[[source]]
 id = "soil"
 name = "농경지 토양 (농촌진흥청 토양도 기반 토양특성 통계 · 농경지화학성 통계)"
 page = "농경지 토양"

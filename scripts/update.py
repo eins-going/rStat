@@ -240,7 +240,23 @@ def check_jikbul(old, new):
     return not problems, changes, problems
 
 
-CHECKS = {"jikbul": ("data/jikbul.js", check_jikbul), "kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
+def check_gohyang(old, new):
+    changes, problems = [], []
+    tag = lambda d: d["years"][-1]["ymd"] if d and d["years"] else ""  # noqa: E731
+    a, b = tag(old), tag(new)
+    if b < a:
+        problems.append(f"마지막 시점이 뒤로 갔다 ({a} → {b})")
+    elif a != b:
+        changes.append(f"고향사랑기금 {a or '–'} → {b}")
+    n = new["counts"]["00"][-1]
+    if n < 230:
+        problems.append(f"마지막 시점 기금 회계가 있는 지자체가 {n}곳뿐이다 (전국 243곳)")
+    if not new["regions"]["00"][-1][0]:
+        problems.append("전국 기금 규모가 0이다")
+    return not problems, changes, problems
+
+
+CHECKS = {"gohyang": ("data/gohyang.js", check_gohyang), "jikbul": ("data/jikbul.js", check_jikbul), "kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
           "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities),
           "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs),
           "soil": ("data/soil.js", check_soil), "livestock": ("data/livestock.js", check_livestock)}
@@ -279,6 +295,9 @@ def period_of(src):
         if src["id"] == "livestock":
             y = read_js("data/livestock.js")["years"]
             return f"{y[0]}~{y[-1]}년"
+        if src["id"] == "gohyang":
+            y = read_js("data/gohyang.js")["years"]
+            return f"{y[0]['y']}~{y[-1]['y']}년 ({int(y[-1]['ymd'][4:6])}월 말)까지"
         if src["id"] == "jikbul":
             p = read_js("data/jikbul.js")["periods"]
             return f"{p[0]['y']}~{p[-1]['y']}년 ({int(p[-1]['d'][4:6])}월 말)까지"
@@ -534,6 +553,9 @@ def dataset_period(ds):
         if kind == "nhcoop":
             h = read_js("data/nhcoop.js")["periods"][-1]
             return f"{h[:4]}년 {int(h[4:])}월 말"
+        if kind == "gohyang":
+            y = read_js("data/gohyang.js")["years"]
+            return f"{y[0]['y']}~{y[-2]['y']}년 · 올해 {int(y[-1]['ymd'][4:6])}월 말"
         if kind == "jikbul":
             p = read_js("data/jikbul.js")["periods"]
             return f"{p[0]['y']}~{p[-2]['y']}년 · 올해 {int(p[-1]['d'][4:6])}월 말"

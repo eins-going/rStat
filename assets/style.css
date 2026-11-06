@@ -635,6 +635,7 @@ body {
   .brand-wrap { gap: 8px; }
   .tabs a { font-size: 12px; padding: 3px 5px; }
   .about-btn { padding: 0 7px; font-size: 12px; }
+  .brand > span:not(.brand-mark) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* 로고만 보이게 (화면 읽기 프로그램에는 이름이 남는다) */
 }
 
 /* 한 화면 맞춤: 넓고 충분히 높은 화면에서는 페이지를 창 높이에 맞춘다 */
