@@ -20,6 +20,16 @@
     { id: "stock", name: "가축사육제한구역", layer: "lt_c_um000", min: 10, legend: [["#717171", "가축사육제한구역(전부·일부 제한)"]] },
     { id: "soil", name: "토양 배수등급", layer: "lt_c_asitsoildra", min: 12, legend: [["#44c7f2", "양호"], ["#619db9", "약간불량"], ["#32789e", "불량"], ["#1c5596", "매우불량"]] },
   ];
+  // 주제도의 뜻 (범례 아래와 토지 이용 칸에 보인다)
+  const THEME_DESC = {
+    agri: "농업진흥구역: 농업 생산을 위해 집단화한 농지로 농업용 시설 외 개발행위가 엄격히 제한된다. 농업보호구역: 진흥구역의 용수원·환경 보호용으로 일부 시설이 허용된다.",
+    poor: "영농여건불리농지: 경사·집단화 규모 등으로 영농 여건이 불리한 농업진흥지역 밖 농지. 농지 전용이 신고로 가능하고 임대·위탁 제한이 완화된다.",
+    uq113: "농림지역: 도시지역 밖의 농업진흥지역·보전산지 등. 건축 등 개발행위 제한이 크다.",
+    uq112: "관리지역: 보전관리·생산관리·계획관리지역. 계획관리지역의 개발 허용 폭이 가장 넓다.",
+    gb: "개발제한구역: 도시 확산 방지를 위한 구역. 건축물 신축·용도변경이 원칙적으로 금지된다.",
+    stock: "가축사육제한구역: 시군 조례로 정한 축종별 사육 제한(전부 제한·일부 제한) 구역.",
+    soil: "토양 배수등급: 물 빠짐 정도. 양호할수록 밭작물에, 불량할수록 논 이용에 알맞다. 지점별 값은 VWorld에서 조회되지 않아 지도 색과 범례로 확인한다.",
+  };
   const nf = new Intl.NumberFormat("ko-KR");
   const nf1 = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 1 });
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -76,6 +86,7 @@
         <button type="button" data-base="sat" aria-pressed="true">위성</button><button type="button" data-base="map" aria-pressed="false">지도</button>
       </span>
       <label class="fv-check"><input type="checkbox" data-ui="labels"> 지명</label>
+      <label class="fv-check" title="팜맵 필지 경계선을 끄면 주제도 색이 잘 보입니다(필지를 누르면 조회는 그대로)"><input type="checkbox" data-ui="edges" checked> 필지 경계</label>
       <label class="fv-theme"><span>주제도</span><select data-ui="theme" aria-label="주제도">
         <option value="">없음</option>${THEMES.map((t) => `<option value="${t.id}">${t.name}</option>`).join("")}
       </select></label>
@@ -98,6 +109,8 @@
 
     H.bar.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
     ui.labels.addEventListener("change", () => { st.labels = ui.labels.checked; syncLayers(); });
+    // 필지 경계 켜고 끄기: 층은 그대로 두고 투명하게만 한다(누른 필지 찾기에 타일이 필요)
+    ui.edges.addEventListener("change", () => { st.edges = ui.edges.checked; tiles?.setOpacity(st.edges ? 1 : 0); });
     ui.expand.addEventListener("click", () => setFull(!st.full));
     H.expand?.addEventListener("click", () => setFull(!st.full));
     ui.theme.addEventListener("change", () => setTheme(ui.theme.value));
@@ -149,6 +162,7 @@
     regionLayer = L.layerGroup().addTo(map);
     tiles = tileParcels();
     tiles?.addTo(map);
+    if (st.edges === false) tiles?.setOpacity(0);
     parcelLayer = L.featureGroup().addTo(map);
     map.createPane("fv-facs").style.zIndex = 450; // 필지(400) 위, 툴팁 아래
     facLayer = L.layerGroup().addTo(map);
@@ -235,6 +249,7 @@
       themeLayers.get(id).addTo(map);
     }
     syncLegend();
+    if (st.lastLand) renderLand(st.lastLand);
   }
 
   function syncLegend() {
@@ -243,7 +258,7 @@
     if (!th) return;
     const far = map && map.getZoom() < th.min;
     ui.legend.innerHTML = `<b>${esc(th.name)}</b>${th.legend.map(([c, n]) => `<span><i style="--c:${c}"></i>${esc(n)}</span>`).join("")}`
-      + (far ? `<em>확대하면 보입니다</em>` : "");
+      + (far ? `<em>확대하면 보입니다</em>` : th.id === "soil" ? "" : `<em>지도를 누르면 그 지점 값이 오른쪽 '토지 이용'에 나옵니다</em>`);
   }
 
   function setBase(b) {
@@ -447,16 +462,32 @@
     return r;
   }
 
+  // 고른 주제도의 그 지점 값
+  function themeValue(id, d) {
+    const miss = (k) => d.missing.includes(k);
+    if (id === "agri") return miss("agri") ? "확인 못 함" : d.agri || "해당 없음";
+    if (id === "poor") return miss("poor") ? "확인 못 함" : d.poor ? "영농여건불리농지" : "해당 없음";
+    if (id === "uq113") return d.zone.includes("농림지역") ? "농림지역" : d.zone.length ? `해당 없음 (${d.zone.join(", ")})` : "해당 없음";
+    if (id === "uq112") { const z = d.zone.filter((x) => /관리지역/.test(x)); return z.length ? z.join(", ") : d.zone.length ? `해당 없음 (${d.zone.join(", ")})` : "해당 없음"; }
+    if (id === "gb") return miss("gb") ? "확인 못 함" : d.gb ? "개발제한구역" : "해당 없음";
+    if (id === "stock") return miss("stock") ? "확인 못 함" : stockText(d.stock);
+    return null;
+  }
+
   function renderLand(d) {
     const head = `<div class="fv-sec-head"><h3>토지 이용</h3></div>`;
+    if (d && !d.error) st.lastLand = d;
     if (!d) { ui.land.innerHTML = `${head}<p class="fv-loading">VWorld에서 확인하는 중…</p>`; return; }
     if (d.error) { ui.land.innerHTML = `${head}<p class="fv-error">${esc(d.error)}</p>`; return; }
+    const th = THEMES.find((t) => t.id === st.theme);
+    const tv = th ? themeValue(th.id, d) : null;
+    const themeBox = th ? `<div class="fv-tbox"><div class="fv-tbox-h">주제도 · ${esc(th.name)}${tv != null ? ` <b>${esc(tv)}</b>` : ""}</div><p>${esc(THEME_DESC[th.id] || "")}</p></div>` : "";
     const miss = (k) => d.missing.includes(k);
     const NA = `<span>확인 못 함</span>`;
     const agri = miss("agri") ? NA : d.agri ? `<b>${esc(d.agri)}</b>` : "해당 없음";
     const zone = d.zone.length ? esc(d.zone.join(", ")) : d.missing.some((k) => k.startsWith("uq")) ? NA : "자료 없음";
     const row = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
-    ui.land.innerHTML = `${head}<dl class="fv-ldl">
+    ui.land.innerHTML = `${head}${themeBox}<dl class="fv-ldl">
       ${row("농업진흥지역", agri + (d.poor ? " · 영농여건불리농지" : ""))}
       ${row("용도지역", zone + (d.gb ? " · <b>개발제한구역</b>" : ""))}
       ${row("가축사육제한", miss("stock") ? NA : esc(stockText(d.stock)))}
