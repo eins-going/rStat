@@ -9,6 +9,17 @@
   // 전국 필지 타일 (scripts/upload_farmmap_tiles.py가 R2에 올린다). QUERY_ZOOM부터 분류별 색으로 경계를 그린다
   const TILES = "https://pub-6a32610bd1414a8d8dc3adc9eecd3632.r2.dev/farmmap/2025/kr.pmtiles";
   const TILE_KIND = { 1: "논", 2: "밭", 3: "과수", 4: "시설", 6: "인삼" };
+  // VWorld 주제도 (WMS 1.3.0, 스타일 이름 = 레이어 이름). min은 VWorld가 그려 주는 가장 작은 확대 단계(2026-11 확인),
+  // 범례 색은 VWorld가 그린 타일에서 뽑았다. 해안침수(lt_c_cdfrs100frq)는 WMS에 레이어가 없어(Could not find layer) 뺐다
+  const THEMES = [
+    { id: "agri", name: "농업진흥지역", layer: "lt_c_agrixue101", min: 12, legend: [["#67c394", "농업진흥구역"], ["#016242", "농업보호구역"]] },
+    { id: "poor", name: "영농여건불리농지", layer: "lt_c_agrixue102", min: 12, legend: [["#f68d1f", "영농여건불리농지"]] },
+    { id: "uq113", name: "농림지역", layer: "lt_c_uq113", min: 10, legend: [["#cdfd66", "농림지역"]] },
+    { id: "uq112", name: "관리지역", layer: "lt_c_uq112", min: 10, legend: [["#cbff66", "보전·생산·계획관리지역"]] },
+    { id: "gb", name: "개발제한구역", layer: "lt_c_ud801", min: 8, legend: [["#aaffff", "개발제한구역"]] },
+    { id: "stock", name: "가축사육제한구역", layer: "lt_c_um000", min: 10, legend: [["#717171", "가축사육제한구역(전부·일부 제한)"]] },
+    { id: "soil", name: "토양 배수등급", layer: "lt_c_asitsoildra", min: 12, legend: [["#44c7f2", "양호"], ["#619db9", "약간불량"], ["#32789e", "불량"], ["#1c5596", "매우불량"]] },
+  ];
   const nf = new Intl.NumberFormat("ko-KR");
   const nf1 = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 1 });
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -36,10 +47,11 @@
   }
 
   let H = null; // 지도 카드 안의 자리: { card, bar, map, info }
-  let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle, facLayer, tiles;
+  let map, bases, labels, regionLayer, mask, parcelLayer, marker, circle, facLayer, tiles, vkey;
+  const themeLayers = new Map(); // 주제도 id → WMS 층 (처음 고를 때 만든다)
   const ui = {};
   const drawn = new Map(); // 팜맵 ID → 그려 둔 필지 레이어
-  const st = { base: "sat", labels: false, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, full: false, tileErrors: 0, tileLoads: 0 };
+  const st = { base: "sat", labels: false, radius: 500, nearAt: null, seq: 0, nearSeq: 0, region: null, full: false, tileErrors: 0, tileLoads: 0, theme: "", landSeq: 0 };
 
   function busy(d) {
     pending += d;
@@ -64,15 +76,22 @@
         <button type="button" data-base="sat" aria-pressed="true">위성</button><button type="button" data-base="map" aria-pressed="false">지도</button>
       </span>
       <label class="fv-check"><input type="checkbox" data-ui="labels"> 지명</label>
-      <button type="button" class="fv-expand" data-ui="expand" aria-pressed="false" aria-label="크게 보기" title="크게 보기">${ICON.expand}</button>`;
+      <label class="fv-theme"><span>주제도</span><select data-ui="theme" aria-label="주제도">
+        <option value="">없음</option>${THEMES.map((t) => `<option value="${t.id}">${t.name}</option>`).join("")}
+      </select></label>
+      <button type="button" class="fv-expand fv-expand-in" data-ui="expand" aria-pressed="false" aria-label="크게 보기" title="크게 보기">${ICON.expand}</button>`;
+    // 크게 보기 단추는 제목 줄(app.js의 #sat-expand)에 두고, 크게 본 동안에는 지도 카드 안의 단추로 되돌린다
+    if (H.expand) H.expand.innerHTML = ICON.expand;
     H.map.innerHTML = `
       <div class="fv-map" data-ui="map"></div>
       <div class="fv-progress" aria-hidden="true"></div>
-      <p class="fv-hint" data-ui="hint" aria-live="polite" hidden></p>`;
+      <p class="fv-hint" data-ui="hint" aria-live="polite" hidden></p>
+      <div class="fv-legend" data-ui="legend" hidden></div>`;
     H.info.innerHTML = `
       <section class="fv-sec" data-ui="facs" aria-label="유통시설"></section>
       <section class="fv-sec fv-pick" aria-label="필지 정보">
         <div data-ui="parcel"></div>
+        <div class="fv-land" data-ui="land"></div>
         <div class="fv-near" data-ui="near"></div>
       </section>`;
     for (const el of [H.bar, H.map, H.info]) el.querySelectorAll("[data-ui]").forEach((x) => { ui[x.dataset.ui] = x; });
@@ -80,6 +99,8 @@
     H.bar.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
     ui.labels.addEventListener("change", () => { st.labels = ui.labels.checked; syncLayers(); });
     ui.expand.addEventListener("click", () => setFull(!st.full));
+    H.expand?.addEventListener("click", () => setFull(!st.full));
+    ui.theme.addEventListener("change", () => setTheme(ui.theme.value));
     ui.form.addEventListener("submit", (e) => { e.preventDefault(); search(); });
     ui.q.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown" && !ui.results.hidden) { e.preventDefault(); ui.results.querySelector("button")?.focus(); }
@@ -102,13 +123,14 @@
   }
 
   function initMap(key) {
+    vkey = key;
     const wmts = (layer, ext) => `https://api.vworld.kr/req/wmts/1.0.0/${key}/${layer}/{z}/{y}/{x}.${ext}`;
     const opt = { minZoom: 7, maxZoom: 20, maxNativeZoom: 19, keepBuffer: 3 };
     bases = {
       sat: L.tileLayer(wmts("Satellite", "jpeg"), { ...opt, className: "fv-sat" }),
       map: L.tileLayer(wmts("Base", "png"), opt),
     };
-    labels = L.tileLayer(wmts("Hybrid", "png"), { ...opt, zIndex: 3 });
+    labels = L.tileLayer(wmts("Hybrid", "png"), { ...opt, zIndex: 4 }); // 영상(1) < 주제도(2) < 필지 경계(3) < 지명(4)
     map = L.map(ui.map, {
       minZoom: 7,
       maxZoom: 20,
@@ -117,7 +139,7 @@
       zoomControl: false,
     });
     L.control.zoom({ position: "bottomright", zoomInTitle: "확대", zoomOutTitle: "축소" }).addTo(map);
-    map.attributionControl.setPrefix(false).addAttribution("영상 VWorld · 필지 팜맵(농정원) · 시설 공공데이터 외");
+    map.attributionControl.setPrefix(false).addAttribution("영상·주제도 VWorld · 필지 팜맵(농정원) · 시설 공공데이터 외");
     // 인증키의 서비스 URL이 맞지 않으면 타일이 모두 실패한다 (바다 등 일부 실패는 정상)
     Object.values(bases).forEach((t) => t
       .on("tileload", () => { st.tileLoads++; })
@@ -134,17 +156,18 @@
     circle = L.circle([0, 0], { radius: 500, color: "#fff", weight: 1.5, opacity: 0.8, dashArray: "6 6", fill: false, interactive: false });
     syncLayers();
     syncDragging();
+    if (st.theme) setTheme(st.theme);
     map.on("click", (e) => {
       if (map.getZoom() < QUERY_ZOOM) { map.setView(e.latlng, Math.min(17, Math.max(QUERY_ZOOM + 1, map.getZoom() + 3))); return; }
       inspect(e.latlng);
     });
-    map.on("zoomend", () => { syncMask(); if (!drawn.size && !st.nearAt) idle(); });
+    map.on("zoomend", () => { syncMask(); syncLegend(); if (!drawn.size && !st.nearAt) idle(); });
     // 시군에 맞춘 뒤에 지도 칸 크기가 바뀌면(자세히 보기로 바뀌며 아래 정보 칸이 생기는 등) 다시 맞춘다.
     // 사용자가 직접 옮기거나 확대한 뒤에는 크기만 알려 주고 시점은 그대로 둔다.
-    map.on("movestart", () => { if (!st.fitting) st.fitted = false; });
+    map.on("movestart", () => { if (!st.fitting) st.fitTo = null; });
     new ResizeObserver(() => {
       map.invalidateSize({ pan: false });
-      if (st.fitted) fitRegion();
+      if (st.fitTo) fitBounds(st.fitTo);
     }).observe(ui.map);
   }
 
@@ -157,7 +180,7 @@
       url: TILES,
       maxDataZoom: 15,
       minZoom: QUERY_ZOOM,
-      zIndex: 2,
+      zIndex: 3,
       attribution: "",
       paintRules: [
         { dataLayer: "p", symbolizer: new P.PolygonSymbolizer({ fill: color, opacity: 0.12 }) },
@@ -185,12 +208,42 @@
     return Math.abs(best.a - areaHint) <= areaHint * 0.15 ? best : null;
   }
 
-  function fitRegion() {
-    if (!st.bounds) return;
+  // 지도를 그 범위에 맞춘다. 사용자가 옮기기 전까지는 지도 칸 크기가 바뀌면 다시 맞춘다
+  function fitBounds(b) {
+    if (!b) return;
     st.fitting = true;
-    map.fitBounds(st.bounds, { padding: [16, 16], animate: false });
+    map.fitBounds(b, { padding: [16, 16], animate: false });
     st.fitting = false;
-    st.fitted = true;
+    st.fitTo = b;
+  }
+  const fitRegion = () => fitBounds(st.bounds);
+
+  // ---------- 주제도 (VWorld WMS) ----------
+  // 한 번에 하나만 켠다. 타일을 512px로 받아 요청 수를 줄인다
+  function setTheme(id) {
+    st.theme = id;
+    ui.theme.value = id;
+    for (const [k, t] of themeLayers) if (k !== id) t.remove();
+    const th = THEMES.find((t) => t.id === id);
+    if (th && map) {
+      if (!themeLayers.has(id)) {
+        themeLayers.set(id, L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+          layers: th.layer, styles: th.layer, format: "image/png", transparent: true, version: "1.3.0", key: vkey,
+          tileSize: 512, minZoom: th.min, maxZoom: 20, opacity: 0.7, zIndex: 2, className: "fv-theme-tiles",
+        }));
+      }
+      themeLayers.get(id).addTo(map);
+    }
+    syncLegend();
+  }
+
+  function syncLegend() {
+    const th = THEMES.find((t) => t.id === st.theme);
+    ui.legend.hidden = !th;
+    if (!th) return;
+    const far = map && map.getZoom() < th.min;
+    ui.legend.innerHTML = `<b>${esc(th.name)}</b>${th.legend.map(([c, n]) => `<span><i style="--c:${c}"></i>${esc(n)}</span>`).join("")}`
+      + (far ? `<em>확대하면 보입니다</em>` : "");
   }
 
   function setBase(b) {
@@ -217,10 +270,13 @@
     st.full = on;
     H.card.classList.toggle("sat-full", on);
     document.documentElement.classList.toggle("fv-lock", on);
-    ui.expand.setAttribute("aria-pressed", on);
-    ui.expand.setAttribute("aria-label", on ? "작게 보기" : "크게 보기");
-    ui.expand.title = on ? "작게 보기 (Esc)" : "크게 보기";
-    ui.expand.innerHTML = on ? ICON.shrink : ICON.expand;
+    for (const b of [ui.expand, H.expand]) {
+      if (!b) continue;
+      b.setAttribute("aria-pressed", on);
+      b.setAttribute("aria-label", on ? "작게 보기" : "크게 보기");
+      b.title = on ? "작게 보기 (Esc)" : "크게 보기";
+      b.innerHTML = on ? ICON.shrink : ICON.expand;
+    }
     syncDragging();
     requestAnimationFrame(() => map?.invalidateSize());
   }
@@ -272,6 +328,7 @@
         L.DomEvent.stopPropagation(e);
         select([f], tileAt(e.latlng, f.properties.area));
         loadNear(e.latlng);
+        loadLand(e.latlng);
         marker.setLatLng(e.latlng).addTo(map);
       });
       layer.addTo(parcelLayer);
@@ -298,6 +355,7 @@
     marker.setLatLng(ll).addTo(map);
     ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 필지</h3></div><p class="fv-loading">필지를 찾는 중…</p>`;
     loadNear(ll);
+    loadLand(ll);
     const lat = ll.lat.toFixed(6), lon = ll.lng.toFixed(6);
     try {
       let { features } = await (pnu ? api({ op: "pnu", pnu }) : api({ op: "point", lat, lon }));
@@ -355,12 +413,54 @@
   function clearAll() {
     st.seq++;
     st.nearSeq++;
+    st.landSeq++;
+    ui.land.innerHTML = "";
     parcelLayer?.clearLayers();
     drawn.clear();
     marker?.remove();
     circle?.remove();
     st.nearAt = null;
     idle();
+  }
+
+  // ---------- 토지 이용 (VWorld 데이터 API, /api/farmmap?op=land) ----------
+  // 누른 지점의 농업진흥지역·용도지역·가축사육제한구역. 약 1m 격자로 맞춰 같은 곳은 다시 묻지 않는다
+  async function loadLand(ll) {
+    const my = ++st.landSeq;
+    renderLand(null);
+    try {
+      const d = await api({ op: "land", lat: ll.lat.toFixed(5), lon: ll.lng.toFixed(5) });
+      if (my === st.landSeq) renderLand(d);
+    } catch (err) {
+      if (my === st.landSeq) renderLand({ error: err.message });
+    }
+  }
+
+  // "일부제한지역 돼지 닭 개 제한" → "일부 제한 · 돼지·닭·개"
+  function stockText(s) {
+    if (!s) return "해당 없음";
+    const r = s.remark.replace(/\s+/g, " ");
+    if (!r) return "해당";
+    if (/^전부제한|모든 가축 사육 제한/.test(r)) return "전부 제한";
+    const m = r.match(/^일부\s?제한(?:지역|구역)?\s*(.*?)\s*(?:제한)?$/);
+    if (m) return `일부 제한${m[1] ? ` · ${m[1].replace("모든축종", "모든 축종").split(" ").join("·").replace("모든·축종", "모든 축종")}` : ""}`;
+    return r;
+  }
+
+  function renderLand(d) {
+    const head = `<div class="fv-sec-head"><h3>토지 이용</h3></div>`;
+    if (!d) { ui.land.innerHTML = `${head}<p class="fv-loading">VWorld에서 확인하는 중…</p>`; return; }
+    if (d.error) { ui.land.innerHTML = `${head}<p class="fv-error">${esc(d.error)}</p>`; return; }
+    const miss = (k) => d.missing.includes(k);
+    const NA = `<span>확인 못 함</span>`;
+    const agri = miss("agri") ? NA : d.agri ? `<b>${esc(d.agri)}</b>` : "해당 없음";
+    const zone = d.zone.length ? esc(d.zone.join(", ")) : d.missing.some((k) => k.startsWith("uq")) ? NA : "자료 없음";
+    const row = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
+    ui.land.innerHTML = `${head}<dl class="fv-ldl">
+      ${row("농업진흥지역", agri + (d.poor ? " · 영농여건불리농지" : ""))}
+      ${row("용도지역", zone + (d.gb ? " · <b>개발제한구역</b>" : ""))}
+      ${row("가축사육제한", miss("stock") ? NA : esc(stockText(d.stock)))}
+    </dl><p class="fv-note">VWorld 주제도 기준 · 행위 제한은 토지이음 토지이용계획으로 확인</p>`;
   }
 
   // ---------- 주변 농경지 구성 ----------
@@ -565,6 +665,7 @@
   function toggleHosts(on) {
     H.card.classList.toggle("sat-mode", on);
     H.bar.hidden = H.map.hidden = H.info.hidden = !on;
+    if (H.expand) H.expand.hidden = !on;
   }
 
   async function show(hosts, { title, unit, key, geometry }) {
@@ -598,5 +699,11 @@
     toggleHosts(false);
   }
 
-  window.FarmView = { show, hide };
+  // 시도 전체 등 다른 범위로 넓혀 보기 (app.js의 '○○도 전체보기'), fitUnit은 시군으로 되돌린다
+  function fitTo(geometry) {
+    if (!map) return;
+    fitBounds(L.geoJSON(geometry).getBounds());
+  }
+
+  window.FarmView = { show, hide, fitTo, fitUnit: () => map && fitRegion() };
 })();

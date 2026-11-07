@@ -241,7 +241,27 @@
   sidoSel.innerHTML = [`<option value="${NATION}">전국</option>`, ...SIDO_CODES.map((s) => `<option value="${s}">${T.sidos[s].name}</option>`)].join("");
   sidoSel.addEventListener("change", () => select(sidoSel.value));
   sggSel.addEventListener("change", () => select(sggSel.value));
-  $("#reset").addEventListener("click", () => select(parentOf(state.key) ?? NATION));
+  // 위성지도에서는 '○○도 전체보기'가 위성지도 안에서 시도 전체로 넓혀 보고, 다시 누르면 시군으로 돌아온다
+  // (통계 지도로 바꾸는 것은 '통계지도 보기' 단추만)
+  let satWide = false;
+  $("#reset").addEventListener("click", () => {
+    if (state.view === "sat" && level(state.key) === 2 && window.FarmView?.fitTo) {
+      satWide = !satWide;
+      if (satWide) window.FarmView.fitTo(sidoFeatures.find((f) => f.properties.key === sidoOf(state.key)).geometry);
+      else window.FarmView.fitUnit();
+      syncReset();
+      return;
+    }
+    select(parentOf(state.key) ?? NATION);
+  });
+
+  function syncReset() {
+    const reset = $("#reset");
+    reset.hidden = state.key === NATION;
+    if (level(state.key) !== 2) { reset.textContent = "전국보기"; return; }
+    const wide = state.view === "sat" && satWide;
+    reset.textContent = wide ? `${label(state.key)} 다시 보기` : `${T.sidos[sidoOf(state.key)].name} 전체보기`;
+  }
 
   function syncControls() {
     const s = sidoOf(state.key);
@@ -250,9 +270,7 @@
     sggSel.innerHTML = [`<option value="${s || NATION}">전체</option>`, ...units.map((u) => `<option value="${u}">${label(u)}</option>`)].join("");
     sggSel.disabled = !s || units.length < 2;
     sggSel.value = level(state.key) === 2 ? state.key : s || NATION;
-    const reset = $("#reset");
-    reset.hidden = state.key === NATION;
-    reset.textContent = level(state.key) === 2 ? `${T.sidos[s].name} 전체보기` : "전국보기";
+    syncReset();
     $("#view-seg").hidden = level(state.key) !== 2;
     if (level(state.key) === 2) warmFarm();
   }
@@ -311,6 +329,7 @@
     viewBtn.classList.toggle("back", v === "sat");
     viewBtn.title = v === "sat" ? "시군 통계 지도로 돌아가기" : "항공영상·팜맵 필지·유통시설";
     syncHash();
+    syncReset();
     if (v === "stats") { window.FarmView?.hide(); return; }
     const k = state.key;
     viewSeg.classList.add("loading");
@@ -319,7 +338,7 @@
       if (state.view !== "sat" || state.key !== k) return; // 불러오는 사이 다른 것을 골랐다
       viewSeg.title = "";
       window.FarmView.show(
-        { card: $("#map-card"), bar: $("#sat-bar"), map: $("#sat-map"), info: $("#sat-info") },
+        { card: $("#map-card"), bar: $("#sat-bar"), map: $("#sat-map"), info: $("#sat-info"), expand: $("#sat-expand") },
         { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, unit: label(k), key: k, geometry: unitFeatures.find((f) => f.properties.key === k).geometry },
       );
     } catch {
@@ -353,6 +372,7 @@
   }
 
   function select(k) {
+    if (k !== state.key) satWide = false; // 다른 시군의 위성지도는 그 시군에 맞춰 연다
     state.key = k;
     syncControls();
     render();

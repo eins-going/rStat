@@ -512,11 +512,20 @@ body {
 }
 .reset:hover { border-color: var(--accent); }
 
-/* 시군 화면: 통계 지도 ↔ 위성 지도 (위성은 assets/farm.js를 고를 때 불러온다) */
-.view-seg { position: absolute; left: 4px; top: 4px; z-index: 2; }
-.view-seg[hidden] { display: none; }
+/* 시군 화면: 통계 지도 ↔ 위성 지도 (위성은 assets/farm.js를 고를 때 불러온다). 단추는 제목 줄 오른쪽에 */
+.hero-line { display: flex; align-items: last baseline; gap: 6px 14px; min-width: 0; }
+.hero-line h1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hero-actions { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.view-seg { display: inline-flex; }
+.view-seg[hidden], .hero-expand[hidden] { display: none; }
+.hero-expand { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.hero-expand svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 760px) {
+  .hero-line { flex-wrap: wrap; }
+  .hero-line h1 { white-space: normal; }
+}
 /* 위성지도 보기: 통계 지도 위에서 눈에 띄게 (강조색과 다른 파랑, 굵은 글씨) */
-.view-btn { font: inherit; font-size: 13px; font-weight: 700; padding: 5px 12px; border: 0; border-radius: 8px; background: #2f7de1; color: #fff; cursor: pointer; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35); }
+.view-btn { font: inherit; font-size: 13px; font-weight: 700; padding: 5px 12px; border: 0; border-radius: 8px; background: #2f7de1; color: #fff; cursor: pointer; white-space: nowrap; }
 .view-btn:hover { background: #3d8cf0; }
 .view-btn.back { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
 .view-btn.back:hover { border-color: var(--accent); }

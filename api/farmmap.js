@@ -7,6 +7,7 @@
 // GET /api/farmmap?op=pnu&pnu=             지번(PNU)에 걸친 팜맵 필지들
 // GET /api/farmmap?op=near&lat=&lon=&r=    반경(500·1000m) 안 필지 수를 판독 분류별로
 // GET /api/farmmap?op=search&q=            주소·지번·장소 검색 (VWorld)
+// GET /api/farmmap?op=land&lat=&lon=       그 지점의 농업진흥지역·용도지역·가축사육제한구역 (VWorld 데이터 API)
 // GET /api/farmmap?op=config               VWorld 타일 키
 
 const FARMMAP = "https://apis.data.go.kr/B552895/getFarmmapService";
@@ -226,7 +227,65 @@ async function search(sp) {
   return { results };
 }
 
+// ---------- VWorld 토지이용 (2D 데이터 API) ----------
+// 브라우저에서는 CORS 헤더가 없어 부를 수 없으므로 여기서 대신 묻는다.
+// 서버에서 부를 때는 인증키에 등록한 서비스 URL을 domain으로 보내야 한다 (2026-11 기준 등록 URL은 예전 주소 reg-agri-stat.vercel.app).
+const VWORLD_DATA = "https://api.vworld.kr/req/data";
+const DOMAINS = [...new Set([process.env.VWORLD_DOMAIN, "reg-agri-stat.vercel.app", "ag-rstat.vercel.app"].filter(Boolean))];
+let landDomain = null; // 통한 domain을 기억한다
+const LAND = {
+  agri: "LT_C_AGRIXUE101", // 농업진흥지역 (농업진흥구역·농업보호구역)
+  poor: "LT_C_AGRIXUE102", // 영농여건불리농지
+  uq111: "LT_C_UQ111", uq112: "LT_C_UQ112", uq113: "LT_C_UQ113", uq114: "LT_C_UQ114", // 용도지역 (도시·관리·농림·자연환경보전)
+  gb: "LT_C_UD801", // 개발제한구역
+  stock: "LT_C_UM000", // 가축사육제한구역
+};
+
+// 속성 목록, 없으면 [], 실패하면 null, 인증키·domain이 맞지 않으면 "key"
+async function landLayer(data, lon, lat, key, domain) {
+  const p = new URLSearchParams({
+    service: "data", request: "GetFeature", data, key, domain, format: "json",
+    geometry: "false", attribute: "true", crs: "EPSG:4326", size: "5", geomFilter: `POINT(${lon} ${lat})`,
+  });
+  try {
+    const res = await fetch(`${VWORLD_DATA}?${p}`, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0" } });
+    const r = (await res.json()).response;
+    if (r?.status === "NOT_FOUND") return [];
+    if (r?.status === "OK") return (r.result?.featureCollection?.features || []).map((f) => f.properties || {});
+    return r?.error?.code === "INCORRECT_KEY" ? "key" : null;
+  } catch {
+    return null;
+  }
+}
+
+async function land(sp) {
+  const [lon, lat] = latLon(sp).map((v) => v.toFixed(6));
+  const key = need("VWORLD_API_KEY");
+  const keys = Object.keys(LAND);
+  const got = {};
+  // 첫 층으로 통하는 domain을 찾고 나머지는 한꺼번에 묻는다
+  for (const d of landDomain ? [landDomain] : DOMAINS) {
+    got.agri = await landLayer(LAND.agri, lon, lat, key, d);
+    if (got.agri !== "key") { landDomain = d; break; }
+  }
+  if (got.agri === "key") throw new Fail("VWorld 인증키의 서비스 URL이 맞지 않습니다.", 500);
+  await Promise.all(keys.slice(1).map(async (k) => { got[k] = await landLayer(LAND[k], lon, lat, key, landDomain); }));
+  const bad = (k) => got[k] === null || got[k] === "key";
+  if (keys.every(bad)) throw new Fail("VWorld 토지이용 자료를 받지 못했습니다.");
+  const names = (k) => (bad(k) ? [] : got[k]).map((p) => p.uname).filter(Boolean);
+  const stock = bad("stock") ? null : got.stock[0];
+  return {
+    agri: names("agri")[0] || "",
+    poor: names("poor").length > 0,
+    zone: [...new Set(["uq111", "uq112", "uq113", "uq114"].flatMap(names))],
+    gb: names("gb").length > 0,
+    stock: stock ? { remark: (stock.remark || "").trim() } : null,
+    missing: keys.filter(bad),
+  };
+}
+
 const OPS = {
+  land: [land, CACHE_LONG],
   point: [point, CACHE_LONG],
   pnu: [pnu, CACHE_LONG],
   near: [near, CACHE_LONG],

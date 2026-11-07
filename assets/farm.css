@@ -276,3 +276,56 @@ html.fv-lock, html.fv-lock body { overflow: hidden; }
 .fv-pdl { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 3px; font-size: 12px; color: var(--muted); }
 .fv-pdl b { color: var(--text); font-variant-numeric: tabular-nums; }
 .fv-pcmp { flex-basis: 100%; margin: 1px 0 0; font-size: 11px; color: var(--faint); }
+
+/* 주제도 (VWorld WMS): 위쪽 줄의 고르기 상자와 지도 왼쪽 아래 범례 */
+.fv-theme { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.fv-theme select {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px 6px;
+  max-width: 150px;
+  cursor: pointer;
+}
+.fv-theme select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fv-legend {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  max-width: calc(100% - 120px);
+  padding: 4px 9px;
+  font-size: 11.5px;
+  color: var(--text);
+  background: rgba(13, 14, 18, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.fv-legend[hidden] { display: none; }
+.fv-legend b { font-weight: 700; }
+.fv-legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.fv-legend i { width: 10px; height: 10px; border-radius: 2px; background: var(--c); opacity: 0.85; }
+.fv-legend em { font-style: normal; color: var(--accent); }
+
+/* 크게 보기 단추: 평소에는 제목 줄(#sat-expand), 크게 본 동안에만 지도 카드 위쪽 줄에 */
+.fv-expand-in { display: none; }
+.sat-full .fv-expand-in { display: grid; }
+
+/* 토지 이용 (필지 정보 아래) */
+.fv-land:not(:empty) { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.fv-land .fv-sec-head { margin-bottom: 3px; }
+.fv-ldl { margin: 0; display: grid; gap: 2px; font-size: 12px; }
+.fv-ldl div { display: grid; grid-template-columns: 84px 1fr; gap: 8px; }
+.fv-ldl dt { color: var(--faint); }
+.fv-ldl dd { margin: 0; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.fv-ldl dd b { color: var(--text); font-weight: 600; }
+.fv-ldl dd span { color: var(--faint); }
+.fv-land .fv-note { margin-top: 3px; }
