@@ -271,7 +271,7 @@
     sggSel.disabled = !s || units.length < 2;
     sggSel.value = level(state.key) === 2 ? state.key : s || NATION;
     syncReset();
-    $("#view-seg").hidden = level(state.key) !== 2;
+    $("#view-seg").hidden = false; // 전국·시도·시군 모두 위성지도로 볼 수 있다
     if (level(state.key) === 2) warmFarm();
   }
 
@@ -322,12 +322,20 @@
   viewBtn.addEventListener("click", () => setView(state.view === "sat" ? "stats" : "sat"));
 
   // 통계 지도 ↔ 자세히 보기. 자세히 보기는 시군에서만 고를 수 있고, 다른 시군을 고르면 그 시군으로 옮겨 간다
+  // 위성지도의 범위: 시군·시도는 그 경계, 전국은 시도를 모두 합친 경계 (처음 쓸 때 한 번 만든다)
+  let nationGeom = null;
+  function satRegion(k) {
+    if (level(k) === 2) return { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, unit: label(k), geometry: unitFeatures.find((f) => f.properties.key === k).geometry };
+    if (level(k) === 1) return { title: T.sidos[k].name, unit: T.sidos[k].name, geometry: sidoFeatures.find((f) => f.properties.key === k).geometry };
+    nationGeom ||= topojson.merge(T, T.objects.municipalities.geometries);
+    return { title: "전국", unit: "전국", geometry: nationGeom };
+  }
+
   async function setView(v) {
-    if (level(state.key) !== 2) v = "stats";
     state.view = v;
     viewBtn.textContent = v === "sat" ? "통계지도 보기" : "위성지도 보기";
     viewBtn.classList.toggle("back", v === "sat");
-    viewBtn.title = v === "sat" ? "시군 통계 지도로 돌아가기" : "항공영상·팜맵 필지·유통시설";
+    viewBtn.title = v === "sat" ? "통계 지도로 돌아가기" : "항공영상·팜맵 필지·유통시설·주제도";
     syncHash();
     syncReset();
     if (v === "stats") { window.FarmView?.hide(); return; }
@@ -339,7 +347,7 @@
       viewSeg.title = "";
       window.FarmView.show(
         { card: $("#map-card"), bar: $("#sat-bar"), map: $("#sat-map"), info: $("#sat-info"), expand: $("#sat-expand") },
-        { title: `${T.sidos[sidoOf(k)].short} ${label(k)}`, unit: label(k), key: k, geometry: unitFeatures.find((f) => f.properties.key === k).geometry },
+        { ...satRegion(k), key: k },
       );
     } catch {
       viewSeg.title = "자세히 보기를 불러오지 못했습니다. 다시 눌러 주세요.";
@@ -350,9 +358,11 @@
   }
 
   // #경기도 · #경기도/가평군 · 자세히 보기면 #경기도/가평군/자세히 (예전 링크의 /위성도 받는다)
+  // 위성지도면 끝에 '/자세히': #전국/자세히 · #전라남도/자세히 · #전라남도/해남군/자세히
   function toHash(k) {
-    if (k === NATION) return "";
-    const path = level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}${state.view === "sat" ? "/자세히" : ""}`;
+    const sat = state.view === "sat" ? "/자세히" : "";
+    if (k === NATION) return sat ? `#${encodeURIComponent(`전국${sat}`)}` : "";
+    const path = level(k) === 1 ? `${T.sidos[k].name}${sat}` : `${T.sidos[sidoOf(k)].name}/${label(k)}${sat}`;
     return `#${encodeURIComponent(path)}`;
   }
 
@@ -364,7 +374,7 @@
     return u || s;
   }
 
-  const viewFromHash = () => (["자세히", "위성"].includes(decodeURIComponent(location.hash.slice(1)).split("/")[2]) ? "sat" : "stats");
+  const viewFromHash = () => (decodeURIComponent(location.hash.slice(1)).split("/").some((x) => x === "자세히" || x === "위성") ? "sat" : "stats");
 
   function syncHash() {
     const hash = toHash(state.key);

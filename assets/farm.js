@@ -679,7 +679,7 @@
     if (!FD) { ui.facs.innerHTML = ""; return; }
     const head = `<div class="fv-sec-head"><h3>유통시설 <span class="fv-sub">${nf.format(fst.here.length)}곳</span></h3></div>`;
     if (!fst.here.length) {
-      ui.facs.innerHTML = `${head}<p class="fv-empty">이 시군 안에 표시할 시설이 없습니다.</p>`;
+      ui.facs.innerHTML = `${head}<p class="fv-empty">이 지역 안에 표시할 시설이 없습니다.</p>`;
       return;
     }
     const count = new Map();
