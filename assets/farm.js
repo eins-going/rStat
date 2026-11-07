@@ -620,7 +620,8 @@
     (geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates).forEach((p) => p[0].forEach(([x, y]) => { xs.push(x); ys.push(y); }));
     const pad = 0.035;
     const [x0, x1, y0, y1] = [Math.min(...xs) - pad, Math.max(...xs) + pad, Math.min(...ys) - pad, Math.max(...ys) + pad];
-    const byAddr = unit && !/시부$/.test(unit);
+    // 시군은 주소의 시군 이름으로, 광역시 시부·시도·전국은 경계 안에 있는지로 고른다
+    const byAddr = unit && !/시부$/.test(unit) && !/^전국$|(도|특별시|광역시|특별자치시)$/.test(unit);
     fst.here = facRows
       .filter((r) => {
         if (r.lon < x0 || r.lon > x1 || r.lat < y0 || r.lat > y1) return false;
