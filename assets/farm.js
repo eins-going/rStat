@@ -685,6 +685,8 @@
     map.invalidateSize();
     if (st.region !== title) {
       if (st.region) clearAll();
+      wideLine?.remove();
+      wideLine = null;
       st.region = title;
       st.unit = unit;
       st.key = key;
@@ -700,10 +702,20 @@
   }
 
   // 시도 전체 등 다른 범위로 넓혀 보기 (app.js의 '○○도 전체보기'), fitUnit은 시군으로 되돌린다
+  // 넓힌 범위의 경계는 가는 점선으로만 그린다
+  let wideLine = null;
   function fitTo(geometry) {
     if (!map) return;
-    fitBounds(L.geoJSON(geometry).getBounds());
+    wideLine?.remove();
+    wideLine = L.geoJSON(geometry, { style: { color: "#f5a524", weight: 1, opacity: 0.7, dashArray: "4 4", fill: false }, interactive: false }).addTo(map);
+    fitBounds(wideLine.getBounds());
+  }
+  function fitUnit() {
+    if (!map) return;
+    wideLine?.remove();
+    wideLine = null;
+    fitRegion();
   }
 
-  window.FarmView = { show, hide, fitTo, fitUnit: () => map && fitRegion() };
+  window.FarmView = { show, hide, fitTo, fitUnit };
 })();
