@@ -256,7 +256,27 @@ def check_gohyang(old, new):
     return not problems, changes, problems
 
 
-CHECKS = {"gohyang": ("data/gohyang.js", check_gohyang), "jikbul": ("data/jikbul.js", check_jikbul), "kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
+def check_ruraldev(old, new):
+    changes, problems = [], []
+    tag = lambda d: d["periods"][-1]["d"] if d and d["periods"] else ""  # noqa: E731
+    a, b = tag(old), tag(new)
+    if b < a:
+        problems.append(f"마지막 시점이 뒤로 갔다 ({a} → {b})")
+    elif a != b:
+        changes.append(f"농촌개발 예산 {a or '–'} → {b}")
+    i = len(new["periods"]) - 1
+    units = sum(1 for k, v in new["regions"].items() if "|" in k and sum(x[0] for x in v[i]))
+    if units < 120:
+        problems.append(f"마지막 시점 농촌개발 예산이 있는 시군이 {units}곳뿐이다")
+    n = sum(len(v) for v in new["krc"]["sites"].values())
+    if n < 3000:
+        problems.append(f"농어촌공사 사업 지구가 {n}곳뿐이다")
+    if old and old.get("krc", {}).get("got") != new["krc"]["got"]:
+        changes.append(f"농어촌공사 사업 지구 {new['krc']['got']} ({n:,}곳)")
+    return not problems, changes, problems
+
+
+CHECKS = {"ruraldev": ("data/ruraldev.js", check_ruraldev), "gohyang": ("data/gohyang.js", check_gohyang), "jikbul": ("data/jikbul.js", check_jikbul), "kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
           "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities),
           "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs),
           "soil": ("data/soil.js", check_soil), "livestock": ("data/livestock.js", check_livestock)}
@@ -301,6 +321,9 @@ def period_of(src):
             return f"{y[0]['y']}~{y[-1]['y']}년 ({int(y[-1]['ymd'][4:6])}월 말)까지"
         if src["id"] == "jikbul":
             p = read_js("data/jikbul.js")["periods"]
+            return f"{p[0]['y']}~{p[-1]['y']}년 ({int(p[-1]['d'][4:6])}월 말)까지"
+        if src["id"] == "ruraldev":
+            p = read_js("data/ruraldev.js")["periods"]
             return f"{p[0]['y']}~{p[-1]['y']}년 ({int(p[-1]['d'][4:6])}월 말)까지"
         if src["id"] == "apfs":
             p = read_js("data/apfs.js")["periods"][-1]
@@ -560,6 +583,12 @@ def dataset_period(ds):
         if kind == "jikbul":
             p = read_js("data/jikbul.js")["periods"]
             return f"{p[0]['y']}~{p[-2]['y']}년 · 올해 {int(p[-1]['d'][4:6])}월 말"
+        if kind == "ruraldev":
+            p = read_js("data/ruraldev.js")["periods"]
+            return f"{p[0]['y']}~{p[-2]['y']}년 · 올해 {int(p[-1]['d'][4:6])}월 말"
+        if kind == "ruraldev_krc":
+            d = read_js("data/ruraldev.js")["krc"]
+            return f"{sum(len(v) for v in d['sites'].values()):,}곳 · {d['got']} 받음"
         if kind == "apfs":
             p = read_js("data/apfs.js")["periods"]
             done = [x for x in p if x["m"] == 12]

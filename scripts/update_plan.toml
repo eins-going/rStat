@@ -570,6 +570,32 @@ cadence = "매월 5일 확인"
 period = "gohyang"
 
 [[source]]
+id = "ruraldev"
+name = "농촌개발 예산 (지방재정365 세부사업) · 농산어촌 지역개발사업 지구·농촌마을 (한국농어촌공사)"
+page = "농촌개발"
+method = "auto"
+schedule = { kind = "monthly", day = 12 }
+commands = [["scripts/fetch_ruraldev.py"], ["scripts/build_ruraldev.py"]]
+outputs = ["data/ruraldev.js"]
+check = "ruraldev"
+keys = ["lofin365_open_api_key", "DATA_PORTAL_API_KEY"]
+note = "지방재정365 '세부사업별 세출현황'을 사업명 낱말(농촌중심지·기초생활거점·신활력·생활여건개조·농촌공간·농촌협약·마을만들기 등 22개)로 전국을 받아 이름 규칙으로 유형을 나눈다(어촌·도시 사업과 이름만 같은 마을만들기는 뺀다). 지난 연도는 12월 31일 값 한 번, 올해는 매달 최근 달 말일. 농어촌공사 OpenAPI(농산어촌지역개발사업 sggLocalDev·농촌마을현황 infoVill)는 30일마다 다시 받는다(초당 호출 제한이 빡빡해 2초 간격). 농어촌공사 자료에는 사업비가 없다."
+
+[[source.dataset]]
+name = "농촌개발 세부사업 예산 (중심지활성화·기초생활거점·신활력플러스·생활여건개조·농촌공간정비·계획·협약·마을만들기·역량, 시군 예산현액·국비·지방비·지출)"
+origin = "지방재정365 세부사업별 세출현황 (QWGJK)"
+freq = "연 (올해는 월)"
+cadence = "매달 12일 확인"
+period = "ruraldev"
+
+[[source.dataset]]
+name = "농산어촌 지역개발사업 지구 (사업유형·지구명·사업내용·시작 연도·준공예정일·위치) · 농촌마을 인구·빈집·슬레이트"
+origin = "한국농어촌공사 농산어촌지역개발사업·농촌마을현황 OpenAPI (data.go.kr 15097428·15104291)"
+freq = "수시 (농어촌공사 갱신)"
+cadence = "30일마다"
+period = "ruraldev_krc"
+
+[[source]]
 id = "soil"
 name = "농경지 토양 (농촌진흥청 토양도 기반 토양특성 통계 · 농경지화학성 통계)"
 page = "농경지 토양"
