@@ -211,8 +211,8 @@
     { key: "landRatio", label: "경지율", unit: "%", year: fy(P.land.at(-1)), get: landRatio, fmt: pct },
     { key: "paddyShare", label: "논 비중", unit: "%", year: fy(P.land.at(-1)), get: paddyShare, fmt: pct },
     ...(FM.year ? [
-      { key: "parcelMed", label: "필지 면적 중앙값", unit: "㎡", year: FM_YEAR, get: parcelMed, fmt: int },
-      { key: "parcelSmall", label: "0.1ha 미만 필지 비율", unit: "%", year: FM_YEAR, get: parcelSmall, fmt: pct },
+      { key: "parcelMed", label: "농경지 면적 중앙값", unit: "㎡", year: FM_YEAR, get: parcelMed, fmt: int },
+      { key: "parcelSmall", label: "0.1ha 미만 농경지 비율", unit: "%", year: FM_YEAR, get: parcelSmall, fmt: pct },
       { key: "paddyArmt", label: "논 경지정리율", unit: "%", year: FM_YEAR, get: paddyArmt, fmt: pct },
       { key: "landBlock", label: "농지 집적도", unit: "ha", year: FM_YEAR, get: landBlock, fmt: (v) => (v == null ? "–" : nf1.format(v)) },
     ] : []),
@@ -335,7 +335,7 @@
     state.view = v;
     viewBtn.textContent = v === "sat" ? "통계지도 보기" : "위성지도 보기";
     viewBtn.classList.toggle("back", v === "sat");
-    viewBtn.title = v === "sat" ? "통계 지도로 돌아가기" : "항공영상·팜맵 필지·유통시설·주제도";
+    viewBtn.title = v === "sat" ? "통계 지도로 돌아가기" : "항공영상·팜맵 농경지·유통시설·주제도";
     syncHash();
     syncReset();
     if (v === "stats") { window.FarmView?.hide(); return; }
@@ -475,15 +475,15 @@
     if (!f) return;
     const p = parentOf(k);
     $("#fm-scope").textContent = FM_YEAR;
-    $("#fm-head").title = `${label(k)} ${int(f.n)}필지 · ${int(f.ha)}ha\n` + "필지: 팜맵 농경지 경계(논두렁 기준) 하나\n막대: 필지 면적 구간별 농지 면적 비중\n" +
+    $("#fm-head").title = `${label(k)} 농경지 ${int(f.n)}곳 · ${int(f.ha)}ha\n` + "농경지: 팜맵 농경지 구획(논두렁 기준) 하나\n막대: 농경지 면적 구간별 농지 면적 비중\n" +
       `농지 집적도: ${FM.block_gap_m}m 이하 틈(논두렁·농로·좁은 수로)으로만 떨어진 농지를 한 덩어리로 묶었을 때, ` +
-      "농지 한 곳이 속한 덩어리의 평균 면적(면적 가중)\n시도·전국은 시군 값을 합치지 않고 필지에서 다시 계산";
+      "농지 한 곳이 속한 덩어리의 평균 면적(면적 가중)\n시도·전국은 시군 값을 합치지 않고 농경지에서 다시 계산";
     const tot = f.bins_ha.reduce((a, b) => a + b, 0) || 1;
     const sh = f.bins_ha.map((v) => (v / tot) * 100);
     $("#fm-legend").innerHTML = FM_BINS.map(([n, c, short]) => `<span title="${n}"><i class="dot" style="background:${c}"></i>${short}</span>`).join("");
     $("#fm-bins").innerHTML = `
-      <div class="split-bar" role="img" aria-label="필지 면적 구간별 농지 면적 비중: ${FM_BINS.map(([n], i) => `${n} ${pct(sh[i])}`).join(", ")}">
-        ${sh.map((v, i) => `<span style="flex-basis:${v}%;background:${FM_BINS[i][1]}" title="${FM_BINS[i][0]} 필지 ${int(f.bins[i])}개 · ${int(f.bins_ha[i])}ha · 면적의 ${pct(v)}">${v >= 9 ? `${nf0.format(v)}%` : ""}</span>`).join("")}
+      <div class="split-bar" role="img" aria-label="농경지 면적 구간별 농지 면적 비중: ${FM_BINS.map(([n], i) => `${n} ${pct(sh[i])}`).join(", ")}">
+        ${sh.map((v, i) => `<span style="flex-basis:${v}%;background:${FM_BINS[i][1]}" title="${FM_BINS[i][0]} 농경지 ${int(f.bins[i])}개 · ${int(f.bins_ha[i])}ha · 면적의 ${pct(v)}">${v >= 9 ? `${nf0.format(v)}%` : ""}</span>`).join("")}
       </div>`;
     const tiles = [["parcelMed", parcelMed, m2], ["parcelSmall", parcelSmall, pct], ["paddyArmt", paddyArmt, pct], ["landBlock", landBlock, ha1]];
     for (const [key, get, fmt] of tiles) {
