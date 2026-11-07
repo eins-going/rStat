@@ -229,9 +229,9 @@ async function search(sp) {
 
 // ---------- VWorld 토지이용 (2D 데이터 API) ----------
 // 브라우저에서는 CORS 헤더가 없어 부를 수 없으므로 여기서 대신 묻는다.
-// 서버에서 부를 때는 인증키에 등록한 서비스 URL을 domain으로 보내야 한다 (2026-11 기준 등록 URL은 예전 주소 reg-agri-stat.vercel.app).
+// 서버에서 부를 때는 인증키에 등록한 서비스 URL을 domain으로 보내야 한다 (2026-11-07 등록 URL을 ag-rstat.vercel.app로 바꿈. 예전 주소는 대비용).
 const VWORLD_DATA = "https://api.vworld.kr/req/data";
-const DOMAINS = [...new Set([process.env.VWORLD_DOMAIN, "reg-agri-stat.vercel.app", "ag-rstat.vercel.app"].filter(Boolean))];
+const DOMAINS = [...new Set([process.env.VWORLD_DOMAIN, "ag-rstat.vercel.app", "reg-agri-stat.vercel.app"].filter(Boolean))];
 let landDomain = null; // 통한 domain을 기억한다
 const LAND = {
   agri: "LT_C_AGRIXUE101", // 농업진흥지역 (농업진흥구역·농업보호구역)
@@ -264,7 +264,8 @@ async function land(sp) {
   const keys = Object.keys(LAND);
   const got = {};
   // 첫 층으로 통하는 domain을 찾고 나머지는 한꺼번에 묻는다
-  for (const d of landDomain ? [landDomain] : DOMAINS) {
+  // 기억해 둔 domain이 거부되면(인증키 등록 URL이 바뀐 경우) 나머지 후보도 다시 시도한다
+  for (const d of landDomain ? [landDomain, ...DOMAINS.filter((x) => x !== landDomain)] : DOMAINS) {
     got.agri = await landLayer(LAND.agri, lon, lat, key, d);
     if (got.agri !== "key") { landDomain = d; break; }
   }
