@@ -86,7 +86,7 @@
         <button type="button" data-base="sat" aria-pressed="true">위성</button><button type="button" data-base="map" aria-pressed="false">지도</button>
       </span>
       <label class="fv-check"><input type="checkbox" data-ui="labels"> 지명</label>
-      <label class="fv-check" title="팜맵 필지 경계선을 끄면 주제도 색이 잘 보입니다(필지를 누르면 조회는 그대로)"><input type="checkbox" data-ui="edges" checked> 필지 경계</label>
+      <label class="fv-check" title="팜맵 농경지 경계선을 끄면 주제도 색이 잘 보입니다(농경지를 누르면 조회는 그대로)"><input type="checkbox" data-ui="edges" checked> 농경지 경계</label>
       <label class="fv-check" title="VWorld 연속지적도(공부상 지번 경계). 크게 확대(16단계 이상)하면 보입니다"><input type="checkbox" data-ui="cadastre"> 지적 경계</label>
       <label class="fv-theme"><span>주제도</span><select data-ui="theme" aria-label="주제도">
         <option value="">없음</option>${THEMES.map((t) => `<option value="${t.id}">${t.name}</option>`).join("")}
@@ -110,7 +110,7 @@
 
     H.bar.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => setBase(b.dataset.base)));
     ui.labels.addEventListener("change", () => { st.labels = ui.labels.checked; syncLayers(); });
-    // 필지 경계 켜고 끄기: 층은 그대로 두고 투명하게만 한다(누른 필지 찾기에 타일이 필요)
+    // 농경지 경계 켜고 끄기: 층은 그대로 두고 투명하게만 한다(누른 필지 찾기에 타일이 필요)
     ui.edges.addEventListener("change", () => { st.edges = ui.edges.checked; tiles?.setOpacity(st.edges ? 1 : 0); });
     ui.cadastre.addEventListener("change", () => { st.cadastre = ui.cadastre.checked; syncCadastre(); });
     ui.expand.addEventListener("click", () => setFull(!st.full));
@@ -344,7 +344,7 @@
     const far = !map || map.getZoom() < QUERY_ZOOM;
     ui.parcel.innerHTML = `
       <div class="fv-sec-head"><h3>팜맵 필지</h3></div>
-      <p class="fv-empty"><b>${far ? "지도를 확대하면 팜맵 필지 경계가 보입니다" : "논·밭·하우스를 누르면 필지 정보가 나옵니다"}</b>위쪽 검색창에서 주소·지번으로 바로 찾을 수도 있습니다.${coarse.matches ? " 카드 안에서는 두 손가락으로 지도를 움직입니다." : ""}</p>`;
+      <p class="fv-empty"><b>${far ? "지도를 확대하면 팜맵 농경지 경계가 보입니다" : "논·밭·하우스를 누르면 필지 정보가 나옵니다"}</b>위쪽 검색창에서 주소·지번으로 바로 찾을 수도 있습니다.${coarse.matches ? " 카드 안에서는 두 손가락으로 지도를 움직입니다." : ""}</p>`;
     ui.near.innerHTML = "";
   }
 
