@@ -546,6 +546,8 @@
     $("#kl-note").textContent = "진행 중이 많은 순. 줄을 누르면 그 지역으로 갑니다. 시군을 고르면 지구 목록과 지도 위치가 나옵니다.";
   }
   // ---------- 마을 (농어촌공사 농촌마을현황: 시군을 고르면 data/vill/{번호}.json을 불러온다) ----------
+  // 응답에 조사 시점 필드가 없다. 공공데이터포털(15104291) 등록일·수정일만 밝힌다.
+  const VILL_WHEN = () => `조사 시점은 자료에 없습니다(공공데이터포털 등록 2022.8 · 최종 수정 2025.6 · ${R.krc.got.slice(0, 7).replace("-", ".")} 받음).`;
   // 줄: [마을, 읍면, 인구, 65세 이상, 총가구, 1인가구, 빈집, 슬레이트, [남 0·15·20·30·40·50·60·65, 여 같은 순], [준공 5년 미만·5~9·10~19·20~29·30년 이상], 유래]
   const villCache = {};
   function loadVill(k) {
@@ -578,7 +580,7 @@
       if (rows === null || (rows && !rows.length)) {
         $("#kl-scope").textContent = `(${fullLabel(k)})`;
         tbl.innerHTML = `<tbody><tr class="af-none"><td>농어촌공사 농촌마을 조사 자료가 없는 시군입니다</td></tr></tbody>`;
-        note.textContent = "농어촌공사 농촌마을현황은 조사한 마을만 있습니다(전국 143개 시군 28,342곳).";
+        note.textContent = "농어촌공사 농촌마을현황은 조사한 마을만 있습니다(전국 143개 시군 28,342곳). " + VILL_WHEN();
         return;
       }
       if (!rows) { tbl.innerHTML = `<tbody><tr class="af-none"><td>마을 자료를 불러오는 중…</td></tr></tbody>`; return; }
@@ -607,7 +609,7 @@
         tr.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
       });
       const zero = rows.filter((r) => !r[2]).length;
-      note.textContent = `읍면별 · 머리글을 누르면 그 값 큰 순. 줄을 누르면 연령·가구·마을 유래가 펼쳐집니다.${zero ? ` 인구가 0으로 적힌 마을 ${nf0.format(zero)}곳은 '–'(조사값 없음).` : ""} 농어촌공사 조사 마을만 있고 기준 시점은 밝혀져 있지 않습니다.`;
+      note.textContent = `읍면별 · 머리글을 누르면 그 값 큰 순. 줄을 누르면 연령·가구·마을 유래가 펼쳐집니다.${zero ? ` 인구가 0으로 적힌 마을 ${nf0.format(zero)}곳은 '–'(조사값 없음).` : ""} 농어촌공사 조사 마을만 있습니다. ${VILL_WHEN()}`;
       const o = tbl.querySelector("tr.open");
       if (o) o.scrollIntoView({ block: "nearest" });
       return;
@@ -624,7 +626,7 @@
       tr.addEventListener("click", () => select(tr.dataset.k));
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(tr.dataset.k); });
     });
-    note.textContent = "조사 마을 수 큰 순. 괄호는 인구가 적힌 마을 수(65세+는 그 마을들만으로 계산). 시군마다 조사 범위가 달라 지역끼리 견주는 값이 아닙니다. 시군을 고르면 마을 목록이 나옵니다.";
+    note.textContent = `조사 마을 수 큰 순. 괄호는 인구가 적힌 마을 수(65세+는 그 마을들만으로 계산). 시군마다 조사 범위가 달라 지역끼리 견주는 값이 아닙니다. 시군을 고르면 마을 목록이 나옵니다. ` + VILL_WHEN();
   }
 
   // 연도별 착수 지구 수 (유형 묶음으로 쌓기)
