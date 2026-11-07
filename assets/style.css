@@ -513,7 +513,7 @@ body {
 .reset:hover { border-color: var(--accent); }
 
 /* 시군 화면: 통계 지도 ↔ 위성 지도 (위성은 assets/farm.js를 고를 때 불러온다). 단추는 제목 줄 오른쪽에 */
-.hero-line { display: flex; align-items: last baseline; gap: 6px 14px; min-width: 0; }
+.hero-line { display: flex; justify-content: space-between; align-items: last baseline; gap: 6px 24px; min-width: 0; }
 .hero-line h1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero-actions { flex: none; display: inline-flex; align-items: center; gap: 6px; }
 .view-seg { display: inline-flex; }
