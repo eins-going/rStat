@@ -87,6 +87,7 @@
       </span>
       <label class="fv-check"><input type="checkbox" data-ui="labels"> 지명</label>
       <label class="fv-check" title="팜맵 필지 경계선을 끄면 주제도 색이 잘 보입니다(필지를 누르면 조회는 그대로)"><input type="checkbox" data-ui="edges" checked> 필지 경계</label>
+      <label class="fv-check" title="VWorld 연속지적도(공부상 지번 경계). 크게 확대(16단계 이상)하면 보입니다"><input type="checkbox" data-ui="cadastre"> 지적 경계</label>
       <label class="fv-theme"><span>주제도</span><select data-ui="theme" aria-label="주제도">
         <option value="">없음</option>${THEMES.map((t) => `<option value="${t.id}">${t.name}</option>`).join("")}
       </select></label>
@@ -111,6 +112,7 @@
     ui.labels.addEventListener("change", () => { st.labels = ui.labels.checked; syncLayers(); });
     // 필지 경계 켜고 끄기: 층은 그대로 두고 투명하게만 한다(누른 필지 찾기에 타일이 필요)
     ui.edges.addEventListener("change", () => { st.edges = ui.edges.checked; tiles?.setOpacity(st.edges ? 1 : 0); });
+    ui.cadastre.addEventListener("change", () => { st.cadastre = ui.cadastre.checked; syncCadastre(); });
     ui.expand.addEventListener("click", () => setFull(!st.full));
     H.expand?.addEventListener("click", () => setFull(!st.full));
     ui.theme.addEventListener("change", () => setTheme(ui.theme.value));
@@ -250,6 +252,19 @@
     }
     syncLegend();
     if (st.lastLand) renderLand(st.lastLand);
+  }
+
+  // 지적 경계 (VWorld 연속지적도 WMS). 16단계 이상에서만 그린다
+  let cadLayer = null;
+  function syncCadastre() {
+    if (!map) return;
+    if (st.cadastre) {
+      cadLayer ||= L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+        layers: "lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun", styles: "lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun", format: "image/png", transparent: true,
+        version: "1.3.0", key: vkey, tileSize: 512, minZoom: 16, maxZoom: 20, opacity: 0.9, zIndex: 4, className: "fv-cad-tiles",
+      });
+      cadLayer.addTo(map);
+    } else cadLayer?.remove();
   }
 
   function syncLegend() {
@@ -423,6 +438,8 @@
     }
     ui.parcel.innerHTML = `${head}${body}`;
     ui.parcel.querySelector('[data-act="clear"]').addEventListener("click", clearAll);
+    st.kinds = [...new Set(features.map((f) => f.properties.kind).filter(Boolean))];
+    if (st.lastLand) renderLand(st.lastLand);
   }
 
   function clearAll() {
@@ -462,6 +479,28 @@
     return r;
   }
 
+  // 공부상 지목 (지적법 28종 가운데 자주 나오는 것) 과 팜맵 실제 이용 견주기
+  const JIMOK = { 전: "전(밭)", 답: "답(논)", 과: "과수원", 목: "목장용지", 임: "임야", 대: "대(대지)", 장: "공장용지", 창: "창고용지",
+    도: "도로", 구: "구거", 유: "유지", 천: "하천", 제: "제방", 잡: "잡종지", 묘: "묘지", 염: "염전", 양: "양어장", 학: "학교용지",
+    공: "공원", 체: "체육용지", 종: "종교용지", 주: "주유소용지", 차: "주차장", 철: "철도용지", 수: "수도용지", 원: "유원지", 사: "사적지", 광: "광천지" };
+  const FIT = { 답: ["논", "시설"], 전: ["밭", "시설", "인삼", "과수"], 과: ["과수", "밭"] };
+  function cadBlock(cad) {
+    if (!cad) return `<div class="fv-cad"><div class="fv-tbox-h">공부상 정보 (연속지적도)</div><p>이 지점의 지적 필지를 찾지 못했습니다.</p></div>`;
+    const jm = cad.jimok ? JIMOK[cad.jimok] || cad.jimok : "–";
+    const kinds = st.kinds || [];
+    let cmp = "";
+    if (cad.jimok && kinds.length) {
+      const ok = (FIT[cad.jimok] || []).some((k) => kinds.includes(k));
+      cmp = ok ? `<span class="fv-cad-ok">지목과 실제 이용 일치</span>`
+        : `<span class="fv-cad-diff">지목 ${esc(cad.jimok)} / 실제 ${esc(kinds.join("·"))}</span>`;
+    }
+    const price = cad.jiga ? `${nf.format(cad.jiga)}원/㎡${cad.ym ? ` <em>(${esc(cad.ym)} 기준)</em>` : ""}` : "–";
+    return `<div class="fv-cad"><div class="fv-tbox-h">공부상 정보 (연속지적도)</div><dl class="fv-ldl">
+      <div><dt>지번</dt><dd>${esc(cad.addr || cad.jibun)}</dd></div>
+      <div><dt>지목</dt><dd><b>${esc(jm)}</b>${cmp ? ` · ${cmp}` : ""}</dd></div>
+      <div><dt>공시지가</dt><dd>${price}</dd></div></dl></div>`;
+  }
+
   // 고른 주제도의 그 지점 값
   function themeValue(id, d) {
     const miss = (k) => d.missing.includes(k);
@@ -487,7 +526,7 @@
     const agri = miss("agri") ? NA : d.agri ? `<b>${esc(d.agri)}</b>` : "해당 없음";
     const zone = d.zone.length ? esc(d.zone.join(", ")) : d.missing.some((k) => k.startsWith("uq")) ? NA : "자료 없음";
     const row = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
-    ui.land.innerHTML = `${head}${themeBox}<dl class="fv-ldl">
+    ui.land.innerHTML = `${head}${themeBox}${cadBlock(d.cad)}<dl class="fv-ldl">
       ${row("농업진흥지역", agri + (d.poor ? " · 영농여건불리농지" : ""))}
       ${row("용도지역", zone + (d.gb ? " · <b>개발제한구역</b>" : ""))}
       ${row("가축사육제한", miss("stock") ? NA : esc(stockText(d.stock)))}

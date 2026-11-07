@@ -275,7 +275,15 @@ async function land(sp) {
   if (keys.every(bad)) throw new Fail("VWorld 토지이용 자료를 받지 못했습니다.");
   const names = (k) => (bad(k) ? [] : got[k]).map((p) => p.uname).filter(Boolean);
   const stock = bad("stock") ? null : got.stock[0];
+  // 연속지적도(공부상 필지): 지번·지목·공시지가. 지목은 지번 끝 글자('787답' → 답)
+  const cadRows = await landLayer("LP_PA_CBND_BUBUN", lon, lat, key, landDomain);
+  const c = Array.isArray(cadRows) && cadRows[0];
+  const cad = c ? {
+    addr: c.addr || "", jibun: c.jibun || "", jimok: ((c.jibun || "").match(/[0-9]\s*([가-힣]+)$/) || [])[1] || "",
+    jiga: c.jiga ? Number(c.jiga) : null, ym: c.gosi_year ? `${c.gosi_year}.${c.gosi_month || ""}`.replace(/\.$/, "") : "",
+  } : null;
   return {
+    cad,
     agri: names("agri")[0] || "",
     poor: names("poor").length > 0,
     zone: [...new Set(["uq111", "uq112", "uq113", "uq114"].flatMap(names))],
