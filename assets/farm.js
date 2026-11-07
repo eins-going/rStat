@@ -101,7 +101,7 @@
       <div class="fv-legend" data-ui="legend" hidden></div>`;
     H.info.innerHTML = `
       <section class="fv-sec" data-ui="facs" aria-label="유통시설"></section>
-      <section class="fv-sec fv-pick" aria-label="필지 정보">
+      <section class="fv-sec fv-pick" aria-label="농경지 정보">
         <div data-ui="parcel"></div>
         <div class="fv-land" data-ui="land"></div>
         <div class="fv-near" data-ui="near"></div>
@@ -154,7 +154,7 @@
       zoomControl: false,
     });
     L.control.zoom({ position: "bottomright", zoomInTitle: "확대", zoomOutTitle: "축소" }).addTo(map);
-    map.attributionControl.setPrefix(false).addAttribution("영상·주제도 VWorld · 필지 팜맵(농정원) · 시설 공공데이터 외");
+    map.attributionControl.setPrefix(false).addAttribution("영상·주제도·지적 VWorld · 농경지 팜맵(농정원) · 시설 공공데이터 외");
     // 인증키의 서비스 URL이 맞지 않으면 타일이 모두 실패한다 (바다 등 일부 실패는 정상)
     Object.values(bases).forEach((t) => t
       .on("tileload", () => { st.tileLoads++; })
@@ -343,8 +343,8 @@
   function idle() {
     const far = !map || map.getZoom() < QUERY_ZOOM;
     ui.parcel.innerHTML = `
-      <div class="fv-sec-head"><h3>팜맵 필지</h3></div>
-      <p class="fv-empty"><b>${far ? "지도를 확대하면 팜맵 농경지 경계가 보입니다" : "논·밭·하우스를 누르면 필지 정보가 나옵니다"}</b>위쪽 검색창에서 주소·지번으로 바로 찾을 수도 있습니다.${coarse.matches ? " 카드 안에서는 두 손가락으로 지도를 움직입니다." : ""}</p>`;
+      <div class="fv-sec-head"><h3>팜맵 농경지</h3></div>
+      <p class="fv-empty"><b>${far ? "지도를 확대하면 팜맵 농경지 경계가 보입니다" : "논·밭·하우스를 누르면 농경지 정보가 나옵니다"}</b>위쪽 검색창에서 주소·지번으로 바로 찾을 수도 있습니다.${coarse.matches ? " 카드 안에서는 두 손가락으로 지도를 움직입니다." : ""}</p>`;
     ui.near.innerHTML = "";
   }
 
@@ -383,7 +383,7 @@
   async function inspect(ll, pnu = "") {
     const my = ++st.seq;
     marker.setLatLng(ll).addTo(map);
-    ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 필지</h3></div><p class="fv-loading">필지를 찾는 중…</p>`;
+    ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 농경지</h3></div><p class="fv-loading">농경지를 찾는 중…</p>`;
     loadNear(ll);
     loadLand(ll);
     const lat = ll.lat.toFixed(6), lon = ll.lng.toFixed(6);
@@ -395,7 +395,7 @@
       drawParcels(features);
       select(features, features.length === 1 ? tileAt(ll, features[0].properties.area) : null);
     } catch (err) {
-      if (my === st.seq) ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 필지</h3></div><p class="fv-error">${esc(err.message)}</p>`;
+      if (my === st.seq) ui.parcel.innerHTML = `<div class="fv-sec-head"><h3>팜맵 농경지</h3></div><p class="fv-error">${esc(err.message)}</p>`;
     }
   }
 
@@ -414,7 +414,7 @@
     const cmp = [reg?.med != null && `면적 ${nf.format(reg.med)}㎡`, reg?.rect != null && `직사각형도 ${nf2.format(reg.rect)}`,
       g === "논" && reg?.armt != null && `경지정리율 ${nf1.format(reg.armt * 100)}%`].filter(Boolean);
     return `<div class="fv-pdl">${tp.r != null ? `<span>모양 <b>${nf2.format(tp.r)}</b> ${shapeWord(tp.r)}</span>` : ""}<span>경지정리 <b>${tp.y ? "됨" : "안 됨"}</b></span></div>`
-      + (cmp.length ? `<p class="fv-pcmp">${esc(st.unit)} ${g === "전체" ? "필지" : g} 중앙값 · ${cmp.join(" · ")}</p>` : "");
+      + (cmp.length ? `<p class="fv-pcmp">${esc(st.unit)} ${g === "전체" ? "농경지" : g} 중앙값 · ${cmp.join(" · ")}</p>` : "");
   }
   function parcelCard(p, tp = null) {
     return `
@@ -426,7 +426,7 @@
   }
 
   function renderParcels(features, tp = null) {
-    const head = `<div class="fv-sec-head"><h3>팜맵 필지</h3><button type="button" class="fv-link" data-act="clear">지우기</button></div>`;
+    const head = `<div class="fv-sec-head"><h3>팜맵 농경지</h3><button type="button" class="fv-link" data-act="clear">지우기</button></div>`;
     let body;
     if (!features.length) {
       body = `<p class="fv-empty"><b>팜맵 농경지가 아닙니다</b>이 지점은 팜맵에 농경지로 구획되어 있지 않습니다. 논·밭·하우스를 눌러 보세요.</p>`;
@@ -434,7 +434,7 @@
       body = parcelCard(features[0].properties, tp);
     } else {
       const sum = features.reduce((s, f) => s + f.properties.area, 0);
-      body = `<p class="fv-multi">이 지번에 걸친 필지 <b>${features.length}</b>개 · 합계 ${area(sum)}</p>${features.map((f) => parcelCard(f.properties)).join("")}`;
+      body = `<p class="fv-multi">이 지번에 걸친 농경지 <b>${features.length}</b>개 · 합계 ${area(sum)}</p>${features.map((f) => parcelCard(f.properties)).join("")}`;
     }
     ui.parcel.innerHTML = `${head}${body}`;
     ui.parcel.querySelector('[data-act="clear"]').addEventListener("click", clearAll);
@@ -555,7 +555,7 @@
     const seg = `<span class="seg" role="group" aria-label="반경">${[500, 1000].map((r) =>
       `<button type="button" data-r="${r}" aria-pressed="${st.radius === r}">${r === 1000 ? "1km" : "500m"}</button>`).join("")}</span>`;
     let body, title = "주변 농경지";
-    if (!d) body = `<p class="fv-loading">주변 필지를 세는 중…</p>`;
+    if (!d) body = `<p class="fv-loading">주변 농경지를 세는 중…</p>`;
     else if (d.error) body = `<p class="fv-error">${esc(d.error)}</p>`;
     else if (!d.total) body = `<p class="fv-empty">반경 안에 팜맵 농경지가 없습니다.</p>`;
     else {
@@ -566,10 +566,10 @@
       }).join("");
       const emd = d.emd.map((e) => e.name).join("·");
       // 제목 줄에 필지 수를 함께 적어 한 줄을 아낀다
-      title = `주변 <b>${nf.format(d.total)}</b>개 필지${emd ? ` <span>${esc(emd)}</span>` : ""}`;
+      title = `주변 <b>${nf.format(d.total)}</b>개 농경지${emd ? ` <span>${esc(emd)}</span>` : ""}`;
       body = `
         <div class="fv-bars">${rows}</div>
-        <p class="fv-note">필지 개수 기준(면적 아님)${d.counted < d.total ? ` · 앞 ${nf.format(d.counted)}개만 집계` : ""} · 지난 판독 이후 바뀐 필지 ${nf.format(d.changed)}개</p>`;
+        <p class="fv-note">농경지 개수 기준(면적 아님)${d.counted < d.total ? ` · 앞 ${nf.format(d.counted)}개만 집계` : ""} · 지난 판독 이후 바뀐 필지 ${nf.format(d.changed)}개</p>`;
     }
     ui.near.innerHTML = `<div class="fv-sec-head"><h3 class="fv-near-title">${title}</h3>${seg}</div>${body}`;
     ui.near.querySelectorAll("[data-r]").forEach((b) => b.addEventListener("click", () => {
