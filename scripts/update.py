@@ -411,7 +411,10 @@ def run_source(src, st, push=True):
     sid = src["id"]
     os.makedirs(LOGS, exist_ok=True)
     log_path = os.path.join(LOGS, f"{dt.date.today()}_{sid}.log")
-    outputs = src.get("outputs", [])
+    # outputs에 '*'가 든 항목(예: data/vill/*.json)은 그때 있는 파일들로 펼친다. 실행 뒤 새로 생긴 파일도 함께 본다
+    patterns = src.get("outputs", [])
+    expand = lambda: sorted({os.path.relpath(f, ROOT) for p in patterns for f in glob.glob(os.path.join(ROOT, p))} | {p for p in patterns if "*" not in p})  # noqa: E731
+    outputs = expand()
     before = {p: open(os.path.join(ROOT, p), "rb").read() if os.path.exists(os.path.join(ROOT, p)) else None for p in outputs}
     old = read_js(CHECKS[src["check"]][0]) if src.get("check") in CHECKS else None
     st["last_run"] = now()
@@ -421,6 +424,9 @@ def run_source(src, st, push=True):
             if b is not None:
                 with open(os.path.join(ROOT, p), "wb") as fh:
                     fh.write(b)
+        for p in expand():   # 실행 중에 새로 생긴 파일은 지운다
+            if before.get(p) is None and os.path.exists(os.path.join(ROOT, p)):
+                os.remove(os.path.join(ROOT, p))
 
     with open(log_path, "a", encoding="utf-8") as log:
         for cmd in src.get("commands", []):
@@ -448,6 +454,9 @@ def run_source(src, st, push=True):
     def raw(p):
         f = os.path.join(ROOT, p)
         return open(f, "rb").read() if os.path.exists(f) else None
+    outputs = sorted(set(outputs) | set(expand()))
+    for p in outputs:
+        before.setdefault(p, None)
     changed = [p for p in outputs if content(p, raw(p)) != content(p, before[p])]
     # 작성일만 바뀐 파일은 원래대로 돌려 쓸데없는 배포를 막는다
     for p in outputs:
@@ -466,7 +475,7 @@ def run_source(src, st, push=True):
     st.update(status="갱신", message=summary, last_change=now())
     write_doc(load_plan(), STATE_CACHE)
     paths = changed + [os.path.relpath(DOC, ROOT), os.path.relpath(STATUS_JS, ROOT)]
-    git("add", "--", *paths)
+    git("add", "-A", "--", *paths)
     r = git("commit", "-m", f"자동 갱신: {src['name']}\n\n{summary}\n\n(scripts/update.py, {now()})", "--", *paths, check=False)
     if r.returncode:
         st.update(status="커밋 실패", message=r.stderr.strip()[:300])

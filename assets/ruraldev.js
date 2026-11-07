@@ -108,7 +108,7 @@
     { key: "kall", group: "사업 지구", chip: "누적 지구", label: "누적 사업 지구 수(2004~)", get: (k) => siteCount(k, false), fmt: cnt, fixed: true, note: "한국농어촌공사 지역개발사업 지구 전체(2004년부터, 연도 선택과 무관)" },
   ];
   const DEFAULT_METRIC = METRICS[0];
-  const state = { key: NATION, p: DEFAULT_P, metric: DEFAULT_METRIC, sort: "amt", kopen: null };
+  const state = { key: NATION, p: DEFAULT_P, metric: DEFAULT_METRIC, sort: "amt", kopen: null, kview: "site", vsort: "emd", vopen: null };
   const mval = (m, k, i = state.p) => (!m.fixed && noUnitBudget(k) ? null : m.get(k, i));
 
   // ---------- 선택 ----------
@@ -132,6 +132,7 @@
     const q = new URLSearchParams();
     if (state.p !== DEFAULT_P) q.set("y", P[state.p].y);
     if (state.metric !== DEFAULT_METRIC) q.set("m", state.metric.key);
+    if (state.kview === "vill") q.set("v", "마을");
     const url = `${location.pathname}${q.toString() ? `?${q}` : ""}${path ? `#${encodeURIComponent(path)}` : ""}`;
     if (url !== location.pathname + location.search + location.hash) history.replaceState(null, "", url);
   }
@@ -143,6 +144,8 @@
     const pi = P.findIndex((p) => String(p.y) === q.get("y"));
     state.p = pi >= 0 ? pi : DEFAULT_P;
     state.metric = METRICS.find((m) => m.key === q.get("m")) || DEFAULT_METRIC;
+    state.kview = q.get("v") === "마을" ? "vill" : "site";
+    $$("#kl-seg button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === state.kview));
   }
 
   // ---------- 지도 (jikbul.js와 같다) ----------
@@ -250,8 +253,9 @@
     const pos = (s) => { const [x, y] = project(s[6], s[7]); return [x * v.k + v.x, y * v.k + v.y]; };
     const sel = mapSvg.select("g.sites").selectAll("circle").data(list, (s) => `${s[2]}|${s[0]}|${s[4]}`).join("circle")
       .attr("class", (s) => `rd-site${isOn(s) ? " on" : ""}`)
-      .attr("cx", (s) => pos(s)[0]).attr("cy", (s) => pos(s)[1]).attr("r", (s) => (isOn(s) ? 5 : 4))
+      .attr("cx", (s) => pos(s)[0]).attr("cy", (s) => pos(s)[1]).attr("r", (s) => (isOn(s) ? 7 : 5.5))
       .style("--c", (s) => GROUPS[GROUP_OF[s[1]]].color)
+      .sort((a, b) => isOn(a) - isOn(b))
       .on("mousemove", (e, s) => showTip(e, `<b>${esc(s[2] || "(지구명 없음)")}</b>${esc(ktype(s))}<br>${s[0] ?? "–"}년 착수 · 준공예정 ${ymd(s[4])}${isOn(s) ? " (진행 중)" : ""}`))
       .on("mouseleave", () => { tip.hidden = true; })
       .on("click", (e, s) => { state.kopen = `${s[2]}|${s[0]}|${s[4]}`; renderKList(); });
@@ -427,7 +431,9 @@
 
   // ---------- 왼쪽 가운데: 세부사업 / 하위 지역 ----------
   const TAG = { 중심지활성화: "중심지", 기초생활거점: "기초거점", 신활력플러스: "신활력", 생활여건개조: "생활여건", 농촌공간정비: "공간정비", "공간계획·협약": "계획·협약", "마을만들기·역량": "마을·역량", "유지관리·기타": "기타" };
-  const tagHTML = (ci) => `<span class="jb-tag" style="box-shadow:inset 3px 0 0 ${GROUPS[GROUP_OF[ci]].color}">${TAG[R.cats[ci]] || R.cats[ci]}</span>`;
+  // 유형 꼬리표: 유형 묶음 색의 옅은 음영 + 같은 색 글자
+  const rgba = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
+  const tagHTML = (ci) => { const c = GROUPS[GROUP_OF[ci]].color; return `<span class="jb-tag rd-tag" style="background:${rgba(c, 0.18)};color:${c}">${TAG[R.cats[ci]] || R.cats[ci]}</span>`; };
   function renderList() {
     const k = state.key, i = state.p;
     const tbl = $("#list-table");
@@ -488,18 +494,30 @@
     // 농촌마을(참고): 조사 범위가 시군마다 달라 견주지 않는다
     const v = unitsIn(k).reduce((a, u) => { const x = R.krc.vill[u]; if (x) x.forEach((n, j) => { a[j] += n; }); return a; }, [0, 0, 0, 0, 0, 0, 0]);
     $("#k-vill").innerHTML = v[0]
-      ? `<span title="한국농어촌공사 농촌마을현황: 조사된 마을만 있고 시군마다 조사 범위가 달라 시군끼리 견주지 않습니다. 인구가 0으로 적힌 마을은 고령화율에서 뺐습니다.">농촌마을(농어촌공사 조사 <b>${nf0.format(v[0])}</b>곳, 참고)`
+      ? `<span title="한국농어촌공사 농촌마을현황: 조사된 마을만 있고 시군마다 조사 범위가 달라 시군끼리 견주지 않습니다. 인구가 0으로 적힌 마을은 고령화율에서 뺐습니다.">농촌마을(농어촌공사 조사 <b>${nf0.format(v[0])}</b>곳)`
         + (v[1] ? ` · 65세 이상 <b>${pctS((v[3] / v[2]) * 100, 0)}</b> <span class="jb-dim">(인구 적힌 ${nf0.format(v[1])}곳)</span>` : " · 인구 자료 없음")
         + ` · 빈집 <b>${nf0.format(v[5])}</b>호 · 슬레이트 <b>${nf0.format(v[6])}</b>호</span>`
+        + (state.kview === "vill" ? "" : ` <button type="button" class="rd-more" id="k-vill-go">마을 보기 ›</button>`)
       : `<span class="jb-dim">농어촌공사 농촌마을 조사 자료가 없는 지역입니다</span>`;
+    $("#k-vill-go")?.addEventListener("click", () => setKView("vill"));
   }
+  // 지구 목록 상자: [지구] 농어촌공사 지역개발사업 지구 / [마을] 농어촌공사 농촌마을현황
+  function setKView(v) {
+    state.kview = v;
+    syncURL();
+    $$("#kl-seg button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === v));
+    renderKSum();
+    renderKList();
+  }
+  $$("#kl-seg button").forEach((b) => b.addEventListener("click", () => setKView(b.dataset.v)));
   function renderKList() {
+    if (state.kview === "vill") return renderVList();
     const k = state.key, tbl = $("#k-table");
+    tbl.classList.remove("rd-vtable");
     if (level(k) === 2) {
       const list = SITES[k] || [];
       $("#kl-title").firstChild.textContent = "지구 목록 ";
-      $("#kl-scope").textContent = `(${fullLabel(k)})`;
-      $("#kl-count").textContent = list.length ? `${list.length}곳` : "";
+      $("#kl-scope").textContent = `(${fullLabel(k)}${list.length ? ` · ${list.length}곳` : ""})`;
       const id = (s) => `${s[2]}|${s[0]}|${s[4]}`;
       tbl.innerHTML = `<thead><tr><th>지구</th><th>유형</th><th>착수</th><th>준공예정</th></tr></thead><tbody>${list.length
         ? list.map((s) => `<tr class="rd-k${isOn(s) ? " on" : ""}${state.kopen === id(s) ? " open" : ""}" data-id="${esc(id(s))}" tabindex="0" title="${esc(ktype(s))}">
@@ -518,9 +536,8 @@
     }
     const kids = childrenOf(k);
     $("#kl-title").firstChild.textContent = level(k) === 0 ? "시도별 지구 " : "시군별 지구 ";
-    $("#kl-scope").textContent = `(${fullLabel(k)})`;
     const rows = kids.map((c) => [c, siteCount(c, false), siteCount(c, true), d3.max(sitesIn(c), ([, s]) => s[0])]).filter((r) => r[1]).sort((a, b) => b[2] - a[2] || b[1] - a[1]);
-    $("#kl-count").textContent = `${rows.length}곳`;
+    $("#kl-scope").textContent = `(${fullLabel(k)} · ${rows.length}곳)`;
     tbl.innerHTML = `<thead><tr><th>지역</th><th>전체</th><th>진행 중</th><th>최근 착수</th></tr></thead><tbody>${rows.map(([c, n, o, y]) => `<tr data-k="${c}" tabindex="0"><td>${esc(level(c) === 1 ? T.sidos[c].short : label(c))}</td><td>${nf0.format(n)}</td><td>${o ? nf0.format(o) : "–"}</td><td>${y ?? "–"}</td></tr>`).join("")}</tbody>`;
     $$("#k-table tbody tr[data-k]").forEach((tr) => {
       tr.addEventListener("click", () => select(tr.dataset.k));
@@ -528,6 +545,88 @@
     });
     $("#kl-note").textContent = "진행 중이 많은 순. 줄을 누르면 그 지역으로 갑니다. 시군을 고르면 지구 목록과 지도 위치가 나옵니다.";
   }
+  // ---------- 마을 (농어촌공사 농촌마을현황: 시군을 고르면 data/vill/{번호}.json을 불러온다) ----------
+  // 줄: [마을, 읍면, 인구, 65세 이상, 총가구, 1인가구, 빈집, 슬레이트, [남 0·15·20·30·40·50·60·65, 여 같은 순], [준공 5년 미만·5~9·10~19·20~29·30년 이상], 유래]
+  const villCache = {};
+  function loadVill(k) {
+    const id = R.krc.villIds[k];
+    if (id == null) return null;
+    if (!villCache[k]) {
+      villCache[k] = fetch(`data/vill/${id}.json`).then((r) => r.json()).then((d) => { villCache[k] = d.rows; if (state.key === k && state.kview === "vill") renderVList(); })
+        .catch(() => { villCache[k] = []; if (state.key === k) renderVList(); });
+    }
+    return Array.isArray(villCache[k]) ? villCache[k] : undefined;
+  }
+  const n0 = (v) => (v ? nf0.format(v) : "–");
+  const AGES = ["0~14", "15~19", "20대", "30대", "40대", "50대", "60~64", "65+"];
+  function villDetail(r) {
+    const [, , pop, , hh, one, , , age, yrs, desc] = r;
+    const amax = Math.max(...age, 1);
+    const ageHTML = pop ? `<div class="rd-age">${AGES.map((a, j) => `<span>${a}</span><i class="m" style="width:${(age[j] / amax) * 100}%"></i><b>${age[j]}</b><i class="f" style="width:${(age[j + 8] / amax) * 100}%"></i><b>${age[j + 8]}</b>`).join("")}</div>
+      <div class="rd-age-k"><i class="m"></i>남 <i class="f"></i>여</div>` : "";
+    const yr = yrs.some(Boolean) ? `주택 준공: 5년 미만 ${yrs[0]} · 5~9년 ${yrs[1]} · 10~19년 ${yrs[2]} · 20~29년 ${yrs[3]} · 30년 이상 ${yrs[4]}` : "";
+    const line = [hh ? `총가구 ${nf0.format(hh)}` : "", one ? `1인가구 ${nf0.format(one)}` : "", yr].filter(Boolean).join(" · ");
+    return `${ageHTML}${line ? `<p class="rd-vline">${line}</p>` : ""}<p class="rd-desc">${desc ? esc(desc) : '<span class="jb-dim">마을 유래 없음</span>'}</p>`;
+  }
+  function renderVList() {
+    const k = state.key, tbl = $("#k-table");
+    tbl.classList.add("rd-vtable");
+    const note = $("#kl-note");
+    if (level(k) === 2) {
+      $("#kl-title").firstChild.textContent = "마을 목록 ";
+      const rows = loadVill(k);
+      if (rows === null || (rows && !rows.length)) {
+        $("#kl-scope").textContent = `(${fullLabel(k)})`;
+        tbl.innerHTML = `<tbody><tr class="af-none"><td>농어촌공사 농촌마을 조사 자료가 없는 시군입니다</td></tr></tbody>`;
+        note.textContent = "농어촌공사 농촌마을현황은 조사한 마을만 있습니다(전국 143개 시군 28,342곳).";
+        return;
+      }
+      if (!rows) { tbl.innerHTML = `<tbody><tr class="af-none"><td>마을 자료를 불러오는 중…</td></tr></tbody>`; return; }
+      $("#kl-scope").textContent = `(${fullLabel(k)} · ${nf0.format(rows.length)}곳)`;
+      const COLS = [["emd", "마을", null], ["pop", "인구", (r) => r[2]], ["old", "65세+", (r) => (r[2] ? r[3] / r[2] : -1)], ["empty", "빈집", (r) => r[6]], ["slate", "슬레이트", (r) => r[7]]];
+      const get = COLS.find((c) => c[0] === state.vsort)?.[2];
+      const list = get ? rows.slice().sort((a, b) => get(b) - get(a)) : rows;
+      const vid = (r) => `${r[1]}|${r[0]}`;
+      let html = "", emd = null;
+      for (const r of list) {
+        if (!get && r[1] !== emd) {
+          emd = r[1];
+          const g = rows.filter((x) => x[1] === emd);
+          html += `<tr class="jb-grp"><td colspan="5">${esc(emd || "읍면 없음")} <span class="jb-dim">${g.length}곳</span></td></tr>`;
+        }
+        const open = state.vopen === vid(r);
+        html += `<tr class="rd-v${open ? " open" : ""}" data-id="${esc(vid(r))}" tabindex="0"><td title="${esc(r[1])} ${esc(r[0])}">${esc(r[0])}${get ? ` <span class="jb-dim">${esc(r[1])}</span>` : ""}</td>
+          <td>${n0(r[2])}</td><td>${r[2] ? pctS((r[3] / r[2]) * 100, 0) : "–"}</td><td>${n0(r[6])}</td><td>${n0(r[7])}</td></tr>`
+          + (open ? `<tr class="rd-kd"><td colspan="5">${villDetail(r)}</td></tr>` : "");
+      }
+      tbl.innerHTML = `<thead><tr>${COLS.map(([f, t]) => `<th><button type="button" data-vs="${f}" aria-pressed="${state.vsort === f}">${t}</button></th>`).join("")}</tr></thead><tbody>${html}</tbody>`;
+      $$("#k-table [data-vs]").forEach((b) => b.addEventListener("click", () => { state.vsort = b.dataset.vs; renderVList(); }));
+      $$("#k-table tr.rd-v").forEach((tr) => {
+        const go = () => { state.vopen = state.vopen === tr.dataset.id ? null : tr.dataset.id; renderVList(); };
+        tr.addEventListener("click", go);
+        tr.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+      });
+      const zero = rows.filter((r) => !r[2]).length;
+      note.textContent = `읍면별 · 머리글을 누르면 그 값 큰 순. 줄을 누르면 연령·가구·마을 유래가 펼쳐집니다.${zero ? ` 인구가 0으로 적힌 마을 ${nf0.format(zero)}곳은 '–'(조사값 없음).` : ""} 농어촌공사 조사 마을만 있고 기준 시점은 밝혀져 있지 않습니다.`;
+      const o = tbl.querySelector("tr.open");
+      if (o) o.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    const kids = childrenOf(k);
+    $("#kl-title").firstChild.textContent = level(k) === 0 ? "시도별 마을 " : "시군별 마을 ";
+    const agg = (c) => unitsIn(c).reduce((a, u) => { const x = R.krc.vill[u]; if (x) x.forEach((n, j) => { a[j] += n; }); return a; }, [0, 0, 0, 0, 0, 0, 0]);
+    const rows = kids.map((c) => [c, agg(c)]).filter(([, v]) => v[0]).sort((a, b) => b[1][0] - a[1][0]);
+    $("#kl-scope").textContent = `(${fullLabel(k)} · ${rows.length}곳)`;
+    tbl.innerHTML = `<thead><tr><th>지역</th><th>조사 마을</th><th>65세+</th><th>빈집</th><th>슬레이트</th></tr></thead><tbody>${rows.length
+      ? rows.map(([c, v]) => `<tr data-k="${c}" tabindex="0"><td>${esc(level(c) === 1 ? T.sidos[c].short : label(c))}</td><td>${nf0.format(v[0])}${v[1] < v[0] ? ` <span class="jb-dim">(${nf0.format(v[1])})</span>` : ""}</td><td>${v[2] ? pctS((v[3] / v[2]) * 100, 0) : "–"}</td><td>${n0(v[5])}</td><td>${n0(v[6])}</td></tr>`).join("")
+      : `<tr class="af-none"><td colspan="5">조사 마을이 없습니다</td></tr>`}</tbody>`;
+    $$("#k-table tbody tr[data-k]").forEach((tr) => {
+      tr.addEventListener("click", () => select(tr.dataset.k));
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(tr.dataset.k); });
+    });
+    note.textContent = "조사 마을 수 큰 순. 괄호는 인구가 적힌 마을 수(65세+는 그 마을들만으로 계산). 시군마다 조사 범위가 달라 지역끼리 견주는 값이 아닙니다. 시군을 고르면 마을 목록이 나옵니다.";
+  }
+
   // 연도별 착수 지구 수 (유형 묶음으로 쌓기)
   function drawKYears() {
     const k = state.key, el = $("#chart-kyears");
@@ -586,7 +685,7 @@
   function select(k) {
     const prev = state.key;
     state.key = k || NATION;
-    if (prev !== state.key) state.kopen = null;
+    if (prev !== state.key) { state.kopen = null; state.vopen = null; }
     render(sidoOf(prev) !== sidoOf(state.key) || level(prev) === 2 || level(state.key) === 2);
   }
 

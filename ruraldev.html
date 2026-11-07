@@ -142,7 +142,9 @@
         <article class="panel" id="p-klist">
           <header class="panel-head">
             <h2 id="kl-title">지구 목록 <span class="h2-scope" id="kl-scope"></span></h2>
-            <span class="chip" id="kl-count"></span>
+            <div class="gh-seg" id="kl-seg" role="group" aria-label="보기">
+              <button type="button" data-v="site" aria-pressed="true">지구</button><button type="button" data-v="vill" aria-pressed="false">마을</button>
+            </div>
           </header>
           <div class="af-table-wrap rd-kwrap"><table class="af-table jb-table rd-ktable" id="k-table"></table></div>
           <p class="note" id="kl-note"></p>

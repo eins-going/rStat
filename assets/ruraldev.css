@@ -21,11 +21,11 @@
 .rd-kyears { height: 130px; margin-top: 4px; }
 
 /* 지도 위 사업 지구 점 */
-circle.rd-site { fill: transparent; stroke: var(--c); stroke-width: 1.6; cursor: pointer; }
-circle.rd-site.on { fill: var(--c); stroke: #14161b; stroke-width: 1.2; }
-circle.rd-site:hover { stroke: #fff; stroke-width: 2; }
-.rd-lg-site i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #f5a524; margin: 0 4px 0 8px; vertical-align: -1px; }
-.rd-lg-site i.on { background: #f5a524; border-color: #14161b; margin-left: 0; }
+circle.rd-site { fill: #14161b; stroke: var(--c); stroke-width: 2.2; cursor: pointer; opacity: 0.95; }
+circle.rd-site.on { fill: var(--c); stroke: #fff; stroke-width: 2.2; opacity: 1; filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8)); }
+circle.rd-site:hover { stroke: #fff; stroke-width: 3; }
+.rd-lg-site i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #14161b; border: 2px solid #f5a524; margin: 0 4px 0 8px; vertical-align: -1px; }
+.rd-lg-site i.on { background: #f5a524; border-color: #fff; margin-left: 0; }
 
 /* 한 화면 모드: 목록 상자가 남는 높이를 쓴다 */
 @media (min-width: 1281px) and (min-height: 720px) {
@@ -33,3 +33,25 @@ circle.rd-site:hover { stroke: #fff; stroke-width: 2; }
   .rd #p-klist .rd-kwrap { flex: 1 1 0; min-height: 0; overflow-y: auto; }
   .rd #p-ksum, .rd #p-kyears { flex: 0 0 auto; }
 }
+
+/* 마을 목록 */
+.rd-vtable tr.rd-v { cursor: pointer; }
+.rd-vtable tr.rd-v.open td { background: rgba(245, 165, 36, 0.10); color: var(--text); }
+.rd-vtable td:first-child { max-width: 130px; }
+.rd-vtable th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.rd-vtable th button[aria-pressed="true"] { color: var(--accent); }
+.rd-more { font: inherit; font-size: 11.5px; color: var(--accent); background: none; border: 0; padding: 0 0 0 4px; cursor: pointer; }
+.rd-age { display: grid; grid-template-columns: 40px 1fr 26px 1fr 26px; align-items: center; gap: 1px 4px; margin: 2px 0 6px; font-size: 10.5px; }
+.rd-age span { color: var(--faint); }
+.rd-age b { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rd-age i { display: block; height: 7px; border-radius: 2px; min-width: 1px; }
+.rd-age i.m, .rd-age-k i.m { background: #5fb3ff; }
+.rd-age i.f, .rd-age-k i.f { background: #f58fb3; }
+.rd-age-k { font-size: 10.5px; color: var(--faint); margin-bottom: 4px; }
+.rd-age-k i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin: 0 2px 0 6px; vertical-align: -1px; }
+.rd-vline { margin: 0 0 4px; font-size: 11px; color: var(--muted); }
+.rd-desc { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--muted); }
+.rd-tag { font-weight: 600; }
+.rd-tag[style*="109,115,128"] { color: #a3a8b3 !important; }
+/* 시군을 고르면 그 시군 바탕을 옅게 해 지구 점이 드러나게 */
+.rd #map.dimmed path.unit.sel { fill-opacity: 0.45; }

@@ -576,7 +576,7 @@ page = "농촌개발"
 method = "auto"
 schedule = { kind = "monthly", day = 12 }
 commands = [["scripts/fetch_ruraldev.py"], ["scripts/build_ruraldev.py"]]
-outputs = ["data/ruraldev.js"]
+outputs = ["data/ruraldev.js", "data/vill/*.json"]
 check = "ruraldev"
 keys = ["lofin365_open_api_key", "DATA_PORTAL_API_KEY"]
 note = "지방재정365 '세부사업별 세출현황'을 사업명 낱말(농촌중심지·기초생활거점·신활력·생활여건개조·농촌공간·농촌협약·마을만들기 등 22개)로 전국을 받아 이름 규칙으로 유형을 나눈다(어촌·도시 사업과 이름만 같은 마을만들기는 뺀다). 지난 연도는 12월 31일 값 한 번, 올해는 매달 최근 달 말일. 농어촌공사 OpenAPI(농산어촌지역개발사업 sggLocalDev·농촌마을현황 infoVill)는 30일마다 다시 받는다(초당 호출 제한이 빡빡해 2초 간격). 농어촌공사 자료에는 사업비가 없다."

@@ -12,7 +12,7 @@
   뺀 것: 어촌(해수부 어촌신활력·어촌뉴딜), 도시 새뜰마을·도시재생, 이름만 같은 다른 '마을만들기'(안전·건강·학습 등), 자치구 마을만들기
 이중 계산: 도 본청 예산은 시군으로 내려가는 국비·도비 통로라 시도·전국은 시군 합계(시군 행이 없는 시도·유형만 본청) — build_jikbul.py와 같다.
 사업 지구 (한국농어촌공사 농산어촌지역개발사업 API): 시군마다 [시작 연도, 유형, 지구명, 농어촌공사 유형 번호(krc.types), 준공예정일, 사업내용(100자), 경도, 위도]. 사업비 없음.
-마을 (한국농어촌공사 농촌마을현황 API): 시군마다 [조사 마을, 인구가 적힌 마을, 인구, 65세 이상, 총가구, 빈집, 슬레이트].
+마을 (한국농어촌공사 농촌마을현황 API): 시군마다 [조사 마을, 인구가 적힌 마을, 인구, 65세 이상, 총가구, 빈집, 슬레이트], 마을 줄은 data/vill/{번호}.json.
 """
 import gzip
 import json
@@ -202,6 +202,8 @@ def main():
     for k in sites:
         sites[k].sort(key=lambda s: (-(s[4] or 0), -(s[0] or 0)))
     vill = defaultdict(lambda: [0] * 7)
+    vrows = defaultdict(list)   # 시군 → 마을 줄 (data/vill/{번호}.json, 시군을 고를 때 화면이 불러온다)
+    YRS = [f"villHouseYear_{y}Cnt" for y in (5, 9, 10, 20, 30)]
     AGE = [f"vill{g}Age_{a}Cnt" for g in ("Male", "Female") for a in (0, 10, 20, 30, 40, 50, 60, 65)]
     for r in K["vill"]:
         k = krc_unit(r.get("sidoNm"), r.get("sggNm"))
@@ -217,9 +219,26 @@ def main():
             v[4] += r.get("villHouseTotCnt") or 0
         v[5] += r.get("villHouseEmpty") or 0
         v[6] += r.get("villHouseSlate") or 0
+        desc = re.sub(r"\s+", " ", r.get("villDescription") or "").strip()
+        # [마을, 읍면, 인구, 65세 이상, 총가구, 1인가구, 빈집, 슬레이트, [남 0·15·20·30·40·50·60·65, 여 같은 순], [준공 5년 미만·5~9·10~19·20~29·30년 이상], 유래(400자)]
+        vrows[k].append([(r.get("villNm") or "").strip(), (r.get("emdNm") or "").strip(), pop,
+                         (r.get("villMaleAge_65Cnt") or 0) + (r.get("villFemaleAge_65Cnt") or 0),
+                         r.get("villHouseTotCnt") or 0, r.get("villHouseOneCnt") or 0, r.get("villHouseEmpty") or 0, r.get("villHouseSlate") or 0,
+                         [r.get(a) or 0 for a in AGE], [r.get(y) or 0 for y in YRS], desc[:400] + ("…" if len(desc) > 400 else "")])
+    # 시군 마을 파일: 번호는 지역키 정렬 순. 지난 파일은 지우고 새로 쓴다
+    vdir = os.path.join(ROOT, "data", "vill")
+    os.makedirs(vdir, exist_ok=True)
+    vids = {k: i for i, k in enumerate(sorted(vrows))}
+    for f in os.listdir(vdir):
+        if f.endswith(".json"):
+            os.remove(os.path.join(vdir, f))
+    for k, rows in vrows.items():
+        rows.sort(key=lambda x: (x[1], x[0]))
+        with open(os.path.join(vdir, f"{vids[k]}.json"), "w", encoding="utf-8") as fh:
+            json.dump({"key": k, "rows": rows}, fh, ensure_ascii=False, separators=(",", ":"))
 
     out = {"built": date.today().isoformat(), "periods": periods, "cats": CATS, "fields": F, "regions": regions, "biz": bz, "den": den,
-           "krc": {"got": K["got"], "types": ktypes, "sites": sites, "vill": vill},
+           "krc": {"got": K["got"], "types": ktypes, "sites": sites, "vill": vill, "villIds": vids},
            "source": "지방재정365 세부사업별 세출현황(QWGJK) · 농촌개발 세부사업 · 시군 예산현액 합계",
            "krcSource": "한국농어촌공사 농산어촌지역개발사업·농촌마을현황 OpenAPI"}
     with open(OUT, "w", encoding="utf-8") as f:
