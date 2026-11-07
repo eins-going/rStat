@@ -177,7 +177,7 @@
       if (map.getZoom() < QUERY_ZOOM) { map.setView(e.latlng, Math.min(17, Math.max(QUERY_ZOOM + 1, map.getZoom() + 3))); return; }
       inspect(e.latlng);
     });
-    map.on("zoomend", () => { syncMask(); syncLegend(); if (!drawn.size && !st.nearAt) idle(); });
+    map.on("zoomend", () => { syncMask(); syncLegend(); syncFacVisible(); if (!drawn.size && !st.nearAt) idle(); });
     // 시군에 맞춘 뒤에 지도 칸 크기가 바뀌면(자세히 보기로 바뀌며 아래 정보 칸이 생기는 등) 다시 맞춘다.
     // 사용자가 직접 옮기거나 확대한 뒤에는 크기만 알려 주고 시점은 그대로 둔다.
     map.on("movestart", () => { if (!st.fitting) st.fitTo = null; });
@@ -637,8 +637,22 @@
 
   const facShown = () => fst.here.filter((r) => fst.kinds.has(r.kind));
 
+  // 전국·시도처럼 넓은 범위에서는 시설 점이 화면을 덮으므로 일정 수준(11단계) 확대해야 점을 찍는다. 시군은 처음부터
+  const FAC_ZOOM = 11;
+  const wideRegion = () => /^전국$|(도|특별시|광역시|특별자치시)$/.test(st.unit || "");
+  const facVisible = () => !wideRegion() || (map && map.getZoom() >= FAC_ZOOM);
+  function syncFacVisible() {
+    if (!map || !facLayer) return;
+    const on = facVisible();
+    if (on && !map.hasLayer(facLayer)) facLayer.addTo(map);
+    if (!on && map.hasLayer(facLayer)) facLayer.remove();
+    const note = ui.facs?.querySelector(".fv-facs-zoom");
+    if (note) note.hidden = on;
+  }
+
   function drawFacilities() {
     facLayer.clearLayers();
+    queueMicrotask(syncFacVisible);
     const groups = new Map();
     for (const r of facShown()) if (r.exact) (groups.get(r.key) || groups.set(r.key, []).get(r.key)).push(r);
     for (const [key, list] of groups) {
@@ -694,6 +708,7 @@
     const off = fst.here.filter((r) => !r.exact).length;
     const shown = facShown().length;
     ui.facs.innerHTML = `${head}<div class="fv-fchips" role="group" aria-label="시설 종류 (눌러서 켜고 끄기)">${chips}</div>${card}
+      <p class="fv-note fv-facs-zoom"${facVisible() ? " hidden" : ""}>지도를 더 확대하면 시설 위치 점이 보입니다(목록을 누르면 그 위치로 확대).</p>
       <div class="fv-fl-head"><span>시설 목록 <b>${nf.format(shown)}</b>곳</span><span>누르면 그 위치로</span></div>
       <ol class="fv-flist">${list}</ol>
       ${off ? `<p class="fv-note">주소가 마을·읍면·시군까지만 있는 ${nf.format(off)}곳은 지도에 찍지 않고 목록에만 두었습니다.</p>` : ""}`;
