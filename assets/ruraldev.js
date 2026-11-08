@@ -78,9 +78,9 @@
   const GROUPS = [
     { key: "hub", name: "중심지·거점", cats: ["중심지활성화", "기초생활거점"], color: "#f5a524", desc: "농촌중심지활성화(읍면 소재지) · 기초생활거점(면 단위 생활 서비스)" },
     { key: "new", name: "신활력플러스", cats: ["신활력플러스"], color: "#5fb3ff", desc: "농촌신활력플러스(지역 주도 경제·사회 활성화)" },
-    { key: "space", name: "공간정비·생활여건", cats: ["농촌공간정비", "생활여건개조"], color: "#5fb37c", desc: "농촌공간정비(축사·공장 등 난개발 정비) · 취약지역 생활여건개조(새뜰마을)" },
+    { key: "space", name: "공간정비·생활여건", cats: ["농촌공간정비", "생활여건개조"], color: "#5fb37c", desc: "농촌공간정비(난개발 정비) · 생활여건개조(새뜰마을)" },
     { key: "plan", name: "계획·마을·역량", cats: ["공간계획·협약", "마을만들기·역량"], color: "#c49cff", desc: "농촌공간 재구조화 계획·농촌협약 · 마을만들기·시군역량강화" },
-    { key: "etc", name: "기타", cats: ["유지관리·기타"], color: "#6d7380", desc: "일반농산어촌개발 준공지구 유지관리처럼 종류가 안 적힌 예산, 연계협력·청년농촌보금자리·빈집재생 같은 그 밖의 사업 지구" },
+    { key: "etc", name: "기타", cats: ["유지관리·기타"], color: "#6d7380", desc: "유지관리 등 종류 없는 예산, 연계협력·청년보금자리·빈집재생 등" },
   ];
   const GROUP_OF = Object.fromEntries(GROUPS.flatMap((g, gi) => g.cats.map((c) => [CI[c], gi])));
   const gsum = (k, i, g, f = "amt") => sumC(k, i, GROUPS.find((x) => x.key === g).cats, f);
@@ -96,16 +96,16 @@
 
   // ---------- 지도 지표 ----------
   const METRICS = [
-    { key: "amt", group: "예산", chip: "농촌개발", label: "농촌개발 예산현액", get: (k, i) => tot(k, i), fmt: milS, note: "농촌중심지·기초생활거점·신활력플러스·공간정비·생활여건개조·마을만들기 등 농촌개발 세부사업 예산현액 합계(추경·이월 반영)" },
+    { key: "amt", group: "예산", chip: "농촌개발", label: "농촌개발 예산현액", get: (k, i) => tot(k, i), fmt: milS, note: "중심지·거점·신활력·공간정비·생활여건·마을만들기 등 예산현액 합(추경·이월 반영)" },
     { key: "hub", group: "예산", chip: "중심지·거점", label: "중심지·거점 예산현액", get: (k, i) => gsum(k, i, "hub"), fmt: milS, note: GROUPS[0].desc },
     { key: "new", group: "예산", chip: "신활력", label: "신활력플러스 예산현액", get: (k, i) => gsum(k, i, "new"), fmt: milS, note: GROUPS[1].desc },
     { key: "space", group: "예산", chip: "공간정비", label: "공간정비·생활여건 예산현액", get: (k, i) => gsum(k, i, "space"), fmt: milS, note: GROUPS[2].desc },
-    { key: "share", group: "견주기", chip: "농업예산 중", label: "농업·농촌 예산 중 농촌개발 비중", get: (k, i) => { const a = tot(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "그 지자체 농업·농촌 분야 세출 예산(지방재정365 기능별) 가운데 농촌개발 세부사업 몫. 일부 지자체는 농촌개발을 '지역및도시' 분야에 두어 100%에 가깝거나 넘을 수 있음" },
-    { key: "farm", group: "견주기", chip: "농가당", label: "농가당 농촌개발 예산", get: (k, i) => { const a = tot(k, i), h = hh(k); return ok(a) && h ? (a * 1e6) / h : null; }, fmt: manS, note: `예산현액 ÷ 농가 수(${R.den.years.households}년 농림어업조사). 농가 300호 미만 시군은 색칠하지 않음` },
-    { key: "local", group: "재원·집행", chip: "지방비", label: "농촌개발 예산 중 지방비 비율", get: (k, i) => { const a = tot(k, i); return a ? ((tot(k, i, "sido") + tot(k, i, "sigun")) / a) * 100 : null; }, fmt: (v) => pctS(v), note: "(시도비+시군비) ÷ 예산현액. 균특회계 국비 70% 안팎에 지방비를 맞추고, 전환사업(마을만들기 등)은 지방비만" },
-    { key: "exec", group: "재원·집행", chip: "집행률", label: "농촌개발 집행률", get: (k, i) => { const a = tot(k, i); return a ? (tot(k, i, "ep") / a) * 100 : null; }, fmt: (v) => pctS(v), note: "지출액 ÷ 예산현액. 여러 해 걸친 건설 사업이라 이월이 많다. 올해 값은 그 달 말까지" },
-    { key: "kon", group: "사업 지구", chip: "진행 중", label: "진행 중 사업 지구 수", get: (k) => siteCount(k, true), fmt: cnt, fixed: true, note: "한국농어촌공사 지역개발사업 지구 가운데 준공예정일이 오늘 이후인 곳(연도 선택과 무관)" },
-    { key: "kall", group: "사업 지구", chip: "누적 지구", label: "누적 사업 지구 수(2004~)", get: (k) => siteCount(k, false), fmt: cnt, fixed: true, note: "한국농어촌공사 지역개발사업 지구 전체(2004년부터, 연도 선택과 무관)" },
+    { key: "share", group: "견주기", chip: "농업예산 중", label: "농업·농촌 예산 중 농촌개발 비중", get: (k, i) => { const a = tot(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "농업·농촌 분야 세출 예산 중 농촌개발 몫. '지역및도시'에 둔 곳은 100% 넘기도" },
+    { key: "farm", group: "견주기", chip: "농가당", label: "농가당 농촌개발 예산", get: (k, i) => { const a = tot(k, i), h = hh(k); return ok(a) && h ? (a * 1e6) / h : null; }, fmt: manS, note: `예산현액 ÷ 농가 수(${R.den.years.households}년 농림어업조사). 300호 미만 시군 제외` },
+    { key: "local", group: "재원·집행", chip: "지방비", label: "농촌개발 예산 중 지방비 비율", get: (k, i) => { const a = tot(k, i); return a ? ((tot(k, i, "sido") + tot(k, i, "sigun")) / a) * 100 : null; }, fmt: (v) => pctS(v), note: "(시도비+시군비) ÷ 예산현액. 국비 70% 안팎, 전환사업은 지방비만" },
+    { key: "exec", group: "재원·집행", chip: "집행률", label: "농촌개발 집행률", get: (k, i) => { const a = tot(k, i); return a ? (tot(k, i, "ep") / a) * 100 : null; }, fmt: (v) => pctS(v), note: "지출액 ÷ 예산현액. 다년 사업이라 이월 많음" },
+    { key: "kon", group: "사업 지구", chip: "진행 중", label: "진행 중 사업 지구 수", get: (k) => siteCount(k, true), fmt: cnt, fixed: true, note: "농어촌공사 지구 중 준공예정이 오늘 이후(연도 무관)" },
+    { key: "kall", group: "사업 지구", chip: "누적 지구", label: "누적 사업 지구 수(2004~)", get: (k) => siteCount(k, false), fmt: cnt, fixed: true, note: "농어촌공사 지구 전체(2004~, 연도 무관)" },
   ];
   const DEFAULT_METRIC = METRICS[0];
   const state = { key: NATION, p: DEFAULT_P, metric: DEFAULT_METRIC, sort: "amt", kopen: null, kview: "site", vsort: "emd", vopen: null };
@@ -434,13 +434,24 @@
   // 유형 꼬리표: 유형 묶음 색의 옅은 음영 + 같은 색 글자
   const rgba = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
   const tagHTML = (ci) => { const c = GROUPS[GROUP_OF[ci]].color; return `<span class="jb-tag rd-tag" style="background:${rgba(c, 0.18)};color:${c}">${TAG[R.cats[ci]] || R.cats[ci]}</span>`; };
+  // 사업 줄은 기간마다 따로 파일(data/biz/ruraldev/기준일.json). 그 해를 고를 때 받고, 받으면 다시 그린다
+  const bizCache = {};
+  function loadBiz(i) {
+    const d = P[i].d;
+    if (!(d in bizCache)) {
+      bizCache[d] = fetch(`data/biz/ruraldev/${d}.json`).then((r) => r.json()).catch(() => ({}))
+        .then((x) => { bizCache[d] = x; if (P[state.p].d === d) renderList(); });
+    }
+    return bizCache[d] instanceof Promise ? null : bizCache[d];
+  }
   function renderList() {
     const k = state.key, i = state.p;
     const tbl = $("#list-table");
     if (level(k) === 2 && !noUnitBudget(k)) {
       $("#list-title").firstChild.textContent = "세부사업 ";
       $("#list-scope").textContent = `(${fullLabel(k)})`;
-      const all = R.biz[k]?.[i] || [];
+      const B = loadBiz(i);
+      const all = (B && B[k]) || [];
       const rows = GROUPS.flatMap((g) => {
         const rs = all.filter((r) => GROUP_OF[r[1]] === GROUPS.indexOf(g)).sort((a, b) => b[2] - a[2]);
         return rs.length ? [[g.name, rs.reduce((t, r) => t + r[2], 0)], ...rs] : [];
@@ -450,8 +461,8 @@
         ? rows.map((r) => r.length === 2
           ? `<tr class="jb-grp"><td colspan="2">${esc(r[0])}</td><td>${eok1(r[1])}</td><td colspan="2"></td></tr>`
           : (([n, ci, amt, nat, , , ep]) => `<tr><td title="${esc(n)}">${esc(n)}</td><td>${tagHTML(ci)}</td><td>${eok1(amt)}</td><td>${nat ? eok1(nat) : "–"}</td><td>${eok1(ep)}</td></tr>`)(r)).join("")
-        : `<tr class="af-none"><td colspan="5">${R.biz[k] ? "사업 목록은 최근 두 해만 싣습니다" : "농촌개발 세부사업이 없습니다"}</td></tr>`}</tbody>`;
-      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 유형은 사업 이름으로 나눴습니다. 국비가 '–'인 마을만들기 등은 2020년 지방으로 넘어간 전환사업입니다.";
+        : `<tr class="af-none"><td colspan="5">${B ? "농촌개발 세부사업이 없습니다" : "불러오는 중…"}</td></tr>`}</tbody>`;
+      $("#list-note").textContent = "지방재정365 세부사업명 그대로(억원). 유형은 사업명 기준. 국비 '–'는 2020년 지방이양 사업(마을만들기 등).";
       return;
     }
     const pk = noUnitBudget(k) ? sidoOf(k) : k;
@@ -476,7 +487,7 @@
       tr.addEventListener("click", () => select(tr.dataset.k));
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(tr.dataset.k); });
     });
-    $("#list-note").textContent = `금액 억원(예산현액). 공간정비 = 농촌공간정비 + 취약지역 생활여건개조. 줄을 누르면 그 지역으로 갑니다.${pk === "39" ? " 제주는 행정시라 예산이 도에만 있습니다." : ""}`;
+    $("#list-note").textContent = `억원(예산현액). 공간정비 = 농촌공간정비 + 생활여건개조. 줄을 누르면 그 지역으로.${pk === "39" ? " 제주는 도 예산만." : ""}`;
   }
 
   // ---------- 오른쪽: 농어촌공사 사업 지구 ----------
@@ -529,7 +540,7 @@
         tr.addEventListener("click", go);
         tr.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
       });
-      $("#kl-note").textContent = "준공예정이 늦은 순. ● 진행 중. 줄을 누르면 사업내용이 펼쳐지고, 지도 점을 눌러도 찾아 펼칩니다. 사업비는 농어촌공사 자료에 없습니다(왼쪽 예산 참고).";
+      $("#kl-note").textContent = "준공예정 늦은 순 · ● 진행 중. 줄·지도 점을 누르면 사업내용. 사업비는 자료에 없음.";
       const open = tbl.querySelector("tr.open");
       if (open) open.scrollIntoView({ block: "nearest" });
       return;
@@ -543,11 +554,11 @@
       tr.addEventListener("click", () => select(tr.dataset.k));
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(tr.dataset.k); });
     });
-    $("#kl-note").textContent = "진행 중이 많은 순. 줄을 누르면 그 지역으로 갑니다. 시군을 고르면 지구 목록과 지도 위치가 나옵니다.";
+    $("#kl-note").textContent = "진행 중 많은 순. 줄을 누르면 그 지역으로.";
   }
   // ---------- 마을 (농어촌공사 농촌마을현황: 시군을 고르면 data/vill/{번호}.json을 불러온다) ----------
   // 응답에 조사 시점 필드가 없다. 공공데이터포털(15104291) 등록일·수정일만 밝힌다.
-  const VILL_WHEN = () => `조사 시점은 자료에 없습니다(공공데이터포털 등록 2022.8 · 최종 수정 2025.6 · ${R.krc.got.slice(0, 7).replace("-", ".")} 받음).`;
+  const VILL_WHEN = () => `조사 시점 미상(2025.6 수정 · ${R.krc.got.slice(0, 7).replace("-", ".")} 받음).`;
   // 줄: [마을, 읍면, 인구, 65세 이상, 총가구, 1인가구, 빈집, 슬레이트, [남 0·15·20·30·40·50·60·65, 여 같은 순], [준공 5년 미만·5~9·10~19·20~29·30년 이상], 유래]
   const villCache = {};
   function loadVill(k) {
@@ -580,7 +591,7 @@
       if (rows === null || (rows && !rows.length)) {
         $("#kl-scope").textContent = `(${fullLabel(k)})`;
         tbl.innerHTML = `<tbody><tr class="af-none"><td>농어촌공사 농촌마을 조사 자료가 없는 시군입니다</td></tr></tbody>`;
-        note.textContent = "농어촌공사 농촌마을현황은 조사한 마을만 있습니다(전국 143개 시군 28,342곳). " + VILL_WHEN();
+        note.textContent = "조사한 마을만 있음(143개 시군 28,342곳). " + VILL_WHEN();
         return;
       }
       if (!rows) { tbl.innerHTML = `<tbody><tr class="af-none"><td>마을 자료를 불러오는 중…</td></tr></tbody>`; return; }
@@ -626,7 +637,7 @@
       tr.addEventListener("click", () => select(tr.dataset.k));
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(tr.dataset.k); });
     });
-    note.textContent = `조사 마을 수 큰 순. 괄호는 인구가 적힌 마을 수(65세+는 그 마을들만으로 계산). 시군마다 조사 범위가 달라 지역끼리 견주는 값이 아닙니다. 시군을 고르면 마을 목록이 나옵니다. ` + VILL_WHEN();
+    note.textContent = `조사 마을 수 큰 순. 괄호는 인구가 적힌 마을 수(65세+ 계산 기준). 조사 범위가 시군마다 달라 비교용 아님. ` + VILL_WHEN();
   }
 
   // 연도별 착수 지구 수 (유형 묶음으로 쌓기)

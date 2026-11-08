@@ -538,7 +538,7 @@ page = "직불금·고향사랑"
 method = "auto"
 schedule = { kind = "monthly", day = 10 }
 commands = [["scripts/fetch_jikbul.py"], ["scripts/build_jikbul.py"]]
-outputs = ["data/jikbul.js"]
+outputs = ["data/jikbul.js", "data/biz/jikbul/*.json"]
 check = "jikbul"
 keys = ["lofin365_open_api_key"]
 note = "지방재정365 Open API '세부사업별 세출현황'을 지자체 코드 없이 세부사업명('직불'·'직접지불'·'공익기능')으로 전국을 받는다. 지난 연도는 12월 31일 값을 한 번(작년은 4월까지 매달 다시), 올해는 매달 가장 최근 달 말일 값. 검증용으로 e-나라지표 '직접지불금 현황'(농식품부)도 받아 국비 합과 견준다(80~110% 밖이면 배포하지 않음)."
@@ -576,7 +576,7 @@ page = "농촌개발"
 method = "auto"
 schedule = { kind = "monthly", day = 12 }
 commands = [["scripts/fetch_ruraldev.py"], ["scripts/build_ruraldev.py"]]
-outputs = ["data/ruraldev.js", "data/vill/*.json"]
+outputs = ["data/ruraldev.js", "data/vill/*.json", "data/biz/ruraldev/*.json"]
 check = "ruraldev"
 keys = ["lofin365_open_api_key", "DATA_PORTAL_API_KEY"]
 note = "지방재정365 '세부사업별 세출현황'을 사업명 낱말(농촌중심지·기초생활거점·신활력·생활여건개조·농촌공간·농촌협약·마을만들기 등 22개)로 전국을 받아 이름 규칙으로 유형을 나눈다(어촌·도시 사업과 이름만 같은 마을만들기는 뺀다). 지난 연도는 12월 31일 값 한 번, 올해는 매달 최근 달 말일. 농어촌공사 OpenAPI(농산어촌지역개발사업 sggLocalDev·농촌마을현황 infoVill)는 30일마다 다시 받는다(초당 호출 제한이 빡빡해 2초 간격). 농어촌공사 자료에는 사업비가 없다."

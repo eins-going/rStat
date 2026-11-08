@@ -23,7 +23,7 @@ from collections import defaultdict
 from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_jikbul import load_js, place  # noqa: E402
+from build_jikbul import load_js, place, write_biz  # noqa: E402
 from regions import ROOT, SIDOS, UNIT_KEYS, sido_code, unit_of  # noqa: E402
 
 RAW = os.path.join(ROOT, "db", "raw", "ruraldev")
@@ -31,6 +31,8 @@ OUT = os.path.join(ROOT, "data", "ruraldev.js")
 CATS = ["중심지활성화", "기초생활거점", "신활력플러스", "생활여건개조", "농촌공간정비", "공간계획·협약", "마을만들기·역량", "유지관리·기타"]
 F = ["amt", "nat", "sido", "sigun", "ep"]
 NOISE = r"안전|안심|건강|학습|평생|악취|탄소|소통|금연|치매|아동|여성|청소년|문화|교육|복지|에너지|자원순환|체육"
+
+
 
 
 def cat_of(name, part=""):
@@ -168,9 +170,7 @@ def main():
     for k, arr in D["v"]["budgetAgri"].items():
         den["agri"][k] = [arr[by.index(str(p["y"]))] if str(p["y"]) in by and arr[by.index(str(p["y"]))] is not None else None for p in periods]
 
-    keep = set(range(max(0, len(files) - 2), len(files)))
-    bz = {k: [sorted(b, key=lambda x: -x[2]) if i in keep else [] for i, b in enumerate(v)]
-          for k, v in biz.items() if not k.startswith("p") and k in regions}
+    bz = write_biz("ruraldev", biz, regions, periods)   # 사업 줄은 기간마다 따로 파일(data/biz/ruraldev/)
 
     # ---- 농어촌공사: 사업 지구·마을 ----
     with gzip.open(os.path.join(RAW, "krc.json.gz"), "rt", encoding="utf-8") as fh:

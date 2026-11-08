@@ -35,6 +35,21 @@ REFS = ["자체·기타", "FTA", "경영이양", "옛 직불", "임업", "수산
 F = ["amt", "nat", "sido", "sigun", "ep"]     # 금액 칸
 
 
+
+def write_biz(name, biz, regions, periods):
+    """사업 줄을 기간마다 따로 data/biz/<name>/<기준일>.json에 쓴다(그 해를 고를 때만 불러온다). 사업이 있는 지역 목록을 돌려준다."""
+    d = os.path.join(ROOT, "data", "biz", name)
+    os.makedirs(d, exist_ok=True)
+    for fn in os.listdir(d):
+        if fn.endswith(".json"):
+            os.remove(os.path.join(d, fn))
+    keys = sorted(k for k in biz if not k.startswith("p") and k in regions)
+    for i, p in enumerate(periods):
+        rows = {k: sorted(biz[k][i], key=lambda x: -x[2]) for k in keys if biz[k][i]}
+        with open(os.path.join(d, f"{p['d']}.json"), "w", encoding="utf-8") as f:
+            json.dump(rows, f, ensure_ascii=False, separators=(",", ":"))
+    return keys
+
 def cat_of(name, part=""):
     """세부사업명(과 지방재정365 부문)으로 분류. 이름으로 안 갈리는 '직접지불금지급' 같은 행은 부문(임업ㆍ산촌·해양수산ㆍ어촌)으로 가른다.
     None이면 직불이 아님(예: '사회단체 공익기능활성화')."""
@@ -189,11 +204,8 @@ def main():
            "이행점검": [idx.get("직불제이행점검", {}).get(str(p["y"])) for p in periods]}
     ext = {k: [round(v * 100) if v is not None else None for v in vs] for k, vs in ext.items()}
 
-    # 사업 줄은 시군(과 세종)만, 금액 큰 순
-    # 파일 크기 때문에 최근 두 기간(올해·작년 말)만 싣는다
-    keep = set(range(max(0, len(files) - 2), len(files)))
-    bz = {k: [sorted(b, key=lambda x: -x[2]) if i in keep else [] for i, b in enumerate(v)]
-          for k, v in biz.items() if not k.startswith("p") and k in regions}
+    # 사업 줄은 시군(과 세종)만, 금액 큰 순. 기간마다 따로 파일(data/biz/jikbul/)
+    bz = write_biz("jikbul", biz, regions, periods)
     out = {"built": date.today().isoformat(), "periods": periods, "cats": CATS, "select": SELECT, "refs": REFS,
            "fields": F, "regions": regions, "biz": bz, "den": den, "ext": ext,
            "source": "지방재정365 세부사업별 세출현황(QWGJK) · 세부사업명 '직불'·'직접지불'·'공익기능' · 시군 예산현액 합계",

@@ -86,15 +86,15 @@
 
   // ---------- 지도 지표 ----------
   const METRICS = [
-    { key: "amt", group: "규모", chip: "직불금", label: "직불금 예산", get: (k, i) => tot(k, i), fmt: milS, note: "공익직불(기본형·선택형·행정비) + 지자체 자체·FTA 피해보전 등 농업 직불 예산현액(추경·이월 반영). 임업·수산 제외" },
-    { key: "basic", group: "규모", chip: "기본형", label: "기본형 공익직불 예산", get: (k, i) => sumC(k, i, ["기본형"]), fmt: milS, note: "소농·면적직불(국비). 전액 지방비로 얹어 주는 사업은 지자체 자체 직불로 셈" },
-    { key: "own", group: "규모", chip: "자체", label: "지자체 자체 직불 예산", get: (k, i) => sumC(k, i, ["자체·기타"]), fmt: milS, note: "지방비 단독 직불(쌀·밭 소득보전, 수출 특화품목 등). 공익직불 아님" },
-    { key: "select", group: "규모", chip: "선택형", label: "선택형 공익직불 예산", get: (k, i) => sumC(k, i, J.select), fmt: milS, note: "농식품부 선택형 4가지: 친환경농업·친환경축산안전·경관보전·전략작물(종류를 적지 않은 선택형 포함). 전액 지방비 사업은 제외" },
+    { key: "amt", group: "규모", chip: "직불금", label: "직불금 예산", get: (k, i) => tot(k, i), fmt: milS, note: "공익직불 + 지자체 자체·FTA 등 농업 직불 예산현액(추경·이월 반영, 임업·수산 제외)" },
+    { key: "basic", group: "규모", chip: "기본형", label: "기본형 공익직불 예산", get: (k, i) => sumC(k, i, ["기본형"]), fmt: milS, note: "소농·면적직불(국비). 지방비 단독분은 자체 직불로" },
+    { key: "own", group: "규모", chip: "자체", label: "지자체 자체 직불 예산", get: (k, i) => sumC(k, i, ["자체·기타"]), fmt: milS, note: "지방비 단독 직불(쌀·밭 소득보전 등)" },
+    { key: "select", group: "규모", chip: "선택형", label: "선택형 공익직불 예산", get: (k, i) => sumC(k, i, J.select), fmt: milS, note: "친환경·친환경축산·경관보전·전략작물(국비 사업만)" },
     { key: "farm", group: "견주기", chip: "농가당", label: "농가당 직불금 예산", get: (k, i) => { const a = tot(k, i), h = hh(k); return ok(a) && h ? (a * 1e6) / h : null; }, fmt: manS, note: `예산 ÷ 농가 수(${J.den.years.households}년 농림어업조사)` },
     { key: "ha", group: "견주기", chip: "ha당", label: "경지 1ha당 직불금 예산", get: (k, i) => { const a = tot(k, i), l = land(k); return ok(a) && l ? (a * 1e6) / l : null; }, fmt: manS, note: `예산 ÷ 경지면적(${J.den.years.land}년 농업면적조사)` },
-    { key: "share", group: "견주기", chip: "농업예산", label: "농업·농촌 예산 중 직불금 비중", get: (k, i) => { const a = tot(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "그 지자체의 농업·농촌 분야 세출 예산(지방재정365 기능별) 가운데 직불금 몫" },
-    { key: "local", group: "재원·집행", chip: "지방비", label: "직불금 예산 중 지방비 비율", get: (k, i) => { const a = tot(k, i); return a ? ((tot(k, i, "sido") + tot(k, i, "sigun")) / a) * 100 : null; }, fmt: (v) => pctS(v), note: "(시도비+시군비) ÷ 예산현액. 공익직불은 국비 사업이라 지방비는 주로 지자체 자체 직불과 경관보전·친환경 매칭분" },
-    { key: "exec", group: "재원·집행", chip: "집행률", label: "직불금 집행률", get: (k, i) => { const a = tot(k, i); return a ? (tot(k, i, "ep") / a) * 100 : null; }, fmt: (v) => pctS(v), note: "지출액 ÷ 예산현액. 직불금은 11~12월 지급이라 올해 값은 연말 확정" },
+    { key: "share", group: "견주기", chip: "농업예산", label: "농업·농촌 예산 중 직불금 비중", get: (k, i) => { const a = tot(k, i), b = agri(k, i); return ok(a) && b ? (a / b) * 100 : null; }, fmt: (v) => pctS(v), note: "농업·농촌 분야 세출 예산 중 직불금 몫" },
+    { key: "local", group: "재원·집행", chip: "지방비", label: "직불금 예산 중 지방비 비율", get: (k, i) => { const a = tot(k, i); return a ? ((tot(k, i, "sido") + tot(k, i, "sigun")) / a) * 100 : null; }, fmt: (v) => pctS(v), note: "(시도비+시군비) ÷ 예산현액. 주로 자체 직불·선택형 매칭분" },
+    { key: "exec", group: "재원·집행", chip: "집행률", label: "직불금 집행률", get: (k, i) => { const a = tot(k, i); return a ? (tot(k, i, "ep") / a) * 100 : null; }, fmt: (v) => pctS(v), note: "지출액 ÷ 예산현액. 11~12월 지급이라 올해 값은 연말 확정" },
   ];
   const DEFAULT_METRIC = METRICS[0];
   const state = { key: NATION, p: DEFAULT_P, metric: DEFAULT_METRIC, sort: "amt" };
@@ -410,6 +410,16 @@
   const CAT_SHORT = { 기본형: "기본형", 친환경: "선택·친환경", 친환경축산: "선택·축산", 경관보전: "선택·경관", 전략작물: "선택·전략작물", "선택형(구분 없음)": "선택형",
     "행정·점검": "행정비", "자체·기타": "지자체 자체", FTA: "FTA 피해보전", 경영이양: "경영이양", "옛 직불": "옛 쌀·밭직불" };
   const SHOWN = FARM;   // 임업·수산 직불은 싣지 않는다
+  // 사업 줄은 기간마다 따로 파일(data/biz/jikbul/기준일.json). 그 해를 고를 때 받고, 받으면 다시 그린다
+  const bizCache = {};
+  function loadBiz(i) {
+    const d = P[i].d;
+    if (!(d in bizCache)) {
+      bizCache[d] = fetch(`data/biz/jikbul/${d}.json`).then((r) => r.json()).catch(() => ({}))
+        .then((x) => { bizCache[d] = x; if (P[state.p].d === d) renderList(); });
+    }
+    return bizCache[d] instanceof Promise ? null : bizCache[d];
+  }
   function renderList() {
     const k = state.key, i = state.p;
     const tbl = $("#list-table");
@@ -419,7 +429,8 @@
       // 묶음 순서: 공익직불(기본형 → 선택형 → 행정비) → 국비 직불(FTA·경영이양·옛 쌀·밭) → 지자체 자체. 묶음 안에서는 예산 큰 순
       const GROUPS = [["공익직불 · 기본형", ["기본형"]], ["공익직불 · 선택형", J.select], ["공익직불 · 행정비", ["행정·점검"]],
         ["그 밖의 국비 직불", ["FTA", "경영이양", "옛 직불"]], ["지자체 자체 직불", ["자체·기타"]]];
-      const all = (J.biz[k]?.[i] || []).filter((r) => SHOWN.includes(r[1]));
+      const B = loadBiz(i);
+      const all = ((B && B[k]) || []).filter((r) => SHOWN.includes(r[1]));
       const rows = GROUPS.flatMap(([g, cats]) => {
         const rs = all.filter((r) => cats.includes(r[1])).sort((a, b) => b[2] - a[2]);
         return rs.length ? [[g, rs.reduce((t, r) => t + r[2], 0)], ...rs] : [];
@@ -429,8 +440,8 @@
         ? rows.map((r) => r.length === 2
           ? `<tr class="jb-grp"><td colspan="2">${esc(r[0])}</td><td>${eok1(r[1])}</td><td colspan="2"></td></tr>`
           : (([n, c, amt, , sd, sg, ep]) => `<tr><td title="${esc(n)}">${esc(n)}</td><td><span class="jb-tag">${CAT_SHORT[c] || c}</span></td><td>${eok1(amt)}</td><td>${sd + sg ? eok1(sd + sg) : "–"}</td><td>${eok1(ep)}</td></tr>`)(r)).join("")
-        : `<tr class="af-none"><td colspan="5">${J.biz[k] ? "사업 목록은 최근 두 해만 싣습니다" : "직불 사업이 없습니다"}</td></tr>`}</tbody>`;
-      $("#list-note").textContent = "지방재정365에 그 지자체가 올린 세부사업 이름 그대로입니다(억원). 분류의 '기본형·선택'은 공익직불(농식품부 구성), '지자체 자체'는 지방비 단독 직불입니다(이름이 기본형·선택형이어도 국비가 없으면 여기에). FTA 피해보전은 국비 사업이라 일부 도·시군이 시도비로 적은 몫도 국비로 셉니다. 임업·수산 직불은 뺐습니다.";
+        : `<tr class="af-none"><td colspan="5">${B ? "직불 사업이 없습니다" : "불러오는 중…"}</td></tr>`}</tbody>`;
+      $("#list-note").textContent = "지방재정365 세부사업명 그대로(억원). 기본형·선택 = 공익직불, 지자체 자체 = 국비 없는 직불. FTA는 시도비로 적어도 국비로 셈. 임업·수산 제외.";
       return;
     }
     // 전국: 시도별, 시도: 시군별
@@ -455,7 +466,7 @@
       tr.addEventListener("click", () => select(tr.dataset.k));
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(tr.dataset.k); });
     });
-    $("#list-note").textContent = `금액 억원. 직불금 = 공익직불(기본형+선택형+행정비) + 지자체 자체·FTA 등 농업 직불(임업·수산 제외). 줄을 누르면 그 지역으로 갑니다.${pk === "39" ? " 제주는 행정시라 예산이 도에만 있습니다." : ""}`;
+    $("#list-note").textContent = `억원. 직불금 = 공익직불 + 자체·FTA 등(임업·수산 제외). 줄을 누르면 그 지역으로.${pk === "39" ? " 제주는 도 예산만." : ""}`;
   }
 
   // ---------- 검증 한 줄 (꼬리말): 시군 예산 국비 합 ÷ e-나라지표 정부 예산(기본형+선택형) ----------
@@ -498,9 +509,9 @@
     $("#g-year").textContent = j >= 0 ? gyLabel(j) : pLabel(state.p);
     $("#g-stats").hidden = j < 0;
     let note = "";
-    if (gJeju(k0)) note = "제주시·서귀포시는 따로 모금하지 않습니다. 제주도 본청 한 곳이 기금을 굴려 그 값을 보입니다.";
-    else if (level(k) < 2) note = "시도·전국 값은 본청 기금과 시군 기금을 더한 값입니다(본청도 기부를 받습니다. 공익직불은 시군만 더함).";
-    else if (label(k).endsWith("시부") && GOVN[k] > 1) note = `구 ${GOVN[k]}곳의 기금을 더한 값입니다.`;
+    if (gJeju(k0)) note = "제주시·서귀포시는 모금하지 않아 도 본청 기금을 보입니다.";
+    else if (level(k) < 2) note = "시도·전국 = 본청 + 시군 기금(공익직불은 시군만).";
+    else if (label(k).endsWith("시부") && GOVN[k] > 1) note = `구 ${GOVN[k]}곳 기금 합.`;
     $("#g-note").textContent = note;
     if (j < 0) {
       $("#g-line").innerHTML = `고향사랑기부제는 <b>${G_START}년</b>에 시작해 ${P[state.p].y}년에는 기금이 없습니다. 연도를 ${G_START}년 이후로 고르면 보입니다.`;
@@ -573,7 +584,7 @@
           <b>${gmilS(v)}</b><em>${pctS(r, 0)}</em>
         </button>`).join("");
       $$("#g-cmp .gh-cr").forEach((b) => b.addEventListener("click", () => select(b.dataset.k)));
-      $("#g-split-note").textContent = "막대 = 예산현액, 오른쪽 = 집행률(지출 ÷ 예산현액). 누르면 그 지역으로.";
+      $("#g-split-note").textContent = "막대 예산현액 · 오른쪽 집행률. 누르면 그 지역으로.";
       return;
     }
     // 사업 목록: 시군은 그 지자체, 시도는 본청+시군, 전국은 전체(예산현액 큰 순 200개)
@@ -585,7 +596,7 @@
     $("#g-biz").innerHTML = `<thead><tr><th>사업</th>${many ? "<th>지자체</th>" : ""}<th>회계</th><th>예산현액</th><th>지출</th></tr></thead><tbody>${items.length
       ? items.slice(0, 200).map(([gi, , n, cash, ep, t]) => `<tr><td title="${esc(n)}">${esc(n)}</td>${many ? `<td>${esc(G.govs[gi][0])}</td>` : ""}<td><span class="jb-tag">${GTAG[t] || ""}</span></td><td>${gmilS(cash)}</td><td>${gmilS(ep)}</td></tr>`).join("")
       : `<tr class="af-none"><td colspan="${many ? 5 : 4}">사업이 없습니다</td></tr>`}</tbody>`;
-    $("#g-split-note").textContent = "지방재정365에 올린 세부사업 이름 그대로(적립·예치 제외). '일반회계'는 기금 밖에서 집행한 고향사랑 사업(답례품·홍보 등).";
+    $("#g-split-note").textContent = "세부사업명 그대로(적립·예치 제외). 일반회계 = 기금 밖 고향사랑 사업.";
   }
 
   // 연도별: 해마다 막대 셋(예산현액 회색 · 지출 주황 · 적립·미집행 파랑). 막대를 누르면 그 해로 간다
