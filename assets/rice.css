@@ -138,8 +138,14 @@
 .rc-read b.rc-lo { color: #e8894a; }
 #chart-ndvi { height: 140px; }
 @media (min-width: 1281px) and (min-height: 720px) {
-  .rc #p-unit { flex: 1.9 1 0; }
-  .rc #p-ndvi { flex: 1 1 0; }
+  .rc #p-unit { flex: 1.6 1 0; }
+  .rc #p-ndvi { flex: 1.25 1 0; }
   .rc #chart-ndvi { height: auto; min-height: 60px; flex: 1 1 0; }
   .rc #chart-prod { flex-grow: 1; }
 }
+
+/* 위성 생육 곡선 애니메이션: 올해 선 끝을 따라가는 점, 해석 줄 떠오르기 */
+.rc-head { fill: var(--accent); stroke: rgba(255, 255, 255, 0.85); stroke-width: 1.5; filter: drop-shadow(0 0 5px var(--accent)); pointer-events: none; }
+.rc-read.in { animation: rc-rise 0.6s ease-out both; animation-delay: var(--d, 0s); }
+@keyframes rc-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rc-read.in { animation: none; } .rc-head { display: none; } }

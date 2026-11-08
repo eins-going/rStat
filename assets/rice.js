@@ -657,7 +657,7 @@
   if (NV) {
     selNY.innerHTML = [...NV.years].reverse().map((y) => `<option value="${y}">${y}</option>`).join("");
     selNY.addEventListener("change", () => { nstate.year = +selNY.value; renderNdvi(true); });
-    selNC.addEventListener("change", () => { nstate.cmp = selNC.value ? +selNC.value : null; renderNdvi(false); });
+    selNC.addEventListener("change", () => { nstate.cmp = selNC.value ? +selNC.value : null; renderNdvi(true); });
   }
   const curve = (k, y) => {
     const row = NYI[y] == null ? null : NV.v[k]?.[NYI[y]];
@@ -716,6 +716,15 @@
       + `<span><i class="band"></i>직전 5년 범위</span><span><i class="prev"></i>평년</span>`;
     $("#ndvi-scope").title = k && NV.cells[k] ? `논 격자 ${int(NV.cells[k])}개 평균 (MODIS 250m, 팜맵 논 70% 이상)` : "";
     drawNdvi(animate);
+    if (animate) riseRead();
+  }
+  // 해석 줄은 선이 거의 다 자란 뒤에 떠오른다
+  function riseRead() {
+    const r = $("#ndvi-read");
+    r.classList.remove("in");
+    void r.offsetWidth;
+    r.style.setProperty("--d", `${(SWEEP * 0.75) / 1000}s`);
+    r.classList.add("in");
   }
   function drawNdvi(animate = false) {
     const el = $("#chart-ndvi");
@@ -738,14 +747,36 @@
       .attr("x", (d, i) => x((d + starts[i + 1]) / 2)).attr("y", h - 3).attr("text-anchor", "middle").text((d, i) => `${i + 5}월`);
     const area = d3.area().defined((n) => n).x((n, j) => x(NDOY[j])).y0((n) => y(n.lo)).y1((n) => y(n.hi)).curve(d3.curveMonotoneX);
     svg.append("defs").append("clipPath").attr("id", "clip-ndvi-plot").append("rect").attr("x", m.l).attr("y", m.t).attr("width", w - m.l - m.r).attr("height", h - m.t - m.b);
-    svg.append("path").attr("class", "pw-bandarea").attr("d", area(nm)).attr("clip-path", "url(#clip-ndvi-plot)");
+    const band = svg.append("path").attr("class", "pw-bandarea").attr("d", area(nm)).attr("clip-path", "url(#clip-ndvi-plot)");
     const line = d3.line().defined(ok).x((v, j) => x(NDOY[j])).y((v) => y(v)).curve(d3.curveMonotoneX);
-    svg.append("path").attr("class", "rc-norm").attr("d", line(nm.map((n) => n?.mean ?? null)));
-    if (cmp) svg.append("path").attr("class", "rc-cmp").attr("d", line(cmp));
-    const g = sweepClip(svg, el, m.l, w, h, animate);
+    const norm = svg.append("path").attr("class", "rc-norm").attr("d", line(nm.map((n) => n?.mean ?? null)));
+    const motion = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    // 평년 범위·평년 선은 먼저 서서히 나타나고, 그 위로 비교 연도와 올해 선이 왼쪽(5월)부터 자라 나간다
+    if (animate && motion) [band, norm].forEach((s, i) => s.style("opacity", 0).transition().delay(i * 120).duration(500).style("opacity", null));
+    const g = sweepClip(svg, el, m.l, w, h, animate && motion);
+    if (cmp) g.append("path").attr("class", "rc-cmp").attr("d", line(cmp));
     g.append("path").attr("class", "pw-cur").attr("d", line(cur));
     g.selectAll("circle").data(cur.map((v, j) => [v, j]).filter(([v]) => ok(v))).join("circle").attr("class", "rc-npt")
       .attr("cx", ([, j]) => x(NDOY[j])).attr("cy", ([v]) => y(v)).attr("r", 1.8);
+    // 자라는 선의 끝을 따라가는 점
+    const pts = cur.map((v, j) => (ok(v) ? [x(NDOY[j]), y(v)] : null)).filter(Boolean);
+    if (motion && el._sweep != null && performance.now() - el._sweep < SWEEP && pts.length) {
+      const head = svg.append("circle").attr("class", "rc-head").attr("r", 0);
+      const tm = d3.timer(() => {
+        if (!head.node().isConnected) return tm.stop();
+        const done = Math.min(1, (performance.now() - el._sweep) / SWEEP);
+        const cx = m.l + (w - m.l) * d3.easeSinInOut(done);
+        const i = pts.findIndex((p) => p[0] >= cx);
+        if (i === 0 || done >= 1 || i < 0) {
+          if (i === 0) return;
+          const [lx, ly] = pts.at(-1);
+          head.attr("cx", lx).attr("cy", ly).transition().duration(400).attr("r", 0).remove();
+          return tm.stop();
+        }
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+        head.attr("r", 4.5).attr("cx", cx).attr("cy", ay + ((by - ay) * (cx - ax)) / (bx - ax || 1));
+      });
+    }
     hover(svg, m, w, h, (d) => x(d), NDOY, (d) => {
       const j = NDOY.indexOf(d), f = (v) => (ok(v) ? d3.format(".2f")(v) : "–");
       return `<b>${doyText(d)}~</b>${nstate.year} ${f(cur[j])}${cmp ? ` · ${nstate.cmp} ${f(cmp[j])}` : ""}${nm[j] ? ` · 평년 ${f(nm[j].mean)}` : ""}`;
@@ -1202,6 +1233,7 @@
   drawNat(true);
   drawUnit(true);
   drawNdvi(true);
+  riseRead();
   $("#built").textContent = `확정 ${LASTY}년까지 · ${R.built} 작성`;
 
   let mw = 0, mh = 0;

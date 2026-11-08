@@ -116,7 +116,20 @@
         </div>
       </section>
 
-      <section class="col col-right" aria-label="고른 지역의 생산량과 단수">
+      <section class="col col-right" aria-label="고른 지역의 위성 생육과 생산">
+        <article class="panel" id="p-ndvi">
+          <header class="panel-head">
+            <h2>위성 생육 <span class="h2-scope" id="ndvi-scope"></span></h2>
+            <span class="rc-nsel">
+              <label class="rc-ysel"><select id="ndvi-year" aria-label="기준 연도"></select></label>
+              <span class="rc-vs">비교</span>
+              <label class="rc-ysel"><select id="ndvi-cmp" aria-label="비교 연도"></select></label>
+            </span>
+          </header>
+          <p class="rc-read" id="ndvi-read"></p>
+          <div class="chart rc-chart" id="chart-ndvi" aria-label="논 NDVI 곡선과 평년 범위"></div>
+          <div class="pw-key" id="ndvi-key"></div>
+        </article>
         <article class="panel" id="p-unit">
           <header class="panel-head">
             <h2><span id="unit-name">전국</span> 쌀 생산</h2>
@@ -142,19 +155,6 @@
           <div class="pw-key" id="unit-key"></div>
         </article>
 
-        <article class="panel" id="p-ndvi">
-          <header class="panel-head">
-            <h2>위성 생육 <span class="h2-scope" id="ndvi-scope"></span></h2>
-            <span class="rc-nsel">
-              <label class="rc-ysel"><select id="ndvi-year" aria-label="기준 연도"></select></label>
-              <span class="rc-vs">비교</span>
-              <label class="rc-ysel"><select id="ndvi-cmp" aria-label="비교 연도"></select></label>
-            </span>
-          </header>
-          <p class="rc-read" id="ndvi-read"></p>
-          <div class="chart rc-chart" id="chart-ndvi" aria-label="논 NDVI 곡선과 평년 범위"></div>
-          <div class="pw-key" id="ndvi-key"></div>
-        </article>
       </section>
     </main>
 
