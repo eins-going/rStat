@@ -1,7 +1,7 @@
 // 지도 끌어 옮기기·확대 (확대 단추가 따로 없던 탭 공용: 농경지 토양·축산 환경·농업금융보험·농업고용·농사용 전기·지역산업연관표)
 // 마우스로 끌면 지도가 따라 움직이고, 휠(트랙패드 벌리기)로 확대·축소한다. 지역을 다시 고르면 그 지역 시점으로 돌아간다.
 // 한 화면 맞춤(넓은 화면)에서는 휠이 곧 확대이고, 페이지가 스크롤되는 좁은 화면에서는 Ctrl+휠로 확대해 스크롤을 뺏지 않는다.
-// 오른쪽 아래에 주요 통계와 같은 단추(+ − 손 맞춤)를 단다. 손을 켜면 터치 끌기와 Ctrl 없는 휠도 된다. 4px 안쪽 움직임은 클릭이다.
+// 오른쪽 아래에 주요통계와 같은 단추(+ − 손 맞춤)를 단다. 손을 켜면 터치 끌기와 Ctrl 없는 휠도 된다. 4px 안쪽 움직임은 클릭이다.
 // rstatPan(svg, onPan(t), onHome()) — onHome은 '맞춤' 단추: 고른 지역의 원래 시점으로 (그 안에서 sync를 부른다)
 window.rstatPan = (svg, onPan, onHome) => {
   const wrap = svg.node().closest(".map-wrap");
@@ -18,7 +18,7 @@ window.rstatPan = (svg, onPan, onHome) => {
   const setTouch = () => svg.style("touch-action", panMode ? "none" : null); // 손을 끄면 폰에서는 손가락으로 페이지를 내린다
   setTouch();
 
-  // 단추 (주요 통계 index.html과 같은 모양)
+  // 단추 (주요통계 index.html과 같은 모양)
   const ICON = {
     in: '<path d="M12 5v14M5 12h14"/>',
     out: '<path d="M5 12h14"/>',

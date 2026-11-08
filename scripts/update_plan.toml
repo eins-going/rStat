@@ -13,7 +13,7 @@
 [[source]]
 id = "kosis_farm"
 name = "농가·농가인구"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [5, 11], day = 1 }
 retry_days = 60
@@ -33,7 +33,7 @@ period = "kosis:farm"
 [[source]]
 id = "kosis_returning"
 name = "귀농·귀촌"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [7], day = 1 }
 retry_days = 60
@@ -53,7 +53,7 @@ period = "kosis:returning"
 [[source]]
 id = "kosis_land"
 name = "경지면적 (논·밭)"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [2], day = 20 }
 retry_days = 60
@@ -73,7 +73,7 @@ period = "kosis:land"
 [[source]]
 id = "kosis_livestock"
 name = "가축 사육 (한우·젖소·닭)"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [2, 5, 8, 11], day = 25 }
 retry_days = 60
@@ -93,7 +93,7 @@ period = "kosis:livestock"
 [[source]]
 id = "kosis_rice"
 name = "쌀 생산량·논벼 재배면적"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [11], day = 20 }
 retry_days = 60
@@ -113,7 +113,7 @@ period = "kosis:rice"
 [[source]]
 id = "kosis_economy"
 name = "농가경제 (소득·자산·부채)"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [5], day = 20 }
 retry_days = 60
@@ -133,7 +133,7 @@ period = "kosis:economy"
 [[source]]
 id = "kosis_grdp"
 name = "지역소득 (GRDP)"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [12], day = 28 }
 retry_days = 60
@@ -153,7 +153,7 @@ period = "kosis:grdp"
 [[source]]
 id = "kosis_budget"
 name = "농업·농촌 예산"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [3], day = 15 }
 retry_days = 60
@@ -173,7 +173,7 @@ period = "kosis:budget"
 [[source]]
 id = "kosis_aging"
 name = "경영주 연령·고령 농가인구"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [7], day = 1 }
 retry_days = 60
@@ -193,7 +193,7 @@ period = "kosis:aging"
 [[source]]
 id = "kosis_livestock_census"
 name = "가축 사육 (돼지·오리)"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [7], day = 1 }
 retry_days = 60
@@ -213,7 +213,7 @@ period = "kosis:census"
 [[source]]
 id = "kosis_crops"
 name = "채소·특용작물 재배면적"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [7], day = 1 }
 retry_days = 60
@@ -233,7 +233,7 @@ period = "kosis:cropYears"
 [[source]]
 id = "kosis_crop_prod"
 name = "채소·특용작물 생산량"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [3, 7, 12], day = 15 }
 retry_days = 60
@@ -253,7 +253,7 @@ period = "kosis:cropProdYears"
 [[source]]
 id = "kosis_area"
 name = "행정구역 면적 (경지율 분모)"
-page = "주요 통계"
+page = "주요통계"
 method = "auto"
 schedule = { kind = "yearly", months = [6], day = 1 }
 retry_days = 60
@@ -368,7 +368,7 @@ where = "제공처에서 연도별 원자료 파일을 받아 물류 원자료 �
 [[source]]
 id = "facilities"
 name = "유통시설·생산단지·수출단지 (자세히 보기의 시설 점)"
-page = "주요 통계 > 자세히 보기"
+page = "주요통계 > 자세히 보기"
 method = "manual"
 inputs = ["at_data/전국미곡처리장표준데이터-*.xls", "at_data/전국농산물산지유통센터_APC_표준데이터-*.xls", "at_data/농림축산식품부_6차산업 인증 사업자 현황_*.csv", "at_data/한국농수산식품유통공사_수출전문농가단지 정보_*.csv", "at_data/*수출검역단지*.xlsx", "at_data/국비지원+로컬푸드+직매장*.xlsx"]
 remind = { months = 3, note = "분기마다 공공데이터포털에 새 파일이 있는지 확인" }
@@ -689,7 +689,7 @@ period = "rice:ndvi"
 [[source]]
 id = "live"
 name = "팜맵 필지·VWorld 지도 (자세히 보기)"
-page = "주요 통계 > 자세히 보기"
+page = "주요통계 > 자세히 보기"
 method = "live"
 keys = ["DATA_PORTAL_API_KEY", "VWORLD_API_KEY (Vercel 환경변수)"]
 how = ["화면이 api/farmmap을 거쳐 실시간으로 부른다. 수집할 것은 없고, 인증키 만료(공공데이터포털 활용신청 기간)만 확인한다.",

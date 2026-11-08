@@ -20,7 +20,7 @@
 출력
 - db/clean/farmmap/<판>/arrays/<키>.npz  시군별 계산용 배열(면적·분류·직사각형도·형상지수·경지정리·덩어리 면적)
 - db/clean/farmmap/<판>/metrics.json   시군·시도·전국 지표 + 시도별 확인용 값(직사각형도의 경지정리 구분력 등)
-- data/farmmap.js                      주요 통계 화면용 (window.AGRI_FARMMAP)
+- data/farmmap.js                      주요통계 화면용 (window.AGRI_FARMMAP)
 - db/clean/farmmap/<판>/<시도>.pmtiles  필지 타일(레이어 p: c 분류, a 면적, r 직사각형도, y 경지정리 1/0), z13~15
 실행: python scripts/build_farmmap.py [시도코드 ...] [--tag 2026] [--no-tiles] [--aggregate-only]
 """
@@ -290,7 +290,7 @@ def main():
 
 
 def write_js(res):
-    """data/farmmap.js — 주요 통계 화면용 (지역 키별: 전체·논·밭 지표, 면적 구간 분포, 집적)"""
+    """data/farmmap.js — 주요통계 화면용 (지역 키별: 전체·논·밭 지표, 면적 구간 분포, 집적)"""
     years = collections.Counter()
     for c in res["check"].values():
         for y, n in (c.get("updt_ymd") or {}).items():

@@ -840,7 +840,7 @@
   };
   const NOW = new Date();
   const SEASON_END = (y) => (y === NOW.getFullYear() ? NOW.toISOString().slice(0, 10) : `${y}-11-30`);
-  // 팜맵 논 필지 (주요 통계 '자세히 보기'와 같은 R2 전국 타일, 확대 13~15단계 자료, c=1이 논)
+  // 팜맵 논 필지 (주요통계 '자세히 보기'와 같은 R2 전국 타일, 확대 13~15단계 자료, c=1이 논)
   const PADDY_TILES = "https://pub-6a32610bd1414a8d8dc3adc9eecd3632.r2.dev/farmmap/2025/kr.pmtiles";
   const PADDY_Z = 13; // 이보다 멀리서는 필지 자료가 없어 영상 전체를 보인다
   const sat = { sat: "s2", idx: "ndvi", mask: true, paddyOnly: true, paddyLine: true, sid: null, year: NOW.getMonth() >= 4 ? NOW.getFullYear() : NOW.getFullYear() - 1, date: null, dates: [], key: null };
