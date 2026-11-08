@@ -49,11 +49,11 @@
     </header>
 
     <main class="grid">
-      <section class="col col-left" aria-label="전국 단수와 전망">
+      <section class="col col-left" aria-label="전국 생산량과 전망">
         <article class="panel" id="p-nat">
           <header class="panel-head">
-            <h2>전국 쌀 단수</h2>
-            <span class="chip">10a당 · 정곡</span>
+            <h2>전국 쌀 생산량</h2>
+            <span class="chip">정곡</span>
           </header>
           <div class="stats two">
             <div class="stat">
@@ -68,18 +68,17 @@
             </div>
           </div>
           <p class="sub-line" id="nat-line"></p>
-          <h3 class="sub-head">연도별 단수 <span>누르면 그해로</span></h3>
-          <div class="chart rc-chart" id="chart-nat" aria-label="전국 단수: 확정치와 전망"></div>
+          <h3 class="sub-head rc-mhead">연도별 <span class="seg rc-mseg" id="nat-mode" role="group" aria-label="그래프 지표"><button type="button" data-m="p" aria-pressed="true">생산량</button><button type="button" data-m="y" aria-pressed="false">단수</button></span> <span>누르면 그해로</span></h3>
+          <div class="chart rc-chart" id="chart-nat" aria-label="전국 생산량·단수: 확정치와 전망"></div>
           <div class="pw-key" id="nat-key"></div>
         </article>
 
         <article class="panel" id="p-acc">
           <header class="panel-head">
-            <h2>전망 정확도</h2>
+            <h2>전망 정확도 <span class="h2-scope">단수</span></h2>
             <span class="chip" id="acc-range"></span>
           </header>
           <div class="rc-acc" id="acc-rows"></div>
-          <p class="rc-test" title="2013~2024 실시간 시험(전국 단수 RMSE): 평년값 그대로 22.9 → 기상 지수 20.5 · 위성 생육 지수(MODIS) 24.4kg. 2020년 감수는 둘 다 못 잡음">위성·기상 지수만으로는 평년보다 나은 단수 예측이 안 됨 <span class="rc-i" aria-hidden="true">ⓘ</span></p>
           <h3 class="sub-head">연도별 오차 <span>전망 − 확정</span></h3>
           <div class="chart rc-chart" id="chart-err" aria-label="연도별 전망 오차"></div>
           <div class="pw-key" id="err-key"></div>
@@ -117,30 +116,30 @@
         </div>
       </section>
 
-      <section class="col col-right" aria-label="고른 지역의 단수">
+      <section class="col col-right" aria-label="고른 지역의 생산량과 단수">
         <article class="panel" id="p-unit">
           <header class="panel-head">
-            <h2><span id="unit-name">전국</span> 단수</h2>
+            <h2><span id="unit-name">전국</span> 쌀 생산</h2>
             <span class="chip" id="unit-year"></span>
           </header>
           <div class="stats two">
             <div class="stat">
-              <span class="stat-label">10a당 생산량</span>
-              <span class="stat-value"><b id="u-yield"></b><small>kg</small></span>
-              <span class="delta" id="u-yoy"></span>
+              <span class="stat-label">생산량</span>
+              <span class="stat-value"><b id="u-prod"></b><small id="u-produ"></small></span>
+              <span class="delta" id="u-pyoy"></span>
             </div>
             <div class="stat">
-              <span class="stat-label">평년 대비</span>
-              <span class="stat-value"><b id="u-dev"></b></span>
-              <span class="delta" id="u-norm"></span>
+              <span class="stat-label">단수 <small>10a당</small></span>
+              <span class="stat-value"><b id="u-yield"></b><small>kg</small></span>
+              <span class="delta" id="u-dev"></span>
             </div>
           </div>
           <p class="sub-line" id="u-line"></p>
-          <h3 class="sub-head">연도별 단수 <span>평년과 함께 · 누르면 그해로</span></h3>
+          <h3 class="sub-head">연도별 생산량 <span>누르면 그해로</span></h3>
+          <div class="chart rc-chart" id="chart-prod" aria-label="고른 지역 연도별 생산량"></div>
+          <h3 class="sub-head">연도별 단수 <span>평년과 함께</span></h3>
           <div class="chart rc-chart" id="chart-unit" aria-label="고른 지역 연도별 단수와 평년"></div>
           <div class="pw-key" id="unit-key"></div>
-          <h3 class="sub-head">재배면적 <span id="area-note"></span></h3>
-          <div class="chart rc-chart" id="chart-area" aria-label="고른 지역 연도별 재배면적"></div>
         </article>
 
         <article class="panel" id="p-ndvi">

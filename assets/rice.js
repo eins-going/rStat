@@ -64,6 +64,8 @@
 
   // ---------- 지도 지표 ----------
   const METRICS = [
+    { key: "prod", chip: "생산량", label: "쌀 생산량", kind: "seq", get: (k, y) => at(k, "p", y), fmt: tonS,
+      note: "논벼 정곡 · 시군을 누르면 위성 영상" },
     { key: "norm", chip: "평년 대비", label: "단수 평년 대비", kind: "div", cuts: [-5, -1.5, 1.5, 5], get: (k, y) => at(k, "d", y), fmt: pctS,
       note: "평년 = 직전 5년 중 최고·최저 뺀 3년 평균 · 시군을 누르면 위성 영상" },
     { key: "yield", chip: "단수", label: "10a당 생산량", kind: "seq", get: (k, y) => at(k, "y", y), fmt: (v) => (ok(v) ? `${int(v)}kg` : "–"),
@@ -379,6 +381,17 @@
   // 값 표시: 마우스를 올리면 가까운 연도의 값을 띄운다
   const ctip = Object.assign(document.createElement("div"), { className: "chart-tip", hidden: true });
   document.body.append(ctip);
+  // 단추 풍선: data-tip이 있는 위성 영상 단추에 마우스를 올리면 뜻을 보인다
+  document.addEventListener("mouseover", (e) => {
+    const el = e.target.closest?.("[data-tip]");
+    if (!el) { if (ctip.dataset.btn) { ctip.hidden = true; delete ctip.dataset.btn; } return; }
+    ctip.innerHTML = el.dataset.tip;
+    ctip.dataset.btn = "1";
+    ctip.hidden = false;
+    const r = el.getBoundingClientRect(), w = ctip.offsetWidth, h = ctip.offsetHeight;
+    ctip.style.left = `${Math.min(window.innerWidth - w - 6, Math.max(6, r.left + r.width / 2 - w / 2))}px`;
+    ctip.style.top = `${r.bottom + 8 + h > window.innerHeight ? r.top - h - 8 : r.bottom + 8}px`;
+  });
   function hover(svg, m, w, h, x, ys, html, onPick) {
     const guide = svg.append("line").attr("class", "rc-guide").attr("y1", m.t).attr("y2", h - m.b).style("display", "none");
     const near = (e) => { const px = d3.pointer(e)[0]; return ys.reduce((a, b) => (Math.abs(x(b) - px) < Math.abs(x(a) - px) ? b : a)); };
@@ -405,25 +418,29 @@
     const o = O[CUR] || {};
     const n = at(NATION, "n", CUR) ?? normOf(NATION, CUR);
     const st = o.stat, kr = o.krei;
+    const pPrev = at(NATION, "p", CUR - 1), pFin = at(NATION, "p", CUR);
     $("#nat-l1").textContent = `${CUR}년 통계청 예상`;
-    $("#nat-v1").textContent = int(st?.y);
-    $("#nat-u1").textContent = st ? "kg" : "";
-    $("#nat-d1").innerHTML = deltaHTML(ratio(st?.y, n), "평년 대비");
-    if (o.final) {
+    $("#nat-v1").textContent = ok(st?.p) ? nf1.format(st.p / 1e4) : "–";
+    $("#nat-u1").textContent = ok(st?.p) ? "만 톤" : "";
+    $("#nat-d1").innerHTML = deltaHTML(ratio(st?.p, pPrev), "전년 대비");
+    if (o.final && ok(pFin)) {
       $("#nat-l2").textContent = `${CUR}년 확정`;
-      $("#nat-v2").textContent = int(o.final);
-      $("#nat-u2").textContent = "kg";
-      $("#nat-d2").innerHTML = st ? `<span class="d-lab">예상 오차</span><span>${kgS(st.y - o.final)}</span>` : "";
+      $("#nat-v2").textContent = nf1.format(pFin / 1e4);
+      $("#nat-u2").textContent = "만 톤";
+      $("#nat-d2").innerHTML = ok(st?.p) ? `<span class="d-lab">예상 오차</span><span>${pctS(ratio(st.p, pFin))}</span>` : "";
     } else {
       const [mm, dd] = (o.pending || "").split("-").slice(1).map(Number);
       $("#nat-l2").textContent = `${CUR}년 확정`;
       $("#nat-v2").textContent = o.pending ? `${mm}.${dd}` : "–";
       $("#nat-u2").textContent = o.pending ? "발표 예정" : "";
-      $("#nat-d2").innerHTML = ok(n) ? `<span class="d-lab">평년</span><span>${int(n)}kg</span>` : "";
+      $("#nat-d2").innerHTML = ok(pPrev) ? `<span class="d-lab">${CUR - 1}년</span><span>${tonS(pPrev)}</span>` : "";
     }
     const krTxt = kr ? (ok(kr.lo) && ok(kr.hi) && kr.lo !== kr.hi ? `${int(kr.lo)}~${int(kr.hi)}kg` : `${int(kr.y)}kg`) : null;
-    $("#nat-line").innerHTML = [krTxt ? `<span>KREI 전망 <b>${krTxt}</b></span>` : "", st?.p ? `<span>예상 생산량 <b>${tonS(st.p)}</b></span>` : ""].join("");
-    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span><span><i class="prev"></i>평년</span>`;
+    $("#nat-line").innerHTML = [
+      ok(st?.y) ? `<span>단수 <b>${int(st.y)}kg</b> (평년 ${int(n)}kg 대비 ${pctS(ratio(st.y, n))})</span>` : "",
+      krTxt ? `<span>KREI 단수 전망 <b>${krTxt}</b></span>` : "",
+      ok(st?.a) ? `<span>재배면적 <b>${haS(st.a)}</b></span>` : "",
+    ].join("");
     drawNat();
   }
   // 올해처럼 확정 행이 없는 해의 평년
@@ -433,7 +450,17 @@
     const s = prev.sort((a, b) => a - b);
     return (s[1] + s[2] + s[3]) / 3;
   }
+  let natMode = "p"; // p 생산량 · y 단수
+  $("#nat-mode").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-m]");
+    if (!b || b.dataset.m === natMode) return;
+    natMode = b.dataset.m;
+    $("#nat-mode").querySelectorAll("[data-m]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.m === natMode));
+    drawNat(true);
+  });
   function drawNat(animate = false) {
+    if (natMode === "p") return drawNatProd(animate);
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span><span><i class="prev"></i>평년</span>`;
     const el = $("#chart-nat");
     const { svg, w, h } = frame(el, 150);
     const ys = d3.range(NFROM, CUR + 1);
@@ -470,6 +497,37 @@
       if (ok(o.stat?.y)) parts.push(`통계청 ${int(o.stat.y)}${ok(o.stat.err) ? ` (${kgS(o.stat.err)})` : ""}`);
       if (ok(o.krei?.y)) parts.push(`KREI ${o.krei.lo !== o.krei.hi && ok(o.krei.lo) ? `${int(o.krei.lo)}~${int(o.krei.hi)}` : int(o.krei.y)}${ok(o.krei.err) ? ` (${kgS(o.krei.err)})` : ""}`);
       if (ok(nor(yy))) parts.push(`평년 ${int(nor(yy))}`);
+      return parts.join(" · ");
+    }, pickYear);
+  }
+
+  // 전국 생산량: 확정(선)과 통계청 10월 예상(점). KREI는 단수로만 전망해 단수 그래프에서 본다
+  function drawNatProd(animate = false) {
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span><span>단위 만 톤</span>`;
+    const el = $("#chart-nat");
+    const { svg, w, h } = frame(el, 150);
+    const ys = d3.range(NFROM, CUR + 1);
+    const fin = (y) => at(NATION, "p", y), est = (y) => O[y]?.stat?.p;
+    const vals = ys.flatMap((y) => [fin(y), est(y)]).filter(ok);
+    const m = { l: 34, r: 30, t: 14, b: 16 };
+    const x = d3.scaleLinear().domain([NFROM - 0.4, CUR + 0.4]).range([m.l, w - m.r]);
+    const lo = d3.min(vals), hi = d3.max(vals);
+    const y = d3.scaleLinear().domain([lo - (hi - lo) * 0.08, hi + (hi - lo) * 0.08]).nice(4).range([h - m.b, m.t]);
+    yAxis(svg, y, m, w, h < 120 ? 3 : 4, (d) => nf0.format(d / 1e4));
+    xYears(svg, x, h, ys, 5);
+    if (state.year >= NFROM) svg.append("line").attr("class", "pw-mark").attr("x1", x(state.year)).attr("x2", x(state.year)).attr("y1", m.t).attr("y2", h - m.b);
+    const g = sweepClip(svg, el, m.l, w, h, animate);
+    g.append("path").attr("class", "pw-cur").attr("d", d3.line().defined((d) => ok(fin(d))).x((d) => x(d)).y((d) => y(fin(d)))(ys));
+    const sys = ys.filter((yy) => ok(est(yy)));
+    g.selectAll("circle.rc-stat").data(sys).join("circle").attr("class", (d) => `rc-stat${d === CUR ? " now" : ""}`)
+      .attr("cx", (d) => x(d) - 2).attr("cy", (d) => y(est(d))).attr("r", (d) => (d === CUR ? 4.5 : 3.2));
+    if (ok(est(CUR))) g.append("text").attr("class", "rc-lab").attr("x", x(CUR)).attr("y", y(est(CUR)) - 9).attr("text-anchor", "end").text(`${CUR} 예상 ${nf1.format(est(CUR) / 1e4)}만 톤`);
+    hover(svg, m, w, h, x, ys, (yy) => {
+      const o = O[yy] || {};
+      const parts = [`<b>${yy}년</b>`];
+      if (ok(fin(yy))) parts.push(`확정 ${tonS(fin(yy))}`);
+      else if (o.pending) parts.push("확정 대기");
+      if (ok(est(yy))) parts.push(`통계청 예상 ${tonS(est(yy))}${ok(fin(yy)) ? ` (${pctS(ratio(est(yy), fin(yy)))})` : ""}`);
       return parts.join(" · ");
     }, pickYear);
   }
@@ -533,19 +591,17 @@
     $("#unit-name").textContent = fullLabel(k);
     $("#unit-year").textContent = `${y}년`;
     const yv = at(k, "y", y), n = at(k, "n", y);
-    $("#u-yield").textContent = int(yv);
-    $("#u-yoy").innerHTML = deltaHTML(ratio(yv, at(k, "y", y - 1)), "전년 대비");
-    const dv = at(k, "d", y);
-    $("#u-dev").textContent = pctS(dv);
-    $("#u-dev").className = ok(dv) && Math.abs(dv) >= 1.5 ? (dv > 0 ? "rc-hi" : "rc-lo") : "";
-    $("#u-norm").innerHTML = ok(n) ? `<span class="d-lab">평년</span><span>${int(n)}kg</span>` : "";
     const a = at(k, "a", y), p = at(k, "p", y);
-    $("#u-line").innerHTML = ok(a) ? `<span>재배면적 <b>${haS(a)}</b></span><span>생산량 <b>${tonS(p)}</b></span>` : `<span>${y}년 시군 자료 없음</span>`;
+    $("#u-prod").textContent = !ok(p) ? "–" : p >= 1e4 ? nf1.format(p / 1e4) : int(p);
+    $("#u-produ").textContent = !ok(p) ? "" : p >= 1e4 ? "만 톤" : "톤";
+    $("#u-pyoy").innerHTML = deltaHTML(ratio(p, at(k, "p", y - 1)), "전년 대비");
+    $("#u-yield").textContent = int(yv);
+    $("#u-dev").innerHTML = deltaHTML(at(k, "d", y), "평년 대비");
+    const a10 = ratio(a, at(k, "a", y - 10));
+    $("#u-line").innerHTML = ok(a) ? `<span>재배면적 <b>${haS(a)}</b>${ok(a10) ? ` (10년 전 대비 ${pctS(a10)})` : ""}</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}` : `<span>${y}년 시군 자료 없음</span>`;
     $("#unit-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="prev"></i>평년</span>`;
-    const a5 = ratio(a, at(k, "a", y - 10));
-    $("#area-note").textContent = ok(a5) ? `10년 전 대비 ${pctS(a5)}` : "";
     drawUnit(animate);
-    drawArea();
+    drawProd();
   }
   function unitYears() {
     return d3.range(UFROM, LASTY + 1);
@@ -571,24 +627,24 @@
     if (ok(fin(state.year))) g.append("circle").attr("class", "pw-dot").attr("cx", x(state.year)).attr("cy", y(fin(state.year))).attr("r", 4);
     hover(svg, m, w, h, x, ys, (yy) => (ok(fin(yy)) ? `<b>${yy}년</b>${int(fin(yy))}kg${ok(nor(yy)) ? ` · 평년 ${int(nor(yy))} · ${pctS(at(k, "d", yy))}` : ""}` : `<b>${yy}년</b>자료 없음`), pickYear);
   }
-  function drawArea() {
-    const k = state.key, el = $("#chart-area");
-    const { svg, w, h } = frame(el, 90);
+  function drawProd() {
+    const k = state.key, el = $("#chart-prod");
+    const { svg, w, h } = frame(el, 100);
     const ys = unitYears();
-    const av = (y) => at(k, "a", y);
+    const av = (y) => at(k, "p", y);
     const max = d3.max(ys, av);
     if (!max) { svg.append("text").attr("x", 8).attr("y", 20).attr("class", "pw-empty").text("자료 없음"); return; }
     const m = { l: 34, r: 10, t: 6, b: 16 };
     const x = d3.scaleBand().domain(ys).range([m.l, w - m.r]).padding(0.2);
     const y = d3.scaleLinear().domain([0, max * 1.08]).range([h - m.b, m.t]);
-    const short = (d) => (!d ? "0" : max >= 1e4 ? `${nf0.format(d / 1e4)}만` : max >= 1e3 ? `${nf1.format(d / 1e3)}천` : int(d));
+    const short = (d) => (!d ? "0" : max >= 1e5 ? `${nf0.format(d / 1e4)}만` : max >= 1e4 ? `${nf1.format(d / 1e4)}만` : max >= 1e3 ? `${nf1.format(d / 1e3)}천` : int(d));
     yAxis(svg, y, m, w, 2, short);
     svg.append("g").selectAll("rect").data(ys.filter((yy) => ok(av(yy)))).join("rect")
       .attr("class", (d) => `rc-bar${d === state.year ? " sel" : ""}`)
       .attr("x", (d) => x(d)).attr("width", x.bandwidth()).attr("y", (d) => y(av(d))).attr("height", (d) => y(0) - y(av(d))).attr("rx", 1.5);
     const cx = (yy) => x(yy) + x.bandwidth() / 2;
     xYears(svg, cx, h, ys, 5);
-    hover(svg, m, w, h, cx, ys, (yy) => `<b>${yy}년</b>재배면적 ${haS(av(yy))}`, pickYear);
+    hover(svg, m, w, h, cx, ys, (yy) => (ok(av(yy)) ? `<b>${yy}년</b>생산량 ${tonS(av(yy))} · 재배면적 ${haS(at(k, "a", yy))} · 단수 ${int(at(k, "y", yy))}kg` : `<b>${yy}년</b>자료 없음`), pickYear);
   }
 
   // ---------- 오른쪽: 위성 생육 (MODIS 250m 논 격자 NDVI, 8일 합성) ----------
@@ -724,29 +780,41 @@
   const NDMI_C = [[-1, "#8c510a"], [-0.2, "#bf812d"], [-0.1, "#dfc27d"], [0, "#f6e8c3"], [0.1, "#c7eae5"], [0.2, "#80cdc1"], [0.3, "#35978f"], [0.4, "#1f5f8b"]];
   const VH_C = [[-27, "#173f7a"], [-23, "#3b78c2"], [-20, "#33363c"], [-18, "#50545b"], [-16, "#74787f"], [-14, "#9da0a6"], [-12, "#c9cbcf"]];
   const VV_C = [[-20, "#173f7a"], [-16, "#3b78c2"], [-13, "#33363c"], [-11, "#50545b"], [-9, "#74787f"], [-7, "#9da0a6"], [-5, "#c9cbcf"]];
+  // 단추 풍선 설명
+  const TIP = {
+    true: "<b>트루컬러</b> 사람 눈에 보이는 색 그대로<br>(빨강·초록·파랑 밴드)",
+    ndvi: "<b>NDVI 정규식생지수</b> (근적외−빨강)÷(근적외+빨강)<br>잎이 많고 싱싱할수록 높다. 벼 출수기 0.7~0.9<br>물 댄 논·갓 심은 모는 0~0.2(파랑)",
+    ndre: "<b>NDRE 레드엣지 식생지수</b> (근적외−레드엣지)÷(근적외+레드엣지)<br>잎이 무성해 NDVI가 더 오르지 않는 생육 후기에도<br>엽록소(질소 상태) 차이를 가른다",
+    ndmi: "<b>NDMI 수분지수</b> (근적외−단파적외)÷(근적외+단파적외)<br>잎과 땅에 물기가 많을수록 높다<br>가뭄·물떼기 상태를 본다",
+    vh: "<b>VH 교차편파 후방산란(dB)</b><br>물 댄 논은 전파가 거울처럼 튕겨 나가 아주 낮고(파랑)<br>벼가 자랄수록 높아진다",
+    vv: "<b>VV 동일편파 후방산란(dB)</b><br>물·매끈한 면은 낮고, 거친 땅·건물은 높다",
+  };
   const SAT = {
-    s2: { name: "Sentinel-2", col: "sentinel-2-l2a", from: 2017, cloud: true, zoom: 16, idx: {
-      ndvi: { name: "NDVI", expr: (o) => `(B08-B04)/(B08+B04-${2 * o})`, ramp: NDVI_C, lo: -1, hi: 1, desc: "식생 활력" },
-      true: { name: "트루컬러", rgb: ["B04", "B03", "B02"], rescale: (o) => `${o},${o + 2600}` },
-      ndre: { name: "NDRE", expr: (o) => `(B8A-B05)/(B8A+B05-${2 * o})`, ramp: NDRE_C, lo: -1, hi: 1, desc: "엽록소(생육 후기)" },
-      ndmi: { name: "NDMI", expr: (o) => `(B8A-B11)/(B8A+B11-${2 * o})`, ramp: NDMI_C, lo: -1, hi: 1, desc: "수분" } },
+    s2: { name: "Sentinel-2", tip: "<b>Sentinel-2</b> 유럽(Copernicus) 광학 위성<br>10m 해상도 · 5일마다 · 2017년부터<br>구름 낀 날은 땅이 안 보인다", col: "sentinel-2-l2a", from: 2017, cloud: true, zoom: 16, idx: {
+      true: { name: "트루컬러", rgb: ["B04", "B03", "B02"], rescale: (o) => `${o},${o + 2600}`, tip: TIP.true },
+      ndvi: { name: "NDVI", expr: (o) => `(B08-B04)/(B08+B04-${2 * o})`, ramp: NDVI_C, lo: -1, hi: 1, desc: "식생 활력", tip: TIP.ndvi },
+      ndre: { name: "NDRE", expr: (o) => `(B8A-B05)/(B8A+B05-${2 * o})`, ramp: NDRE_C, lo: -1, hi: 1, desc: "엽록소(생육 후기)", tip: TIP.ndre },
+      ndmi: { name: "NDMI", expr: (o) => `(B8A-B11)/(B8A+B11-${2 * o})`, ramp: NDMI_C, lo: -1, hi: 1, desc: "수분", tip: TIP.ndmi } },
       mask: (e) => `where((SCL==3)|(SCL==8)|(SCL==9)|(SCL==10),-100,${e})` },
-    ls: { name: "Landsat", col: "landsat-c2-l2", from: 2013, cloud: true, zoom: 15, idx: {
+    ls: { name: "Landsat", tip: "<b>Landsat 8·9</b> 미국(USGS) 광학 위성<br>30m 해상도 · 8일마다 · 2013년부터<br>Sentinel-2보다 거칠지만 더 오래된 해도 본다", col: "landsat-c2-l2", from: 2013, cloud: true, zoom: 15, idx: {
       // 반사율 = DN×0.0000275 − 0.2 → 분모에서 2×0.2/0.0000275 = 14545를 뺀다
-      ndvi: { name: "NDVI", expr: () => "(nir08-red)/(nir08+red-14545)", ramp: NDVI_C, lo: -1, hi: 1, desc: "식생 활력" },
-      true: { name: "트루컬러", rgb: ["red", "green", "blue"], rescale: () => "7273,17000" },
-      ndmi: { name: "NDMI", expr: () => "(nir08-swir16)/(nir08+swir16-14545)", ramp: NDMI_C, lo: -1, hi: 1, desc: "수분" } },
+      true: { name: "트루컬러", rgb: ["red", "green", "blue"], rescale: () => "7273,17000", tip: TIP.true },
+      ndvi: { name: "NDVI", expr: () => "(nir08-red)/(nir08+red-14545)", ramp: NDVI_C, lo: -1, hi: 1, desc: "식생 활력", tip: TIP.ndvi },
+      ndmi: { name: "NDMI", expr: () => "(nir08-swir16)/(nir08+swir16-14545)", ramp: NDMI_C, lo: -1, hi: 1, desc: "수분", tip: TIP.ndmi } },
       // QA_PIXEL bit1 팽창구름·bit3 구름·bit4 그림자 (수식이 비트 연산을 못 받아 나머지 연산으로 본다)
       mask: (e) => `where(((qa_pixel%32)>=8)|((qa_pixel%4)>=2),-100,${e})` },
-    s1: { name: "레이더", col: "sentinel-1-rtc", from: 2015, cloud: false, zoom: 16, idx: {
-      vh: { name: "VH", db: "vh", ramp: VH_C, lo: -27, hi: -10, desc: "후방산란(dB) · 물 댄 논은 낮다" },
-      vv: { name: "VV", db: "vv", ramp: VV_C, lo: -20, hi: -3, desc: "후방산란(dB)" } } },
+    s1: { name: "레이더", tip: "<b>Sentinel-1 레이더(SAR)</b><br>10m 해상도 · 12일마다 · 2015년부터<br>구름·비·밤에도 보인다. 물 댄 논을 잘 가른다", col: "sentinel-1-rtc", from: 2015, cloud: false, zoom: 16, idx: {
+      vh: { name: "VH", db: "vh", ramp: VH_C, lo: -27, hi: -10, desc: "후방산란(dB) · 물 댄 논은 낮다", tip: TIP.vh },
+      vv: { name: "VV", db: "vv", ramp: VV_C, lo: -20, hi: -3, desc: "후방산란(dB)", tip: TIP.vv } } },
   };
   const NOW = new Date();
   const SEASON_END = (y) => (y === NOW.getFullYear() ? NOW.toISOString().slice(0, 10) : `${y}-11-30`);
-  const sat = { sat: "s2", idx: "ndvi", mask: true, year: NOW.getMonth() >= 4 ? NOW.getFullYear() : NOW.getFullYear() - 1, date: null, dates: [], key: null };
+  // 팜맵 논 필지 (주요 통계 '자세히 보기'와 같은 R2 전국 타일, 확대 13~15단계 자료, c=1이 논)
+  const PADDY_TILES = "https://pub-6a32610bd1414a8d8dc3adc9eecd3632.r2.dev/farmmap/2025/kr.pmtiles";
+  const PADDY_Z = 13; // 이보다 멀리서는 필지 자료가 없어 영상 전체를 보인다
+  const sat = { sat: "s2", idx: "ndvi", mask: true, paddyOnly: true, paddyLine: true, sid: null, year: NOW.getMonth() >= 4 ? NOW.getFullYear() : NOW.getFullYear() - 1, date: null, dates: [], key: null };
   const satCache = new Map(), sidCache = new Map();
-  let L_ = null, lmap = null, base = null, pcLayer = null, outline = null, maskLayer = null, leafletReady = null;
+  let L_ = null, lmap = null, base = null, pcLayer = null, paddyLayer = null, lineLayer = null, outline = null, maskLayer = null, leafletReady = null;
   const satBar = $("#sat-bar"), satHint = $("#sat-hint");
 
   function hint(msg, err = false) {
@@ -759,7 +827,8 @@
     const load = (tag, attrs) => new Promise((res, rej) => document.head.append(Object.assign(document.createElement(tag), attrs, { onload: res, onerror: rej })));
     leafletReady = Promise.all([
       load("link", { rel: "stylesheet", href: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" }),
-      load("script", { src: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" }),
+      load("script", { src: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" })
+        .then(() => load("script", { src: "https://cdn.jsdelivr.net/npm/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js" }).catch(() => {})),
     ]).catch((e) => { leafletReady = null; throw e; });
     return leafletReady;
   }
@@ -775,14 +844,18 @@
     const years = d3.range(s.from, NOW.getFullYear() + 1).filter((y) => y < NOW.getFullYear() || NOW.getMonth() >= 3).reverse();
     if (!years.includes(sat.year)) sat.year = years[0];
     satBar.innerHTML = `
-      <span class="seg" role="group" aria-label="위성">${Object.entries(SAT).map(([k, v]) => `<button type="button" data-sat="${k}" aria-pressed="${k === sat.sat}">${v.name}</button>`).join("")}</span>
-      <span class="seg" role="group" aria-label="지수">${Object.entries(s.idx).map(([k, v]) => `<button type="button" data-idx="${k}" aria-pressed="${k === sat.idx}" title="${v.desc || "사람 눈에 보이는 색"}">${v.name}</button>`).join("")}</span>
+      <span class="seg" role="group" aria-label="위성">${Object.entries(SAT).map(([k, v]) => `<button type="button" data-sat="${k}" aria-pressed="${k === sat.sat}" data-tip="${v.tip}">${v.name}</button>`).join("")}</span>
+      <span class="seg" role="group" aria-label="지수">${Object.entries(s.idx).map(([k, v]) => `<button type="button" data-idx="${k}" aria-pressed="${k === sat.idx}" data-tip="${v.tip}">${v.name}</button>`).join("")}</span>
       <label class="rc-ysel select"><span>연도</span><select data-ui="year">${years.map((y) => `<option value="${y}"${y === sat.year ? " selected" : ""}>${y}</option>`).join("")}</select></label>
-      ${s.cloud ? `<label class="rc-check" title="구름·그림자 화소를 투명하게"><input type="checkbox" data-ui="mask"${sat.mask ? " checked" : ""}> 구름 가리기</label>` : ""}`;
+      <label class="rc-check" data-tip="<b>논만</b> 팜맵 논 필지 안쪽만 영상을 남기고<br>나머지는 흐린 항공사진으로 둔다<br>(지도를 ${PADDY_Z}단계 이상 확대했을 때)"><input type="checkbox" data-ui="ponly"${sat.paddyOnly ? " checked" : ""}> 논만</label>
+      <label class="rc-check" data-tip="<b>논 경계</b> 팜맵 논 필지 경계선<br>(지도를 ${PADDY_Z + 1}단계 이상 확대했을 때)"><input type="checkbox" data-ui="pline"${sat.paddyLine ? " checked" : ""}> 논 경계</label>
+      ${s.cloud ? `<label class="rc-check" data-tip="<b>구름 가리기</b> 구름·구름 그림자로 판정된 화소를 투명하게"><input type="checkbox" data-ui="mask"${sat.mask ? " checked" : ""}> 구름 가리기</label>` : ""}`;
     satBar.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => { if (sat.sat === b.dataset.sat) return; sat.sat = b.dataset.sat; sat.date = null; buildSatBar(); loadDates(); }));
     satBar.querySelectorAll("[data-idx]").forEach((b) => b.addEventListener("click", () => { sat.idx = b.dataset.idx; buildSatBar(); drawLayer(); }));
     satBar.querySelector('[data-ui="year"]').addEventListener("change", (e) => { sat.year = +e.target.value; sat.date = null; loadDates(); });
     satBar.querySelector('[data-ui="mask"]')?.addEventListener("change", (e) => { sat.mask = e.target.checked; drawLayer(); });
+    satBar.querySelector('[data-ui="ponly"]').addEventListener("change", (e) => { sat.paddyOnly = e.target.checked; syncPaddy(); });
+    satBar.querySelector('[data-ui="pline"]').addEventListener("change", (e) => { sat.paddyLine = e.target.checked; syncPaddy(); });
     renderSatLegend();
   }
 
@@ -799,8 +872,64 @@
       base.addTo(lmap);
       lmap.attributionControl.addAttribution("배경 VWorld");
     }).catch(() => {});
-    lmap.on("zoomend", () => { if (lmap.getZoom() < 10) hint("확대하면 위성 영상이 보입니다"); else if (satHint.textContent.startsWith("확대하면")) hint(""); });
+    lmap.on("zoomend", zoomHint);
     new ResizeObserver(() => lmap.invalidateSize({ pan: false })).observe($("#sat-map"));
+  }
+
+  function zoomHint() {
+    const z = lmap.getZoom();
+    if (z < 10) hint("확대하면 위성 영상이 보입니다");
+    else if (z < PADDY_Z && sat.paddyOnly && window.protomapsL) hint(`${PADDY_Z}단계 이상 확대하면 논 필지만 남깁니다`);
+    else if (satHint.textContent.startsWith("확대하면") || satHint.textContent.includes("단계 이상 확대하면")) hint("");
+  }
+
+  // 논만: 필지 타일로 논 모양을 칠한 캔버스에 같은 자리 영상 타일을 source-in으로 덮어, 논 안쪽 영상만 남긴다
+  function pcTileInto(canvas, coords, nz, done) {
+    const tpl = tileUrl(sat.sid);
+    const dz = Math.max(0, coords.z - nz), f = 2 ** dz;
+    const px = Math.floor(coords.x / f), py = Math.floor(coords.y / f);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const ctx = canvas.getContext("2d"), w = 256 / f;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = "source-in";
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, (coords.x - px * f) * w, (coords.y - py * f) * w, w, w, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+      done();
+    };
+    img.onerror = () => { canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height); done(); };
+    img.src = L_.Util.template(tpl, { z: coords.z - dz, x: px, y: py });
+  }
+  function syncPaddy() {
+    const P = window.protomapsL;
+    paddyLayer?.remove(); paddyLayer = null;
+    lineLayer?.remove(); lineLayer = null;
+    const only = !!(P && sat.paddyOnly && sat.sid);
+    // 논만일 때 원래 영상 층은 필지 자료가 없는 먼 단계에서만 보인다
+    if (pcLayer) { pcLayer.options.maxZoom = only ? PADDY_Z - 1 : 18; pcLayer._resetView?.(); }
+    if (!P || !lmap) return zoomHint();
+    const isPaddy = (z, f) => f.props.c === 1;
+    if (only) {
+      const nz = SAT[sat.sat].zoom;
+      paddyLayer = P.leafletLayer({
+        url: PADDY_TILES, maxDataZoom: 15, minZoom: PADDY_Z, maxZoom: 18, zIndex: 2, attribution: "",
+        paintRules: [{ dataLayer: "p", filter: isPaddy, symbolizer: new P.PolygonSymbolizer({ fill: "#000", opacity: 1 }) }],
+      });
+      const render = paddyLayer.renderTile.bind(paddyLayer);
+      paddyLayer.renderTile = (coords, el, key, done = () => {}) => render(coords, el, key, () => pcTileInto(el, coords, nz, done));
+      paddyLayer.addTo(lmap);
+    }
+    if (sat.paddyLine) {
+      lineLayer = P.leafletLayer({
+        url: PADDY_TILES, maxDataZoom: 15, minZoom: PADDY_Z + 1, maxZoom: 18, zIndex: 3, attribution: "",
+        paintRules: [{ dataLayer: "p", filter: isPaddy, symbolizer: new P.LineSymbolizer({ color: "#ffffff", width: (z) => (z >= 16 ? 1 : 0.6), opacity: 0.55 }) }],
+      });
+      lineLayer.addTo(lmap);
+    }
+    zoomHint();
   }
 
   function setSatRegion(k) {
@@ -971,7 +1100,8 @@
     try {
       const sid = await searchId(s.col, sat.date, sat.key);
       if (seq !== drawSeq) return;
-      const next = L_.tileLayer(tileUrl(sid), { minZoom: 10, maxZoom: 18, maxNativeZoom: s.zoom, zIndex: 2 });
+      sat.sid = sid;
+      const next = L_.tileLayer(tileUrl(sid), { minZoom: 10, maxZoom: sat.paddyOnly && window.protomapsL ? PADDY_Z - 1 : 18, maxNativeZoom: s.zoom, zIndex: 2 });
       let loads = 0, errs = 0;
       next.on("loading", () => { if (lmap.getZoom() >= 10) hint("영상을 불러오는 중…"); });
       next.on("load", () => { if (satHint.textContent.startsWith("영상을")) hint(""); });
@@ -980,6 +1110,7 @@
       // 새 층이 그려진 뒤에 옛 층을 지워 깜빡임을 줄인다
       const old = pcLayer;
       pcLayer = next.addTo(lmap);
+      syncPaddy();
       if (old) {
         next.once("load", () => old.remove());
         setTimeout(() => old.remove(), 6000);
@@ -1056,7 +1187,8 @@
     drawNat(false);
     paintMap();
     renderRank();
-    if (NV && NYI[y] != null) { nstate.year = y; renderNdvi(true); } // 생육 곡선도 고른 연도로
+    // 생육 곡선도 고른 연도로. 단 최신 확정 연도를 고르면 위성은 그보다 새 해(올해)를 그대로 둔다
+    if (NV) { const ny = y === LASTY ? NV.years.at(-1) : y; if (NYI[ny] != null && ny !== nstate.year) { nstate.year = ny; renderNdvi(true); } }
   }
 
   fromURL();
@@ -1080,7 +1212,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-nat": () => drawNat(false), "chart-err": drawErr, "chart-unit": () => drawUnit(false), "chart-area": drawArea, "chart-ndvi": () => drawNdvi(false), "sat-strip": drawStrip };
+  const redraw = { "chart-nat": () => drawNat(false), "chart-err": drawErr, "chart-unit": () => drawUnit(false), "chart-prod": drawProd, "chart-ndvi": () => drawNdvi(false), "sat-strip": drawStrip };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;

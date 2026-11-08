@@ -9,7 +9,9 @@
 .rc-chart { position: relative; height: 150px; margin-top: 4px; }
 .rc-chart svg { position: absolute; inset: 0; }
 #chart-err { height: 110px; }
-#chart-area { height: 90px; }
+#chart-prod { height: 100px; }
+.rc-mhead { display: flex; align-items: center; gap: 6px; }
+.rc-mseg button { padding: 1px 8px; font-size: 11.5px; }
 .rc-norm { fill: none; stroke: #9aa1ad; stroke-width: 1.3; stroke-dasharray: 4 3; }
 .rc-stat { fill: #14161b; stroke: #5fb3ff; stroke-width: 1.8; }
 .rc-stat.now { fill: #5fb3ff; }
@@ -95,7 +97,7 @@
   .rc #p-nat { flex: 1.25 1 0; }
   .rc #p-acc { flex: 1 1 0; }
   .rc #p-unit { flex: 1 1 0; }
-  .rc #chart-nat, .rc #chart-err, .rc #chart-unit, .rc #chart-area { height: auto; min-height: 60px; flex: 1 1 0; }
+  .rc #chart-nat, .rc #chart-err, .rc #chart-unit, .rc #chart-prod { height: auto; min-height: 60px; flex: 1 1 0; }
   .rc #chart-unit { flex-grow: 1.5; }
   .rc .stats.two { row-gap: 8px; }
   .rc .sub-head { margin: 8px 0 3px; }
@@ -135,11 +137,9 @@
 .rc-read b.rc-hi { color: #4fc1a6; }
 .rc-read b.rc-lo { color: #e8894a; }
 #chart-ndvi { height: 140px; }
-.rc-test { margin: 6px 0 0; font-size: 11.5px; color: var(--faint); cursor: help; }
-.rc-i { font-size: 11px; }
 @media (min-width: 1281px) and (min-height: 720px) {
   .rc #p-unit { flex: 1.9 1 0; }
   .rc #p-ndvi { flex: 1 1 0; }
   .rc #chart-ndvi { height: auto; min-height: 60px; flex: 1 1 0; }
-  .rc #chart-area { flex-grow: 0.8; }
+  .rc #chart-prod { flex-grow: 1; }
 }
