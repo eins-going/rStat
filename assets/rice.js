@@ -641,6 +641,14 @@
     $("#u-line").innerHTML = fr
       ? `<span>80% 범위 <b>${tonS(fr[5])}~${tonS(fr[6])}</b> · 단수 <b>${int(fr[3])}~${int(fr[4])}kg</b></span><span>재배면적 <b>${haS(a)}</b>(추정)</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}${other ? `<span>${FC.lab["0915"]} 예측 <b>${int(other[0])}kg</b></span>` : ""}`
       : ok(a) ? `<span>재배면적 <b>${haS(a)}</b>${ok(a10) ? ` (10년 전 대비 ${pctS(a10)})` : ""}</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}` : `<span>${y}년 시군 자료 없음</span>`;
+    // 확정 연도를 보고 있어도 올해 예측을 숫자로 (누르면 예측 연도로)
+    const fy = fcRow(k, FCY), ufc = $("#u-fc");
+    ufc.hidden = !fy || y === FCY;
+    if (fy && y !== FCY) {
+      ufc.innerHTML = `<span class="lab">${FCY}년 예측</span><span>생산량 <b>${tonS(fy[2])}</b>${ok(fy[5]) ? ` <small>${tonS(fy[5])}~${tonS(fy[6])}</small>` : ""}</span>`
+        + `<span>단수 <b>${int(fy[0])}kg</b>${ok(fy[3]) ? ` <small>${int(fy[3])}~${int(fy[4])}</small>` : ""}</span><span>면적 <b>${haS(fy[1])}</b></span>`;
+      ufc.title = `모델 예측(${FC.lab[FC.cur]}) · 범위는 80% · 누르면 ${FCY}년 예측 지도로`;
+    }
     $("#unit-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="prev"></i>평년</span>${FC?.bt[k] || fcRow(k, FCY) ? `<span><i class="fc"></i>모델 예측(${FC.lab[FC.cur]})</span>` : ""}`;
     drawUnit(animate);
     drawProd();
@@ -844,6 +852,7 @@
   const viewBtn = $("#view-btn");
   viewBtn.addEventListener("click", () => { state.view = state.view === "sat" ? "map" : "sat"; render(false); });
   $("#reset").addEventListener("click", () => select(parentOf(state.key) ?? NATION));
+  $("#u-fc").addEventListener("click", () => setYear(FCY));
   function renderHero() {
     const k = state.key, sat = state.view === "sat";
     $("#title-region").textContent = label(k);
