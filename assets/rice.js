@@ -55,7 +55,17 @@
   const haS = (v) => (!ok(v) ? "–" : v >= 1e4 ? `${nf1.format(v / 1e4)}만ha` : `${int(v)}ha`);
   const tonS = (v) => (!ok(v) ? "–" : v >= 1e4 ? `${nf1.format(v / 1e4)}만 톤` : `${int(v)}톤`);
   const ratio = (a, b) => (ok(a) && ok(b) && b > 0 ? (a / b - 1) * 100 : null);
-  const at = (k, f, y) => (YI[y] == null ? null : V[k]?.[f]?.[YI[y]] ?? null);
+  const atv = (k, f, y) => (YI[y] == null ? null : V[k]?.[f]?.[YI[y]] ?? null);
+  // 모델 예측: 확정이 없는 예측 연도(FCY)에는 예측값을 대신 쓴다 [단수, 면적, 생산량, 단수 하한·상한, 생산량 하한·상한]
+  const FC = R.fc, FCY = FC?.year ?? null, FCV = FC ? FC.v[FC.cur] : {};
+  const fcRow = (k, y) => (FC && y === FCY && atv(k, "y", y) == null ? FCV[k] ?? null : null);
+  const at = (k, f, y) => {
+    const v = atv(k, f, y);
+    if (v != null) return v;
+    const r = fcRow(k, y);
+    if (!r) return null;
+    return f === "y" ? r[0] : f === "a" ? r[1] : f === "p" ? r[2] : f === "d" ? ratio(r[0], atv(k, "n", y)) : null;
+  };
   const deltaHTML = (d, lab) => {
     if (!ok(d)) return "";
     const cls = d > 0 ? "rc-hi" : d < 0 ? "rc-lo" : ""; // 높음 청록 · 낮음 주황 (지도 색과 같다)
@@ -81,9 +91,11 @@
 
   // ---------- 선택 ----------
   const selSido = $("#sido"), selSgg = $("#sgg"), selYear = $("#year");
-  const MAP_YEARS = YEARS.filter((y) => y >= UFROM && y <= LASTY);
+  const MAP_YEARS = YEARS.filter((y) => y >= UFROM && (y <= LASTY || y === FCY));
+  const fcMode = (y) => !!FC && y === FCY && !ALL_UNITS.some((k) => atv(k, "y", y) != null); // 시군 확정 전: 지도·순위가 예측값
+  const fcAny = (k, y) => !!fcRow(k, y);
   selSido.innerHTML = `<option value="${NATION}">전국</option>` + SIDO_CODES.map((s) => `<option value="${s}">${T.sidos[s].name}</option>`).join("");
-  selYear.innerHTML = MAP_YEARS.map((y) => `<option value="${y}">${y}년</option>`).reverse().join("");
+  selYear.innerHTML = MAP_YEARS.map((y) => `<option value="${y}">${y}년${fcMode(y) ? " 예측" : ""}</option>`).reverse().join("");
   selSido.addEventListener("change", () => select(selSido.value));
   selSgg.addEventListener("change", () => select(selSgg.value || selSido.value));
   selYear.addEventListener("change", () => setYear(+selYear.value));
@@ -283,16 +295,28 @@
     mapSvg.selectAll("path.unit.sel").raise();
     mapSvg.classed("dimmed", level(state.key) === 2);
     const missing = ALL_UNITS.length - vals.length;
-    $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${y}년</span></span>`
+    $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${y}년${fcMode(y) ? ` <b class="rc-fctag">예측</b>` : ""}</span></span>`
       + sc.rows.map(([c, t]) => `<span class="row"><span class="sw" style="background:${c}"></span>${t}</span>`).join("")
       + (missing ? `<span class="row"><span class="sw" style="background:${EMPTY};outline:1px solid #3a3f48"></span>자료 없음 ${missing}</span>` : "")
       + (m.key.startsWith("area") ? "" : `<span class="rc-lg-small" title="재배면적 ${SMALL_HA}ha 미만: 단수가 크게 흔들려 흐리게 칠함"><i></i>흐림 = ${SMALL_HA}ha 미만</span>`);
-    $("#metric-note").textContent = m.note;
+    $("#metric-note").textContent = fcMode(y) ? `모델 예측(${FC.lab[FC.cur]}) · 면적은 작년 시군 면적 × 올해 시도 면적 증감 · 시군을 누르면 80% 범위` : m.note;
   }
 
   function showTip(e, k) {
     const y = state.year;
     const yv = at(k, "y", y), n = at(k, "n", y);
+    const fr = fcRow(k, y);
+    if (fr) {
+      tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${y}년 예측 단수 <b style="display:inline">${int(fr[0])}kg</b>${ok(fr[3]) ? ` (${int(fr[3])}~${int(fr[4])})` : ""}`
+        + (ok(n) ? `<br>평년 ${int(n)}kg · ${pctS(ratio(fr[0], n))}` : "")
+        + `<br>예측 생산량 ${tonS(fr[2])} · 면적 ${haS(fr[1])}`
+        + `<br><span class="tip-hint">누르면 위성 영상</span>`;
+      const rr = $("#map-wrap").getBoundingClientRect();
+      tip.style.left = `${e.clientX - rr.left}px`;
+      tip.style.top = `${e.clientY - rr.top}px`;
+      tip.hidden = false;
+      return;
+    }
     tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${y}년 단수 ${ok(yv) ? `<b style="display:inline">${int(yv)}kg</b>` : "자료 없음"}`
       + (ok(n) ? `<br>평년 ${int(n)}kg · ${pctS(at(k, "d", y))}` : "")
       + (ok(at(k, "a", y)) ? `<br>재배면적 ${haS(at(k, "a", y))}${small(k, y) ? ' · <span style="color:var(--accent)">면적 작음</span>' : ""}` : "")
@@ -329,7 +353,7 @@
       </button>`;
     const scope = s ? `${T.sidos[s].short} 시군` : "시군";
     const minNote = m.key.startsWith("area") ? "" : ` · ${nf0.format(RANK_MIN_HA)}ha 이상`;
-    const meta = `<span class="rank-meta">${y}년 · ${list.length}곳${minNote}</span>`;
+    const meta = `<span class="rank-meta">${y}년${fcMode(y) ? " 예측" : ""} · ${list.length}곳${minNote}</span>`;
     let body;
     if (m.key === "norm") {
       const lo = [...list].reverse().filter(([, v]) => v < 0).slice(0, 5), hi = list.filter(([, v]) => v > 0).slice(0, 5);
@@ -440,9 +464,11 @@
       ok(st?.y) ? `<span>단수 <b>${int(st.y)}kg</b> (평년 ${int(n)}kg 대비 ${pctS(ratio(st.y, n))})</span>` : "",
       krTxt ? `<span>KREI 단수 전망 <b>${krTxt}</b></span>` : "",
       ok(st?.a) ? `<span>재배면적 <b>${haS(st.a)}</b></span>` : "",
+      fcNat(CUR) ? `<span class="rc-fcl">모델 예측 <b>${int(fcNat(CUR)[0])}kg</b>${FC.cur === "1010" && FC.v["0915"]?.["00"] ? ` (${FC.lab["0915"]} ${int(FC.v["0915"]["00"][0])}kg)` : ""}</span>` : "",
     ].join("");
     drawNat();
   }
+  const fcNat = (y) => (FC && y === FCY ? FCV[NATION] ?? null : null);
   // 올해처럼 확정 행이 없는 해의 평년
   function normOf(k, y) {
     const prev = [1, 2, 3, 4, 5].map((d) => at(k, "y", y - d));
@@ -460,12 +486,12 @@
   });
   function drawNat(animate = false) {
     if (natMode === "p") return drawNatProd(animate);
-    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span><span><i class="prev"></i>평년</span>`;
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span><i class="prev"></i>평년</span>`;
     const el = $("#chart-nat");
     const { svg, w, h } = frame(el, 150);
     const ys = d3.range(NFROM, CUR + 1);
     const fin = (y) => at(NATION, "y", y), nor = (y) => at(NATION, "n", y) ?? (y === CUR ? normOf(NATION, y) : null);
-    const vals = ys.flatMap((y) => [fin(y), nor(y), O[y]?.stat?.y, O[y]?.krei?.lo, O[y]?.krei?.hi]).filter(ok);
+    const vals = ys.flatMap((y) => [fin(y), nor(y), O[y]?.stat?.y, O[y]?.krei?.lo, O[y]?.krei?.hi, fcNat(y)?.[0]]).filter(ok);
     const m = { l: 34, r: 30, t: 14, b: 16 };
     const x = d3.scaleLinear().domain([NFROM - 0.4, CUR + 0.4]).range([m.l, w - m.r]);
     const y = d3.scaleLinear().domain([d3.min(vals) - 6, d3.max(vals) + 6]).nice(4).range([h - m.b, m.t]);
@@ -484,6 +510,8 @@
     const sys = ys.filter((yy) => ok(O[yy]?.stat?.y));
     g.selectAll("circle.rc-stat").data(sys).join("circle").attr("class", (d) => `rc-stat${d === CUR ? " now" : ""}`)
       .attr("cx", (d) => x(d) - 2).attr("cy", (d) => y(O[d].stat.y)).attr("r", (d) => (d === CUR ? 4.5 : 3.2));
+    const fn = fcNat(CUR);
+    if (fn) g.append("rect").attr("class", "rc-fcd").attr("x", x(CUR) + 2).attr("y", y(fn[0]) - 3.5).attr("width", 7).attr("height", 7).attr("transform", `rotate(45 ${x(CUR) + 5.5} ${y(fn[0])})`);
     // 올해 예상만 이름표를 단다
     const cs = O[CUR]?.stat?.y;
     if (ok(cs)) {
@@ -496,6 +524,7 @@
       else if (o.pending) parts.push("확정 대기");
       if (ok(o.stat?.y)) parts.push(`통계청 ${int(o.stat.y)}${ok(o.stat.err) ? ` (${kgS(o.stat.err)})` : ""}`);
       if (ok(o.krei?.y)) parts.push(`KREI ${o.krei.lo !== o.krei.hi && ok(o.krei.lo) ? `${int(o.krei.lo)}~${int(o.krei.hi)}` : int(o.krei.y)}${ok(o.krei.err) ? ` (${kgS(o.krei.err)})` : ""}`);
+      if (fcNat(yy)) parts.push(`모델 ${int(fcNat(yy)[0])}`);
       if (ok(nor(yy))) parts.push(`평년 ${int(nor(yy))}`);
       return parts.join(" · ");
     }, pickYear);
@@ -503,12 +532,12 @@
 
   // 전국 생산량: 확정(선)과 통계청 10월 예상(점). KREI는 단수로만 전망해 단수 그래프에서 본다
   function drawNatProd(animate = false) {
-    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span><span>단위 만 톤</span>`;
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span>단위 만 톤</span>`;
     const el = $("#chart-nat");
     const { svg, w, h } = frame(el, 150);
     const ys = d3.range(NFROM, CUR + 1);
     const fin = (y) => at(NATION, "p", y), est = (y) => O[y]?.stat?.p;
-    const vals = ys.flatMap((y) => [fin(y), est(y)]).filter(ok);
+    const vals = ys.flatMap((y) => [fin(y), est(y), fcNat(y)?.[2]]).filter(ok);
     const m = { l: 34, r: 30, t: 14, b: 16 };
     const x = d3.scaleLinear().domain([NFROM - 0.4, CUR + 0.4]).range([m.l, w - m.r]);
     const lo = d3.min(vals), hi = d3.max(vals);
@@ -521,6 +550,8 @@
     const sys = ys.filter((yy) => ok(est(yy)));
     g.selectAll("circle.rc-stat").data(sys).join("circle").attr("class", (d) => `rc-stat${d === CUR ? " now" : ""}`)
       .attr("cx", (d) => x(d) - 2).attr("cy", (d) => y(est(d))).attr("r", (d) => (d === CUR ? 4.5 : 3.2));
+    const fn = fcNat(CUR);
+    if (fn) g.append("rect").attr("class", "rc-fcd").attr("x", x(CUR) + 2).attr("y", y(fn[2]) - 3.5).attr("width", 7).attr("height", 7).attr("transform", `rotate(45 ${x(CUR) + 5.5} ${y(fn[2])})`);
     if (ok(est(CUR))) g.append("text").attr("class", "rc-lab").attr("x", x(CUR)).attr("y", y(est(CUR)) - 9).attr("text-anchor", "end").text(`${CUR} 예상 ${nf1.format(est(CUR) / 1e4)}만 톤`);
     hover(svg, m, w, h, x, ys, (yy) => {
       const o = O[yy] || {};
@@ -528,12 +559,15 @@
       if (ok(fin(yy))) parts.push(`확정 ${tonS(fin(yy))}`);
       else if (o.pending) parts.push("확정 대기");
       if (ok(est(yy))) parts.push(`통계청 예상 ${tonS(est(yy))}${ok(fin(yy)) ? ` (${pctS(ratio(est(yy), fin(yy)))})` : ""}`);
+      if (fcNat(yy)) parts.push(`모델 ${tonS(fcNat(yy)[2])}`);
       return parts.join(" · ");
     }, pickYear);
   }
 
   // ---------- 왼쪽: 전망 정확도 ----------
   const ORG = {
+    m1010: { name: "모델 10월", color: "#f06f8f", cls: "rc-e-m1010", tip: "통계청 시도 예상에 태풍 보정과 기상 모델을 더함" },
+    m0915: { name: "모델 9월 15일", color: "#e0a458", cls: "rc-e-m0915", tip: "9월 15일까지 기상으로 계산(작물 생리 모델)" },
     stat: { name: "통계청 10월 예상", color: "#5fb3ff", cls: "rc-e-stat" },
     krei: { name: "KREI 9월 전망", color: "#5fb37c", cls: "rc-e-krei" },
     norm: { name: "평년값 그대로", color: "#4a505b" },
@@ -542,20 +576,23 @@
     const yrs = ACC.years;
     const last = d3.max(yrs.stat, (d) => d[0]);
     $("#acc-range").textContent = `${ACC.from}~${last} · 확정 대비`;
-    const rows = ["stat", "krei", "norm"].filter((k) => ACC[k]);
+    const rows = ["m1010", "stat", "m0915", "krei", "norm"].filter((k) => ACC[k]);
     const max = d3.max(rows, (k) => ACC[k].mae) || 1;
     const missing = (k) => d3.range(ACC.from, last + 1).filter((y) => !yrs[k].some((d) => d[0] === y));
     $("#acc-rows").innerHTML = `<div class="cap"><span></span><span>평균 절대 오차</span><span>평균</span><span>RMSE</span></div>`
       + rows.map((k) => {
         const a = ACC[k], miss = missing(k);
-        return `<div class="row${k === "norm" ? " base" : ""}" title="${ORG[k].name}: ${a.n}년 · 편향 ${kgS(a.bias)} · 가장 큰 오차 ${kgS(a.max)}${miss.length ? ` · ${miss.join("·")}년 없음` : ""}">
+        return `<div class="row${k === "norm" ? " base" : ""}" title="${ORG[k].name}: ${ORG[k].tip ? `${ORG[k].tip}, 그해 이전 자료로만 맞춘 재현 · ` : ""}${a.n}년 · 편향 ${kgS(a.bias)} · 가장 큰 오차 ${kgS(a.max)}${miss.length ? ` · ${miss.join("·")}년 없음` : ""}">
           <span class="nm">${ORG[k].name}</span>
           <span class="track"><span class="fill" style="width:${(a.mae / max) * 100}%;background:${ORG[k].color}"></span></span>
           <span class="val">±${nf1.format(a.mae)}kg</span><span class="rm">${nf1.format(a.rmse)}kg</span></div>`;
-      }).join("");
-    $("#err-key").innerHTML = `<span><i class="statb"></i>통계청</span><span><i class="kreib"></i>KREI</span>${missing("krei").length ? `<span>KREI ${missing("krei").join("·")}년 없음</span>` : ""}`;
+      }).join("")
+      + (ACC.sigun ? `<div class="rc-acc-sg" title="시군 단수 오차(면적 가중 RMSE). 통계청·KREI는 시군 전망을 내지 않는다">시군 오차 <b>모델 10월 ${nf1.format(ACC.sigun.m1010)}kg</b> · 9월 15일 ${nf1.format(ACC.sigun.m0915)}kg · 평년 ${nf1.format(ACC.sigun.norm)}kg</div>` : "");
+    $("#err-key").innerHTML = ERR_SER().map((k) => `<span><i class="${k}b"></i>${{ stat: "통계청", krei: "KREI", m0915: "모델 9/15", m1010: "모델 10월" }[k]}</span>`).join("")
+      + (missing("krei").length ? `<span>KREI ${missing("krei").join("·")}년 없음</span>` : "");
     drawErr();
   }
+  const ERR_SER = () => ["stat", "krei", "m0915", "m1010"].filter((k) => ACC.years[k]?.length);
   function drawErr() {
     const el = $("#chart-err");
     const { svg, w, h } = frame(el, 110);
@@ -563,13 +600,14 @@
     const last = d3.max(yrs.stat, (d) => d[0]);
     const ys = d3.range(ACC.from, last + 1);
     const val = (k, yy) => yrs[k].find((d) => d[0] === yy)?.[1];
-    const lim = d3.max(["stat", "krei"].flatMap((k) => ys.map((yy) => Math.abs(val(k, yy) ?? 0)))) || 10;
+    const SER = ERR_SER();
+    const lim = d3.max(SER.flatMap((k) => ys.map((yy) => Math.abs(val(k, yy) ?? 0)))) || 10;
     const m = { l: 34, r: 8, t: 6, b: 16 };
     const x = d3.scaleBand().domain(ys).range([m.l, w - m.r]).padding(0.22);
     const y = d3.scaleLinear().domain([-lim, lim]).nice(3).range([h - m.b, m.t]);
     yAxis(svg, y, m, w, 3, (d) => (d > 0 ? `+${d}` : d));
-    const bw = x.bandwidth() / 2;
-    for (const [j, k] of ["stat", "krei"].entries()) {
+    const bw = x.bandwidth() / SER.length;
+    for (const [j, k] of SER.entries()) {
       svg.append("g").selectAll("rect").data(ys.filter((yy) => ok(val(k, yy)))).join("rect").attr("class", ORG[k].cls)
         .attr("x", (d) => x(d) + j * bw + 0.5).attr("width", Math.max(1, bw - 1))
         .attr("y", (d) => y(Math.max(0, val(k, d)))).attr("height", (d) => Math.max(1, Math.abs(y(val(k, d)) - y(0))))
@@ -580,8 +618,8 @@
       .attr("x", (d) => x(d) + x.bandwidth() / 2).attr("y", h - 3).attr("text-anchor", "middle").text((d) => `'${String(d).slice(2)}`);
     const cx = (yy) => x(yy) + x.bandwidth() / 2;
     hover(svg, m, w, h, cx, ys, (yy) => {
-      const s = val("stat", yy), k = val("krei", yy);
-      return `<b>${yy}년</b>확정 ${int(at(NATION, "y", yy))}kg · 통계청 ${kgS(s)} · KREI ${ok(k) ? kgS(k) : "없음"}`;
+      const s = val("stat", yy), k = val("krei", yy), a = val("m0915", yy), b = val("m1010", yy);
+      return `<b>${yy}년</b>확정 ${int(at(NATION, "y", yy))}kg · 통계청 ${kgS(s)} · KREI ${ok(k) ? kgS(k) : "없음"}${ok(a) ? ` · 모델 9/15 ${kgS(a)}` : ""}${ok(b) ? ` · 모델 10월 ${kgS(b)}` : ""}`;
     });
   }
 
@@ -589,7 +627,8 @@
   function renderUnit(animate = false) {
     const k = state.key, y = state.year;
     $("#unit-name").textContent = fullLabel(k);
-    $("#unit-year").textContent = `${y}년`;
+    const fr = fcRow(k, y);
+    $("#unit-year").textContent = `${y}년${fr ? " 예측" : ""}`;
     const yv = at(k, "y", y), n = at(k, "n", y);
     const a = at(k, "a", y), p = at(k, "p", y);
     $("#u-prod").textContent = !ok(p) ? "–" : p >= 1e4 ? nf1.format(p / 1e4) : int(p);
@@ -598,20 +637,24 @@
     $("#u-yield").textContent = int(yv);
     $("#u-dev").innerHTML = deltaHTML(at(k, "d", y), "평년 대비");
     const a10 = ratio(a, at(k, "a", y - 10));
-    $("#u-line").innerHTML = ok(a) ? `<span>재배면적 <b>${haS(a)}</b>${ok(a10) ? ` (10년 전 대비 ${pctS(a10)})` : ""}</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}` : `<span>${y}년 시군 자료 없음</span>`;
-    $("#unit-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="prev"></i>평년</span>`;
+    const other = FC && FC.cur === "1010" ? FC.v["0915"]?.[k] : null;
+    $("#u-line").innerHTML = fr
+      ? `<span>80% 범위 <b>${tonS(fr[5])}~${tonS(fr[6])}</b> · 단수 <b>${int(fr[3])}~${int(fr[4])}kg</b></span><span>재배면적 <b>${haS(a)}</b>(추정)</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}${other ? `<span>${FC.lab["0915"]} 예측 <b>${int(other[0])}kg</b></span>` : ""}`
+      : ok(a) ? `<span>재배면적 <b>${haS(a)}</b>${ok(a10) ? ` (10년 전 대비 ${pctS(a10)})` : ""}</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}` : `<span>${y}년 시군 자료 없음</span>`;
+    $("#unit-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="prev"></i>평년</span>${FC?.bt[k] || fcRow(k, FCY) ? `<span><i class="fc"></i>모델 예측(${FC.lab[FC.cur]})</span>` : ""}`;
     drawUnit(animate);
     drawProd();
   }
   function unitYears() {
-    return d3.range(UFROM, LASTY + 1);
+    return d3.range(UFROM, Math.max(LASTY, FC && fcRow(state.key, FCY) ? FCY : LASTY) + 1);
   }
   function drawUnit(animate = false) {
     const k = state.key, el = $("#chart-unit");
     const { svg, w, h } = frame(el, 150);
     const ys = unitYears();
-    const fin = (y) => at(k, "y", y), nor = (y) => at(k, "n", y);
-    const vals = ys.flatMap((y) => [fin(y), nor(y)]).filter(ok);
+    const fin = (y) => atv(k, "y", y), nor = (y) => at(k, "n", y);
+    const bt = FC?.bt[k], btv = (yy) => (bt ? bt[YI[yy]] : null), fr = fcRow(k, FCY);
+    const vals = ys.flatMap((y) => [fin(y), nor(y), btv(y)]).concat(fr ? [fr[0], fr[3], fr[4]] : []).filter(ok);
     if (!vals.length) { svg.append("text").attr("x", 8).attr("y", 20).attr("class", "pw-empty").text("자료 없음"); return; }
     const m = { l: 34, r: 10, t: 8, b: 16 };
     const x = d3.scaleLinear().domain([ys[0] - 0.4, ys.at(-1) + 0.4]).range([m.l, w - m.r]);
@@ -625,14 +668,25 @@
     g.append("path").attr("class", "rc-norm").attr("d", line(nor)(ys));
     g.append("path").attr("class", "pw-cur").attr("d", line(fin)(ys));
     if (ok(fin(state.year))) g.append("circle").attr("class", "pw-dot").attr("cx", x(state.year)).attr("cy", y(fin(state.year))).attr("r", 4);
-    hover(svg, m, w, h, x, ys, (yy) => (ok(fin(yy)) ? `<b>${yy}년</b>${int(fin(yy))}kg${ok(nor(yy)) ? ` · 평년 ${int(nor(yy))} · ${pctS(at(k, "d", yy))}` : ""}` : `<b>${yy}년</b>자료 없음`), pickYear);
+    // 모델 예측: 지난해들은 그해 이전 자료로만 맞춘 재현(작은 빈 점), 예측 연도는 80% 범위와 큰 점
+    g.selectAll("circle.rc-fc").data(ys.filter((yy) => ok(btv(yy)))).join("circle").attr("class", "rc-fc")
+      .attr("cx", (d) => x(d)).attr("cy", (d) => y(btv(d))).attr("r", 2.3);
+    if (fr) {
+      if (ok(fr[3])) g.append("line").attr("class", "rc-fcw").attr("x1", x(FCY)).attr("x2", x(FCY)).attr("y1", y(fr[3])).attr("y2", y(fr[4]));
+      g.append("circle").attr("class", "rc-fc now").attr("cx", x(FCY)).attr("cy", y(fr[0])).attr("r", 4);
+    }
+    hover(svg, m, w, h, x, ys, (yy) => {
+      if (yy === FCY && fr) return `<b>${yy}년 예측</b>${int(fr[0])}kg${ok(fr[3]) ? ` (80% ${int(fr[3])}~${int(fr[4])})` : ""}${ok(nor(yy)) ? ` · 평년 ${int(nor(yy))}` : ""}`;
+      if (!ok(fin(yy))) return `<b>${yy}년</b>자료 없음`;
+      return `<b>${yy}년</b>${int(fin(yy))}kg${ok(nor(yy)) ? ` · 평년 ${int(nor(yy))} · ${pctS(at(k, "d", yy))}` : ""}${ok(btv(yy)) ? ` · 모델 ${int(btv(yy))} (${kgS(btv(yy) - fin(yy))})` : ""}`;
+    }, pickYear);
   }
   function drawProd() {
     const k = state.key, el = $("#chart-prod");
     const { svg, w, h } = frame(el, 100);
     const ys = unitYears();
-    const av = (y) => at(k, "p", y);
-    const max = d3.max(ys, av);
+    const av = (y) => at(k, "p", y), fr = fcRow(k, FCY);
+    const max = Math.max(d3.max(ys, av) || 0, fr && ok(fr[6]) ? fr[6] : 0);
     if (!max) { svg.append("text").attr("x", 8).attr("y", 20).attr("class", "pw-empty").text("자료 없음"); return; }
     const m = { l: 34, r: 10, t: 6, b: 16 };
     const x = d3.scaleBand().domain(ys).range([m.l, w - m.r]).padding(0.2);
@@ -640,11 +694,14 @@
     const short = (d) => (!d ? "0" : max >= 1e5 ? `${nf0.format(d / 1e4)}만` : max >= 1e4 ? `${nf1.format(d / 1e4)}만` : max >= 1e3 ? `${nf1.format(d / 1e3)}천` : int(d));
     yAxis(svg, y, m, w, 2, short);
     svg.append("g").selectAll("rect").data(ys.filter((yy) => ok(av(yy)))).join("rect")
-      .attr("class", (d) => `rc-bar${d === state.year ? " sel" : ""}`)
+      .attr("class", (d) => `rc-bar${d === state.year ? " sel" : ""}${fcRow(k, d) ? " fc" : ""}`)
       .attr("x", (d) => x(d)).attr("width", x.bandwidth()).attr("y", (d) => y(av(d))).attr("height", (d) => y(0) - y(av(d))).attr("rx", 1.5);
+    if (fr && ok(fr[5]) && x(FCY) != null) svg.append("line").attr("class", "rc-fcw").attr("x1", x(FCY) + x.bandwidth() / 2).attr("x2", x(FCY) + x.bandwidth() / 2).attr("y1", y(fr[5])).attr("y2", y(fr[6]));
     const cx = (yy) => x(yy) + x.bandwidth() / 2;
     xYears(svg, cx, h, ys, 5);
-    hover(svg, m, w, h, cx, ys, (yy) => (ok(av(yy)) ? `<b>${yy}년</b>생산량 ${tonS(av(yy))} · 재배면적 ${haS(at(k, "a", yy))} · 단수 ${int(at(k, "y", yy))}kg` : `<b>${yy}년</b>자료 없음`), pickYear);
+    hover(svg, m, w, h, cx, ys, (yy) => (!ok(av(yy)) ? `<b>${yy}년</b>자료 없음`
+      : fcRow(k, yy) ? `<b>${yy}년 예측</b>생산량 ${tonS(av(yy))}${ok(fr[5]) ? ` (80% ${tonS(fr[5])}~${tonS(fr[6])})` : ""} · 면적 ${haS(at(k, "a", yy))} · 단수 ${int(at(k, "y", yy))}kg`
+      : `<b>${yy}년</b>생산량 ${tonS(av(yy))} · 재배면적 ${haS(at(k, "a", yy))} · 단수 ${int(at(k, "y", yy))}kg`), pickYear);
   }
 
   // ---------- 오른쪽: 위성 생육 (MODIS 250m 논 격자 NDVI, 8일 합성) ----------

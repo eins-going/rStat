@@ -149,3 +149,21 @@
 .rc-read.in { animation: rc-rise 0.6s ease-out both; animation-delay: var(--d, 0s); }
 @keyframes rc-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .rc-read.in { animation: none; } .rc-head { display: none; } }
+
+/* 모델 예측 */
+.rc-e-m0915 { fill: #e0a458; }
+.rc-e-m1010 { fill: #f06f8f; }
+.pw-key i.statb, .pw-key i.kreib, .pw-key i.m0915b, .pw-key i.m1010b { height: 9px; }
+.pw-key i.m0915b { background: #e0a458; }
+.pw-key i.m1010b { background: #f06f8f; }
+.pw-key i.fc { width: 9px; height: 9px; border-radius: 50%; background: none; border: 1.6px solid #f06f8f; }
+.rc-fc { fill: var(--panel); stroke: #f06f8f; stroke-width: 1.4; }
+.rc-fc.now { fill: #f06f8f; }
+.rc-fcw { stroke: #f06f8f; stroke-width: 2; stroke-linecap: round; opacity: 0.55; }
+.rc-fcd { fill: #f06f8f; }
+.rc-bar.fc { fill: none; stroke: #f06f8f; stroke-width: 1.2; stroke-dasharray: 3 2; }
+.rc-bar.fc.sel { fill: rgba(240, 111, 143, 0.25); }
+.rc-fctag { color: #f06f8f; font-weight: 600; }
+.rc-fcl b { color: #f06f8f; }
+.rc-acc-sg { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.rc-acc-sg b { color: #f06f8f; font-weight: 600; }

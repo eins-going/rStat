@@ -27,6 +27,9 @@
     cells: {"36|해남군": 논 격자 수(연도·합성 중앙값)}
   }
   격자 수가 CELL_MIN 미만인 시군은 넣지 않는다. 평년 곡선(직전 5년 doy별 평균·범위)은 화면에서 계산한다
+모델 예측(fc): db/clean/rice/rice_forecast.csv (y, asof 0915|1010, level nation|sido|sigun, sc, name, yield, area, prod, y_lo, y_hi, p_lo, p_hi)
+  0915 = 기상 작물 모델(9/15까지 기상), 1010 = 통계청 시도 예상 + 태풍 보정 + 작물 모델. 범위는 그해 이전 검증 오차의 10~90%.
+  2013~2025는 그해 이전 자료로만 맞춘 재현값 → 정확도. fc: {year, cur, lab, v:{asof:{키:[단수,면적,생산량,단수 하한,상한,생산량 하한,상한]}}, bt:{키:[years 순 cur 시점 단수]}}
 실행: python scripts/build_rice.py
 """
 import csv
@@ -41,6 +44,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KOSIS = os.path.join(ROOT, "db", "raw", "kosis_rice", "dt_1et0034.csv")
 KREI = os.path.join(ROOT, "db", "raw", "krei", "krei_rice_outlook.csv")
 MODIS = os.path.join(ROOT, "db", "clean", "rice", "modis_curves.csv")
+FCSV = os.path.join(ROOT, "db", "clean", "rice", "rice_forecast.csv")  # 모델 예측(연구 결과 내보내기)
+FC_LAB = {"0915": "9월 15일", "1010": "10월"}
+FC_COLS = ("yield", "area", "prod", "y_lo", "y_hi", "p_lo", "p_hi")
 OUT = os.path.join(ROOT, "data", "rice.js")
 CELL_MIN = 8  # 논 격자가 이보다 적은 시군은 생육 곡선을 싣지 않는다
 
@@ -71,6 +77,20 @@ def unit_key(code, name):
     # 시도 코드가 바뀐 행(통합 특별시 등): 이름이 한 곳에만 있으면 그 시군
     hit = [k for k in UNIT_KEYS if k.split("|")[1] == name]
     return hit[0] if len(hit) == 1 else None
+
+
+def load_fc():
+    """모델 예측 → {asof: {키: {연도: [단수, 면적, 생산량, 단수 하한, 상한, 생산량 하한, 상한]}}} (파일 없으면 None)"""
+    if not os.path.exists(FCSV):
+        return None
+    out = defaultdict(lambda: defaultdict(dict))
+    for r in csv.DictReader(open(FCSV, encoding="utf-8")):
+        lv = r["level"]
+        key = "00" if lv == "nation" else r["sc"] if lv == "sido" else unit_key(r["sc"] + "000", r["name"])
+        if not key or (lv == "sido" and key not in SIDOS):
+            continue
+        out[r["asof"]][key][int(float(r["y"]))] = [num(r[c]) for c in FC_COLS]
+    return out
 
 
 def olympic(vals):
@@ -123,9 +143,47 @@ def build_ndvi():
             "v": dict(sorted(v.items())), "cells": dict(sorted((k, med[k]) for k in keep))}
 
 
+def build_fc(fc, years, Y, v, final, outlook, acc):
+    """예측 연도(확정 없는 마지막 해)의 시점별 값 + 재현 정확도(전국·8도·시군)를 acc에 더한다"""
+    fy = max(y for a in fc.values() for d in a.values() for y in d)
+    cur = "1010" if outlook.get(str(fy), {}).get("stat") and "1010" in fc else "0915"
+    out = {"year": fy, "cur": cur, "lab": FC_LAB,
+           "v": {a: {k: [None if x is None else round(x, 1) for x in d[fy]] for k, d in sorted(fc[a].items()) if fy in d} for a in fc},
+           "bt": {}}
+    for k, d in fc[cur].items():
+        if k in v:
+            out["bt"][k] = [round(d[y][0], 1) if y in d and d[y][0] is not None and y < fy else None for y in years]
+    P8 = ("31", "32", "33", "34", "35", "36", "37", "38")
+    for a in fc:
+        # 전국: 확정 대비 오차
+        e = [[y, round(fc[a]["00"][y][0] - final[y], 1)] for y in sorted(fc[a].get("00", {})) if y in final and y >= ERR_FROM]
+        xs = [x for _, x in e]
+        if xs:
+            acc[f"m{a}"] = {"n": len(xs), "mae": round(sum(map(abs, xs)) / len(xs), 1), "bias": round(sum(xs) / len(xs), 1),
+                            "rmse": round((sum(x * x for x in xs) / len(xs)) ** 0.5, 1), "max": max(xs, key=abs)}
+            acc["years"][f"m{a}"] = e
+        # 8도·시군: 면적 가중 RMSE (모델·평년)
+        for lv, keys in (("sido8", P8), ("sigun", [k for k in fc[a] if "|" in k])):
+            se = sb = w = 0.0
+            for k in keys:
+                for y, r in fc[a].get(k, {}).items():
+                    if k not in v or y not in Y or y < ERR_FROM:
+                        continue
+                    obs, n, ar = v[k]["y"][Y[y]], v[k]["n"][Y[y]], v[k]["a"][Y[y]]
+                    if obs is None or n is None or not ar or r[0] is None:
+                        continue
+                    se += ar * (r[0] - obs) ** 2; sb += ar * (n - obs) ** 2; w += ar
+            if w:
+                acc.setdefault(lv, {})[f"m{a}"] = round((se / w) ** 0.5, 1)
+                acc[lv]["norm"] = round((sb / w) ** 0.5, 1)
+    print("예측", fy, cur, {k: acc.get(k) for k in ("m0915", "m1010", "sido8", "sigun")})
+    return out
+
+
 def main():
     rows = list(csv.DictReader(open(KOSIS, encoding="utf-8")))
-    years = sorted({int(r["year"]) for r in rows})
+    fc = load_fc()
+    years = sorted({int(r["year"]) for r in rows} | ({y for a in fc.values() for d in a.values() for y in d} if fc else set()))
     Y = {y: i for i, y in enumerate(years)}
     N = len(years)
     sido_raw = defaultdict(lambda: defaultdict(dict))   # key → field → year → value
@@ -258,6 +316,8 @@ def main():
     acc = {"from": ERR_FROM, "stat": summary(err["stat"]), "krei": summary(err["krei"]), "norm": summary(base),
            "years": {"stat": err["stat"], "krei": err["krei"], "norm": base}}
 
+    fcd = build_fc(fc, years, Y, v, final, outlook, acc) if fc else None
+
     data = {
         "built": time.strftime("%Y-%m-%d"),
         "years": years,
@@ -265,6 +325,7 @@ def main():
         "v": dict(sorted(v.items())),
         "outlook": outlook,
         "acc": acc,
+        "fc": fcd,  # 모델 예측 (형식은 이 파일 머리 주석)
         "ndvi": build_ndvi(),  # 위성 생육 곡선 (형식은 이 파일 머리 주석)
     }
     with open(OUT, "w", encoding="utf-8") as fh:
