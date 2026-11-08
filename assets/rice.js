@@ -473,7 +473,7 @@
     xYears(svg, x, h, ys, 5);
     // 고른 연도 표시
     if (state.year >= NFROM) svg.append("line").attr("class", "pw-mark").attr("x1", x(state.year)).attr("x2", x(state.year)).attr("y1", m.t).attr("y2", h - m.b);
-    const g = sweepClip(svg, el, m.l, w, h, animate);
+    const g = sweepClip(svg, el, m.l, w, h, false);
     const line = (f) => d3.line().defined((d) => ok(f(d))).x((d) => x(d)).y((d) => y(f(d)));
     g.append("path").attr("class", "rc-norm").attr("d", line(nor)(ys));
     g.append("path").attr("class", "pw-cur").attr("d", line(fin)(ys));
@@ -516,7 +516,7 @@
     yAxis(svg, y, m, w, h < 120 ? 3 : 4, (d) => nf0.format(d / 1e4));
     xYears(svg, x, h, ys, 5);
     if (state.year >= NFROM) svg.append("line").attr("class", "pw-mark").attr("x1", x(state.year)).attr("x2", x(state.year)).attr("y1", m.t).attr("y2", h - m.b);
-    const g = sweepClip(svg, el, m.l, w, h, animate);
+    const g = sweepClip(svg, el, m.l, w, h, false);
     g.append("path").attr("class", "pw-cur").attr("d", d3.line().defined((d) => ok(fin(d))).x((d) => x(d)).y((d) => y(fin(d)))(ys));
     const sys = ys.filter((yy) => ok(est(yy)));
     g.selectAll("circle.rc-stat").data(sys).join("circle").attr("class", (d) => `rc-stat${d === CUR ? " now" : ""}`)
@@ -620,7 +620,7 @@
     yAxis(svg, y, m, w, h < 120 ? 3 : 4, (d) => d);
     xYears(svg, x, h, ys, 5);
     svg.append("line").attr("class", "pw-mark").attr("x1", x(state.year)).attr("x2", x(state.year)).attr("y1", m.t).attr("y2", h - m.b);
-    const g = sweepClip(svg, el, m.l, w, h, animate);
+    const g = sweepClip(svg, el, m.l, w, h, false);
     const line = (f) => d3.line().defined((d) => ok(f(d))).x((d) => x(d)).y((d) => y(f(d)));
     g.append("path").attr("class", "rc-norm").attr("d", line(nor)(ys));
     g.append("path").attr("class", "pw-cur").attr("d", line(fin)(ys));
@@ -1229,7 +1229,7 @@
   renderNat();
   renderAcc();
   render(false);
-  // 처음 열 때 선이 왼쪽에서 오른쪽으로 드러난다
+  // 처음 열 때 위성 생육 곡선만 왼쪽에서 오른쪽으로 자란다 (단수·생산량 그래프는 움직이지 않는다)
   drawNat(true);
   drawUnit(true);
   drawNdvi(true);
