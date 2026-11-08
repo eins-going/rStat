@@ -276,7 +276,32 @@ def check_ruraldev(old, new):
     return not problems, changes, problems
 
 
-CHECKS = {"ruraldev": ("data/ruraldev.js", check_ruraldev), "gohyang": ("data/gohyang.js", check_gohyang), "jikbul": ("data/jikbul.js", check_jikbul), "kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
+def check_rice(old, new):
+    changes, problems = [], []
+    nat = new["v"]["00"]
+    last = max(y for y, v in zip(new["years"], nat["y"]) if v is not None)
+    olast = max(y for y, v in zip(old["years"], old["v"]["00"]["y"]) if v is not None) if old else 0
+    if last < olast:
+        problems.append(f"확정 마지막 해가 뒤로 갔다 ({olast} → {last})")
+    elif last != olast:
+        changes.append(f"쌀 확정 {olast or '–'} → {last}년")
+    if not 400 < nat["y"][new["years"].index(last)] < 650:
+        problems.append(f"전국 단수가 이상하다 ({nat['y'][new['years'].index(last)]})")
+    units = [k for k in new["v"] if "|" in k]
+    if len(units) < 140:
+        problems.append(f"시군이 {len(units)}곳뿐이다")
+    nv, onv = new.get("ndvi"), (old or {}).get("ndvi")
+    if nv:
+        n_new = sum(v is not None for v in nv["v"]["00"][-1])
+        n_old = sum(v is not None for v in onv["v"]["00"][-1]) if onv and onv["years"][-1] == nv["years"][-1] else 0
+        if onv and nv["years"][-1] < onv["years"][-1]:
+            problems.append("위성 생육 마지막 해가 뒤로 갔다")
+        elif n_new != n_old or not onv or nv["years"][-1] != onv["years"][-1]:
+            changes.append(f"위성 생육 {nv['years'][-1]}년 합성 {n_new}개")
+    return not problems, changes, problems
+
+
+CHECKS = {"rice": ("data/rice.js", check_rice), "ruraldev": ("data/ruraldev.js", check_ruraldev), "gohyang": ("data/gohyang.js", check_gohyang), "jikbul": ("data/jikbul.js", check_jikbul), "kosis": ("data/data.js", check_kosis), "kepco": ("data/power.js", check_kepco), "employ": ("data/employ.js", check_employ),
           "logistics": ("data/logistics.js", check_logistics), "facilities": ("data/facilities.js", check_facilities),
           "nhcoop": ("data/nhcoop.js", check_nhcoop), "apfs": ("data/apfs.js", check_apfs),
           "soil": ("data/soil.js", check_soil), "livestock": ("data/livestock.js", check_livestock)}
@@ -284,7 +309,7 @@ CHECKS = {"ruraldev": ("data/ruraldev.js", check_ruraldev), "gohyang": ("data/go
 
 def period_of(src):
     """status에 보일 자료 시점."""
-    if src["id"].startswith("kosis_") and src.get("dataset"):
+    if (src["id"].startswith("kosis_") or src["id"].startswith("rice")) and src.get("dataset"):
         return dataset_period(src["dataset"][0])
     try:
         if src["id"] == "kosis":
@@ -605,6 +630,16 @@ def dataset_period(ds):
             return (f"{done[-1]['y']}년" if done else "") + ("" if cur["m"] == 12 else f" (올해 {cur['m']}월 누계)")
         if kind == "soil":
             return f"{read_js('data/soil.js')['tag']}년 수집"
+        if kind == "rice":
+            d = read_js("data/rice.js")
+            if arg == "ndvi":
+                nv = d["ndvi"]
+                row = nv["v"]["00"][-1]
+                j = max(i for i, v in enumerate(row) if v is not None)
+                day = dt.date(nv["years"][-1], 1, 1) + dt.timedelta(nv["doy"][j] - 1)
+                return f"{day.year}년 {day.month}월 {day.day}일 합성까지"
+            nat = d["v"]["00"]["y"]
+            return f"{max(y for y, v in zip(d['years'], nat) if v is not None)}년"
         if kind == "livestock":
             y = read_js("data/livestock.js")["years"]
             return f"{y[0]}~{y[-1]}년"

@@ -648,6 +648,45 @@ cadence = "축산계와 같은 해"
 period = "livestock"
 
 [[source]]
+id = "rice"
+name = "벼 작황 (논벼 생산량 확정치)"
+page = "벼 작황"
+method = "auto"
+schedule = { kind = "yearly", months = [11], day = 14 }
+retry_days = 45
+commands = [["scripts/fetch_kosis_rice.py"], ["scripts/build_rice.py"]]
+outputs = ["data/rice.js"]
+check = "rice"
+keys = ["KOSIS_API_KEY"]
+note = "매년 11월 중순 쌀 생산량 확정 공표 다음 날부터 받는다. 확정치가 들어오면 화면의 '확정'과 '통계청 예상 오차'가 저절로 채워진다. 공표가 늦으면 45일 동안 1주마다 다시 확인한다. 통계청 10월 예상생산량·KREI 쌀 관측 전망(db/raw/krei/krei_rice_outlook.csv)은 해마다 9~10월에 직접 넣는다."
+
+[[source.dataset]]
+name = "논벼 재배면적·10a당 생산량·생산량 (시군, 정곡)"
+origin = "국가데이터처 농작물생산조사 (KOSIS DT_1ET0034)"
+freq = "연"
+cadence = "매년 11월 중순 확정 공표"
+period = "rice"
+
+[[source]]
+id = "rice_modis"
+name = "벼 작황 위성 생육 (MODIS 논 NDVI)"
+page = "벼 작황"
+method = "auto"
+schedule = { kind = "yearly", months = [6, 7, 8, 9, 10, 11, 12], day = 3 }
+commands = [["scripts/fetch_modis_earthdata.py"], ["scripts/build_modis_curves.py"], ["scripts/build_rice.py"]]
+outputs = ["data/rice.js"]
+check = "rice"
+keys = ["NASA_API_KEY (Earthdata 사용자 토큰)"]
+note = "생육기(5~11월) 동안 매달 3일에 NASA Earthdata에서 올해 MOD13Q1·MYD13Q1 새 합성을 받아 논 격자 생육 곡선을 잇는다. 합성은 16일 단위(Terra·Aqua 번갈아 8일 간격)로 끝나고 2~3주 뒤에 올라온다. Earthdata 사용자 토큰은 60일 뒤 만료(지금 토큰 2027-01-07)되니 urs.earthdata.nasa.gov에서 새로 받아 .env NASA_API_KEY를 바꾼다. 만료되면 이 작업이 실패로 알림이 온다."
+
+[[source.dataset]]
+name = "논 격자 NDVI 생육 곡선 (MODIS 250m, 팜맵 논 70% 이상 격자)"
+origin = "NASA LP DAAC MOD13Q1·MYD13Q1 v061 (2000~ Planetary Computer, 빈 합성은 Earthdata)"
+freq = "8일"
+cadence = "합성 끝나고 2~3주 뒤"
+period = "rice:ndvi"
+
+[[source]]
 id = "live"
 name = "팜맵 필지·VWorld 지도 (자세히 보기)"
 page = "주요 통계 > 자세히 보기"

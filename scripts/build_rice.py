@@ -20,7 +20,7 @@
 - err: 기관별 오차(전망 − 확정, kg/10a). 요약은 KREI가 9월 하순 전망을 낸 2013년부터의 공통 기간
 
 위성 생육(ndvi): db/clean/rice/modis_curves.csv (level sigun/sido/nation, sido 이름, sigun 이름, y, doy, ndvi, n 논 격자 수)
-  MODIS 250m 논 격자(팜맵 논 70% 이상) 평균 NDVI, 8일 간격 합성 시작일(doy). 빈 합성은 행이 없다(2025년 7~10월 등)
+  MODIS 250m 논 격자(팜맵 논 70% 이상) 평균 NDVI, 8일 간격 합성 시작일(doy). 빈 합성은 행이 없다(PC에 없던 합성은 NASA Earthdata로 채움)
   ndvi: {
     src, years: [2000, …], doy: [113, 121, …, 305],
     v: {"36|해남군": [[…doy 순 NDVI×1000, 없으면 null…], …years 순…]},  # 광역시 구는 '○○시부'로 격자 수 가중 평균

@@ -5,7 +5,7 @@
   - doy: 합성 시작일의 day-of-year (Terra·Aqua가 번갈아 8일 간격)
   - ndvi: 논 비율 0.7 이상·한 시군 비중 0.6 이상 격자 중 품질 양호(신뢰도 0·1) 값의 중앙값
   - n: 쓴 격자 수 (n이 적으면 화면에서 흐리게)
-주의: Planetary Computer에 2025년 7~10월 MODIS가 없다(그 시기는 빈칸).
+빈 합성(Planetary Computer에 없는 2025년 7~10월 등)은 fetch_modis_earthdata.py가 NASA Earthdata 원본으로 채운다.
 """
 import glob
 import os
