@@ -815,9 +815,15 @@
     renderYoyGrid();
   }
   // 월별: 올해 · 작년 · 직전 5년 범위
-  function drawBand() {
+  // 올해 선은 왼쪽에서 오른쪽으로 그려진다(power.js와 같은 드러냄). 처음 열 때와 시도가 바뀔 때만, 창 크기만 바뀌면 그냥 그린다
+  // 드러내는 사이 크기가 바뀌어 다시 그려도 남은 시간만큼 이어 간다
+  const SWEEP = 1800;
+  function drawBand(animate = true) {
     const k = pulseKey(), i = lastMonth(k);
     const el = $("#chart-band");
+    const now = performance.now();
+    if (animate && el._swKey !== `${k}|${i}`) { el._sweep = now; el._swKey = `${k}|${i}`; }
+    const done = el._sweep == null ? 1 : Math.min(1, (now - el._sweep) / SWEEP);
     const { svg, w, h } = frame(el, 90);
     if (i < 0) { empty(svg); return; }
     const y0 = +M[i].slice(0, 4);
@@ -836,9 +842,17 @@
     svg.append("path").attr("class", "pw-bandarea").attr("d", d3.area().defined((d) => d).x((d, j) => x(months[j])).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveMonotoneX)(band));
     const line = d3.line().defined(ok).x((d, j) => x(months[j])).y((d) => y(d)).curve(d3.curveMonotoneX);
     svg.append("path").attr("class", "pw-prev").attr("d", line(prev));
-    svg.append("path").attr("class", "em-l-agri").attr("d", line(cur));
+    const sweep = done < 1, ease = d3.easeSinInOut;
+    const clip = svg.append("defs").append("clipPath").attr("id", "em-band-clip")
+      .append("rect").attr("x", 0).attr("y", 0).attr("height", h).attr("width", sweep ? m.l + (w - m.l) * ease(done) : w);
+    svg.append("path").attr("class", "em-l-agri").attr("d", line(cur)).attr("clip-path", "url(#em-band-clip)");
+    if (sweep) clip.transition().duration(SWEEP * (1 - done)).ease(d3.easeLinear)
+      .attrTween("width", () => (t) => m.l + (w - m.l) * ease(done + (1 - done) * t));
     const lm = +M[i].slice(5);
-    svg.append("circle").attr("class", "em-hdot").attr("cx", x(lm)).attr("cy", y(cur[lm - 1])).attr("r", 3.5);
+    const hdot = svg.append("circle").attr("class", "em-hdot").attr("cx", x(lm)).attr("cy", y(cur[lm - 1])).attr("r", 3.5);
+    // 마지막 달 점은 선이 그 자리에 닿을 때 나타난다
+    const tf = d3.bisector((t) => ease(t)).left(d3.range(0, 1.0001, 0.01), Math.min(1, (x(lm) - m.l) / (w - m.l))) / 100;
+    if (sweep && tf > done) hdot.style("opacity", 0).transition().delay(SWEEP * (tf - done)).duration(200).style("opacity", 1);
     // 마우스: 그달 세로선·점, 값은 그림 위 상자로 (브라우저 툴팁은 늦게 뜨거나 안 뜬다)
     const hv = svg.append("g").attr("class", "em-hover").style("display", "none");
     const ln = hv.append("line").attr("y1", m.t).attr("y2", h - m.b);
@@ -942,7 +956,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-long": drawLong, "chart-scatter": renderPlace, "chart-band": drawBand };
+  const redraw = { "chart-long": drawLong, "chart-scatter": renderPlace, "chart-band": () => drawBand(false) };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;

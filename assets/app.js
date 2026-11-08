@@ -331,6 +331,7 @@
     return { title: "전국", unit: "전국", geometry: nationGeom };
   }
 
+  let satShown = false; // 위성지도가 지금 떠 있나. 통계 지도에서 처음 넘어올 때만 크게 연다
   async function setView(v) {
     state.view = v;
     viewBtn.textContent = v === "sat" ? "통계지도 보기" : "위성지도 보기";
@@ -338,7 +339,7 @@
     viewBtn.title = v === "sat" ? "통계 지도로 돌아가기" : "항공영상·팜맵 농경지·유통시설·주제도";
     syncHash();
     syncReset();
-    if (v === "stats") { window.FarmView?.hide(); return; }
+    if (v === "stats") { satShown = false; window.FarmView?.hide(); return; }
     const k = state.key;
     viewSeg.classList.add("loading");
     try {
@@ -348,7 +349,9 @@
       window.FarmView.show(
         { card: $("#map-card"), bar: $("#sat-bar"), map: $("#sat-map"), info: $("#sat-info"), expand: $("#sat-expand") },
         { ...satRegion(k), key: k },
+        { full: !satShown },
       );
+      satShown = true;
     } catch {
       viewSeg.title = "자세히 보기를 불러오지 못했습니다. 다시 눌러 주세요.";
       if (state.key === k) setView("stats");

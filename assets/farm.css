@@ -84,8 +84,10 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 30px;
   height: 30px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  white-space: nowrap;
   color: var(--muted);
   background: var(--panel-2);
   border: 1px solid var(--line);

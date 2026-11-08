@@ -70,8 +70,6 @@
 
   const ICON = {
     search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
-    expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
-    shrink: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
   };
 
   function build(hosts) {
@@ -91,9 +89,9 @@
       <label class="fv-theme"><span>주제도</span><select data-ui="theme" aria-label="주제도">
         <option value="">없음</option>${THEMES.map((t) => `<option value="${t.id}">${t.name}</option>`).join("")}
       </select></label>
-      <button type="button" class="fv-expand fv-expand-in" data-ui="expand" aria-pressed="false" aria-label="크게 보기" title="크게 보기">${ICON.expand}</button>`;
+      <button type="button" class="fv-expand fv-expand-in" data-ui="expand" aria-pressed="false">크게 보기</button>`;
     // 크게 보기 단추는 제목 줄(app.js의 #sat-expand)에 두고, 크게 본 동안에는 지도 카드 안의 단추로 되돌린다
-    if (H.expand) H.expand.innerHTML = ICON.expand;
+    if (H.expand) H.expand.textContent = "크게 보기";
     H.map.innerHTML = `
       <div class="fv-map" data-ui="map"></div>
       <div class="fv-progress" aria-hidden="true"></div>
@@ -303,9 +301,9 @@
     for (const b of [ui.expand, H.expand]) {
       if (!b) continue;
       b.setAttribute("aria-pressed", on);
-      b.setAttribute("aria-label", on ? "작게 보기" : "크게 보기");
-      b.title = on ? "작게 보기 (Esc)" : "크게 보기";
-      b.innerHTML = on ? ICON.shrink : ICON.expand;
+      b.removeAttribute("aria-label");
+      b.title = on ? "Esc로도 작게 볼 수 있습니다" : "";
+      b.textContent = on ? "작게 보기" : "크게 보기";
     }
     syncDragging();
     requestAnimationFrame(() => map?.invalidateSize());
@@ -754,9 +752,10 @@
     if (H.expand) H.expand.hidden = !on;
   }
 
-  async function show(hosts, { title, unit, key, geometry }) {
+  async function show(hosts, { title, unit, key, geometry }, { full = false } = {}) {
     if (!H) build(hosts);
     toggleHosts(true);
+    if (full && !st.full) setFull(true); // 크기를 먼저 키워야 시군 범위를 큰 화면에 맞춘다
     if (!map) {
       hint("자세히 보기를 불러오는 중…");
       try {

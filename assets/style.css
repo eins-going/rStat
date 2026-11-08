@@ -518,7 +518,7 @@ body {
 .hero-actions { flex: none; display: inline-flex; align-items: center; gap: 6px; }
 .view-seg { display: inline-flex; }
 .view-seg[hidden], .hero-expand[hidden] { display: none; }
-.hero-expand { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.hero-expand { display: grid; place-items: center; height: 30px; padding: 0 10px; font-size: 12.5px; white-space: nowrap; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .hero-expand svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 760px) {
   .hero-line { flex-wrap: wrap; }
