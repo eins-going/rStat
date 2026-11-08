@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>벼 작황</title>
+  <meta name="description" content="쌀 단수(10a당 생산량)를 시군·연도별로 평년과 비교하고, 통계청 예상·KREI 전망의 정확도와 시군 위성 영상(Sentinel-2·Landsat·레이더)을 함께 봅니다.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/power.css">
+  <link rel="stylesheet" href="assets/rice.css">
+</head>
+<body class="rc">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>지역농업 현황판</span>
+        </a>
+        <nav class="tabs" aria-label="화면">
+          <a href="./">주요 통계</a>
+          <a href="rio">지역산업연관표(농업)</a>
+          <a href="flow">물류동향</a>
+          <a href="power">농사용 전기</a>
+          <a href="employ">농업고용</a>
+          <a href="agfin">농업금융보험</a>
+          <a href="jikbul">직불금·고향사랑</a>
+          <a href="ruraldev">농촌개발</a>
+          <a href="soil">농경지 토양</a>
+          <a href="livestock">축산 환경</a>
+          <a href="rice" aria-current="page">벼 작황</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <label class="select">
+          <span>시도</span>
+          <select id="sido"></select>
+        </label>
+        <label class="select">
+          <span>시군구</span>
+          <select id="sgg"></select>
+        </label>
+        <label class="select">
+          <span>연도</span>
+          <select id="year"></select>
+        </label>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="col col-left" aria-label="전국 단수와 전망">
+        <article class="panel" id="p-nat">
+          <header class="panel-head">
+            <h2>전국 쌀 단수</h2>
+            <span class="chip">10a당 · 정곡</span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label" id="nat-l1"></span>
+              <span class="stat-value"><b id="nat-v1"></b><small id="nat-u1"></small></span>
+              <span class="delta" id="nat-d1"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label" id="nat-l2"></span>
+              <span class="stat-value"><b id="nat-v2"></b><small id="nat-u2"></small></span>
+              <span class="delta" id="nat-d2"></span>
+            </div>
+          </div>
+          <p class="sub-line" id="nat-line"></p>
+          <h3 class="sub-head">연도별 단수 <span>누르면 그해로</span></h3>
+          <div class="chart rc-chart" id="chart-nat" aria-label="전국 단수: 확정치와 전망"></div>
+          <div class="pw-key" id="nat-key"></div>
+        </article>
+
+        <article class="panel" id="p-acc">
+          <header class="panel-head">
+            <h2>전망 정확도</h2>
+            <span class="chip" id="acc-range"></span>
+          </header>
+          <div class="rc-acc" id="acc-rows"></div>
+          <p class="rc-test" title="2013~2024 실시간 시험(전국 단수 RMSE): 평년값 그대로 22.9 → 기상 지수 20.5 · 위성 생육 지수(MODIS) 24.4kg. 2020년 감수는 둘 다 못 잡음">위성·기상 지수만으로는 평년보다 나은 단수 예측이 안 됨 <span class="rc-i" aria-hidden="true">ⓘ</span></p>
+          <h3 class="sub-head">연도별 오차 <span>전망 − 확정</span></h3>
+          <div class="chart rc-chart" id="chart-err" aria-label="연도별 전망 오차"></div>
+          <div class="pw-key" id="err-key"></div>
+        </article>
+      </section>
+
+      <section class="center" aria-label="지도">
+        <div class="hero">
+          <div class="hero-line">
+            <h1><span class="crumb" id="crumb"></span><span id="title-region">전국</span> <span id="title-what">벼 작황</span></h1>
+            <span class="hero-actions">
+              <button type="button" class="view-btn" id="view-btn" hidden>위성 영상 보기</button>
+            </span>
+          </div>
+        </div>
+        <div class="map-card" id="map-card">
+          <div class="chipbar">
+            <div class="chips" id="chips" role="group" aria-label="지도에 표시할 지표"></div>
+          </div>
+          <div class="rc-satbar" id="sat-bar" hidden></div>
+          <div class="map-wrap" id="map-wrap">
+            <svg id="map" role="img" aria-label="시군 지도"></svg>
+            <div class="rc-satmap" id="sat-map" hidden></div>
+            <p class="rc-hint" id="sat-hint" aria-live="polite" hidden></p>
+            <div class="tip" id="tip" hidden></div>
+            <button class="reset" id="reset" type="button" hidden></button>
+          </div>
+          <div class="rc-dates" id="sat-dates" hidden>
+            <div class="rc-dstrip" id="sat-strip" aria-label="영상 날짜"></div>
+          </div>
+          <div class="rc-slegend" id="sat-legend" hidden></div>
+          <div class="legend" id="legend"></div>
+          <p class="pw-mnote" id="metric-note"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section class="col col-right" aria-label="고른 지역의 단수">
+        <article class="panel" id="p-unit">
+          <header class="panel-head">
+            <h2><span id="unit-name">전국</span> 단수</h2>
+            <span class="chip" id="unit-year"></span>
+          </header>
+          <div class="stats two">
+            <div class="stat">
+              <span class="stat-label">10a당 생산량</span>
+              <span class="stat-value"><b id="u-yield"></b><small>kg</small></span>
+              <span class="delta" id="u-yoy"></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">평년 대비</span>
+              <span class="stat-value"><b id="u-dev"></b></span>
+              <span class="delta" id="u-norm"></span>
+            </div>
+          </div>
+          <p class="sub-line" id="u-line"></p>
+          <h3 class="sub-head">연도별 단수 <span>평년과 함께 · 누르면 그해로</span></h3>
+          <div class="chart rc-chart" id="chart-unit" aria-label="고른 지역 연도별 단수와 평년"></div>
+          <div class="pw-key" id="unit-key"></div>
+          <h3 class="sub-head">재배면적 <span id="area-note"></span></h3>
+          <div class="chart rc-chart" id="chart-area" aria-label="고른 지역 연도별 재배면적"></div>
+        </article>
+
+        <article class="panel" id="p-ndvi">
+          <header class="panel-head">
+            <h2>위성 생육 <span class="h2-scope" id="ndvi-scope"></span></h2>
+            <span class="rc-nsel">
+              <label class="rc-ysel"><select id="ndvi-year" aria-label="기준 연도"></select></label>
+              <span class="rc-vs">비교</span>
+              <label class="rc-ysel"><select id="ndvi-cmp" aria-label="비교 연도"></select></label>
+            </span>
+          </header>
+          <p class="rc-read" id="ndvi-read"></p>
+          <div class="chart rc-chart" id="chart-ndvi" aria-label="논 NDVI 곡선과 평년 범위"></div>
+          <div class="pw-key" id="ndvi-key"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p title="단수·재배면적·생산량은 논벼(정곡) 기준 국가데이터처 농작물생산조사. 시군은 현행 시군으로 묶었고(청원→청주, 마산·진해→창원, 연기→세종), 광역시 구·군은 2016년부터 시군 값이 없습니다. 평년은 직전 5년 중 최고·최저를 뺀 3년 평균. 통계청 예상은 10월 예상생산량, KREI는 통계청 예상 발표 전 마지막 쌀 관측 전망(범위는 가운데 값). 위성 영상은 Microsoft Planetary Computer 미리보기 타일이라 느리거나 끊길 수 있습니다.">자료: 국가데이터처 농작물생산조사(논벼)·쌀 예상생산량, 한국농촌경제연구원 농업관측(쌀). 생육 곡선: MODIS 250m 논 격자(팜맵 논 70% 이상). 위성 영상: Microsoft Planetary Computer(Copernicus Sentinel-2·1, USGS Landsat). 지도: 국가데이터처 SGIS 행정동 경계(vuski/admdongkor 가공본)를 현행 시군으로 묶음.</p>
+      <p id="built"></p>
+      <p class="foot-link"><a href="status">자료 수집 현황</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="data/rice.js"></script>
+  <script src="assets/mappan.js"></script>
+  <script src="assets/rice.js"></script>
+  <script src="assets/legendpick.js"></script>
+  <script src="assets/about.js"></script>
+</body>
+</html>
