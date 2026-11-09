@@ -193,3 +193,28 @@
 .rc-fcline .lab { color: #f06f8f; font-weight: 600; }
 .rc-fcline b { color: var(--text); }
 .rc-fcline .cur b { color: #f06f8f; }
+/* 예측 시점별 정확도 */
+.rc-acct { height: 118px; min-height: 96px; flex: none; }
+.rc-acc-line { fill: none; stroke: #f06f8f; stroke-width: 1.8; }
+.rc-acc-line.dash { stroke-dasharray: 3 3; }
+.rc-acc-pt { fill: var(--panel); stroke: #f06f8f; stroke-width: 1.6; }
+.rc-acc-pt.cur { fill: #f06f8f; }
+.rc-acc-org.stat { fill: #5fb3ff; }
+.rc-acc-org.krei { fill: #5fb37c; }
+.rc-acc-norm { stroke: var(--faint); stroke-dasharray: 4 3; stroke-width: 1; }
+.rc-acc-v { font-size: 10.5px; fill: var(--text); }
+.rc-acc-o, .rc-acc-nl, .rc-acc-cap { font-size: 10.5px; fill: var(--muted); }
+.rc-acc-key { margin-top: 0; }
+.rc-acc-key i.rc-k-m { width: 9px; height: 9px; border-radius: 50%; border: 1.6px solid #f06f8f; background: transparent; }
+.rc-acc-key i.rc-k-stat { width: 8px; height: 8px; background: #5fb3ff; }
+.rc-acc-key i.rc-k-krei { width: 8px; height: 8px; background: #5fb37c; }
+.rc-acc-key b { color: var(--text); font-weight: 600; }
+.rc-fctab thead th:first-child small { margin-left: 0; }
+@media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) {
+  .rc .rc-fctab { margin-top: 4px; font-size: 11.5px; }
+  .rc .rc-fctab th, .rc .rc-fctab td { padding: 1px 4px; white-space: nowrap; }
+  .rc .rc-fctab tr.cur b { font-size: 14px; }
+  .rc .rc-fctab small { font-size: 10px; }
+  .rc #p-unit .sub-line { margin-top: 3px; }
+  .rc .rc-acct { height: 104px; }
+}

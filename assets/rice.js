@@ -471,9 +471,17 @@
     // 모델 예측은 따로 한 줄: 시점별 생산량(단수), 최근 시점 먼저
     const fcEl = $("#nat-fc");
     fcEl.hidden = !fcNat(CUR);
-    if (fcNat(CUR)) fcEl.innerHTML = `<span class="lab">모델 예측</span><span class="items">` + Object.keys(FC.v).sort().reverse()
-      .filter((t) => FC.v[t]?.[NATION])
-      .map((t) => { const r = FC.v[t][NATION]; return `<span class="${t === FC.cur ? "cur" : ""}">${FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg)</span>`; }).join("") + "</span>";
+    // 모델 예측: 최신 시점과 가장 이른 시점만 (전체는 풍선·오른쪽 표). 확정이 나오면 확정 대비 오차
+    if (fcNat(CUR)) {
+      const ts = (FC.order || Object.keys(FC.v).sort()).filter((t) => FC.v[t]?.[NATION]);
+      const show = [...new Set([FC.cur, ts[0]])];
+      const item = (t) => { const r = FC.v[t][NATION]; return `${FC.lab[t]} ${tonS(r[2])}(${int(r[0])}kg${o.final && ok(pFin) ? `, 확정 대비 ${pctS(ratio(r[2], pFin))}` : ""})`; };
+      fcEl.title = "모델 시점별 예측\n" + [...ts].reverse().map(item).join("\n");
+      fcEl.innerHTML = `<span class="lab">모델 예측${o.final && ok(pFin) ? ` <small>%는 확정 대비</small>` : ""}</span><span class="items">` + show.map((t) => {
+        const r = FC.v[t][NATION];
+        return `<span class="${t === FC.cur ? "cur" : ""}">${FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg${o.final && ok(pFin) ? ` · ${pctS(ratio(r[2], pFin))}` : ""})</span>`;
+      }).join("") + "</span>";
+    }
     drawNat();
   }
   const fcNat = (y) => (FC && y === FCY ? FCV[NATION] ?? null : null);
@@ -573,9 +581,10 @@
   }
 
   // ---------- 왼쪽: 전망 정확도 ----------
+  const mlab = (a) => (FC?.lab?.[a] ? `모델 ${FC.lab[a]}` : `모델 ${a}`);
   const ORG = {
-    m1010: { name: "모델 10월", color: "#f06f8f", cls: "rc-e-m1010", tip: "국가데이터처 시도 예상에 태풍 보정과 기상 모델을 더함" },
-    m0915: { name: "모델 9월 15일", color: "#e0a458", cls: "rc-e-m0915", tip: "9월 15일까지 기상으로 계산(작물 생리 모델)" },
+    m1010: { name: mlab("1010"), color: "#f06f8f", cls: "rc-e-m1010" },
+    m0915: { name: mlab("0915"), color: "#e0a458", cls: "rc-e-m0915" },
     stat: { name: "국가데이터처 10월 예상", color: "#5fb3ff", cls: "rc-e-stat" },
     krei: { name: "KREI 9월 전망", color: "#5fb37c", cls: "rc-e-krei" },
     norm: { name: "평년값 그대로", color: "#4a505b" },
@@ -584,21 +593,59 @@
     const yrs = ACC.years;
     const last = d3.max(yrs.stat, (d) => d[0]);
     $("#acc-range").textContent = `${ACC.from}~${last} · 확정 대비`;
-    const rows = ["m1010", "stat", "m0915", "krei", "norm"].filter((k) => ACC[k]);
-    const max = d3.max(rows, (k) => ACC[k].mae) || 1;
-    const missing = (k) => d3.range(ACC.from, last + 1).filter((y) => !yrs[k].some((d) => d[0] === y));
-    $("#acc-rows").innerHTML = `<div class="cap"><span></span><span>평균 절대 오차</span><span>평균</span><span>RMSE</span></div>`
-      + rows.map((k) => {
-        const a = ACC[k], miss = missing(k);
-        return `<div class="row${k === "norm" ? " base" : ""}" title="${ORG[k].name}: ${ORG[k].tip ? `${ORG[k].tip}, 그해 이전 자료로만 맞춘 재현 · ` : ""}${a.n}년 · 편향 ${kgS(a.bias)} · 가장 큰 오차 ${kgS(a.max)}${miss.length ? ` · ${miss.join("·")}년 없음` : ""}">
-          <span class="nm">${ORG[k].name}</span>
-          <span class="track"><span class="fill" style="width:${(a.mae / max) * 100}%;background:${ORG[k].color}"></span></span>
-          <span class="val">±${nf1.format(a.mae)}kg</span><span class="rm">${nf1.format(a.rmse)}kg</span></div>`;
-      }).join("")
-      + (ACC.sigun ? `<div class="rc-acc-sg" title="시군 단수 오차(면적 가중 RMSE). 국가데이터처·KREI는 시군 전망을 내지 않는다">시군 오차 <b>모델 10월 ${nf1.format(ACC.sigun.m1010)}kg</b> · 9월 15일 ${nf1.format(ACC.sigun.m0915)}kg · 평년 ${nf1.format(ACC.sigun.norm)}kg</div>` : "");
-    $("#err-key").innerHTML = ERR_SER().map((k) => `<span><i class="${k}b"></i>${{ stat: "국가데이터처", krei: "KREI", m0915: "모델 9/15", m1010: "모델 10월" }[k]}</span>`).join("")
-      + (missing("krei").length ? `<span>KREI ${missing("krei").join("·")}년 없음</span>` : "");
+    const ts = (FC?.order || []).filter((t) => ACC[`m${t}`]);
+    const sg = ACC.sigun;
+    const md = (d) => (d ? `${+d.slice(0, 2)}/${+d.slice(-2)}` : "");
+    $("#acc-rows").innerHTML = `<div class="chart rc-chart rc-acct" id="chart-acct" aria-label="예측 시점별 전국 단수 평균 절대 오차"></div>`
+      + `<div class="pw-key rc-acc-key"><span><i class="rc-k-m"></i>모델</span>`
+      + [["stat", "국가데이터처"], ["krei", "KREI"]].filter(([k_]) => ACC[k_]).map(([k_, nm]) => `<span><i class="rc-k-${k_}"></i>${nm} <b>±${nf1.format(ACC[k_].mae)}</b> (${md(ACC.when?.[k_])})</span>`).join("") + `</div>`
+      + (sg && ts.length ? `<div class="rc-acc-sg" title="시군 단수 오차(면적 가중 RMSE). 국가데이터처·KREI는 시군 전망을 내지 않는다">시군 오차 `
+        + [ts[0], "0915", ts.at(-1)].filter((t, i, a) => sg[`m${t}`] != null && a.indexOf(t) === i).map((t) => `${FC.lab[t]} <b>${nf1.format(sg[`m${t}`])}</b>`).join(" → ")
+        + `kg · 평년 ${nf1.format(sg.norm)}kg</div>` : "");
+    $("#err-key").innerHTML = ERR_SER().map((k) => `<span><i class="${k}b"></i>${{ stat: "국가데이터처", krei: "KREI" }[k] || ORG[k].name}</span>`).join("")
+      + (missing("krei", last).length ? `<span>KREI ${missing("krei", last).join("·")}년 없음</span>` : "");
+    drawAccTime(ts);
     drawErr();
+  }
+  const missing = (k, last) => d3.range(ACC.from, last + 1).filter((y) => !ACC.years[k].some((d) => d[0] === y));
+  // 예측 시점별 정확도: 가로 = 시점(날짜), 세로 = 전국 단수 평균 절대 오차. 빠를수록 오차가 크다
+  function drawAccTime(ts) {
+    const el = $("#chart-acct");
+    if (!el || !ts.length) return;
+    const { svg, w, h } = frame(el, 118);
+    const day = (mmdd) => new Date(2001, +mmdd.slice(0, 2) - 1, +mmdd.slice(-2));
+    const whenS = ACC.when?.stat ? day(ACC.when.stat.replace("-", "")) : day("1008");
+    const whenK = ACC.when?.krei ? day(ACC.when.krei.replace("-", "")) : day("0926");
+    const tx = (t) => (t === "1010" ? d3.timeDay.offset(whenS, 3) : day(t));
+    const pts = ts.map((t) => ({ t, x: tx(t), a: ACC[`m${t}`] }));
+    const orgs = [["krei", whenK], ["stat", whenS]].filter(([k]) => ACC[k]).map(([k, x]) => ({ k, x, a: ACC[k] }));
+    const m = { l: 34, r: 12, t: 16, b: 16 };
+    const x = d3.scaleTime().domain([d3.timeDay.offset(d3.min(pts, (p) => p.x), -4), d3.timeDay.offset(d3.max([...pts, ...orgs], (p) => p.x), 4)]).range([m.l, w - m.r]);
+    const hi = d3.max([ACC.norm?.mae || 0, ...pts.map((p) => p.a.mae), ...orgs.map((p) => p.a.mae)]);
+    const y = d3.scaleLinear().domain([0, hi * 1.12]).nice(3).range([h - m.b, m.t]);
+    yAxis(svg, y, m, w, 3, (d) => `${d}`);
+    svg.append("g").attr("class", "pw-axis").selectAll("text").data(x.ticks(d3.timeMonth.every(1)).filter((d) => d >= x.domain()[0]))
+      .join("text").attr("x", (d) => x(d)).attr("y", h - 3).attr("text-anchor", "middle").text((d) => `${d.getMonth() + 1}월`);
+    if (ACC.norm) {
+      svg.append("line").attr("class", "rc-acc-norm").attr("x1", m.l).attr("x2", w - m.r).attr("y1", y(ACC.norm.mae)).attr("y2", y(ACC.norm.mae));
+      svg.append("text").attr("class", "rc-lab rc-acc-nl").attr("x", w - m.r).attr("y", y(ACC.norm.mae) - 4).attr("text-anchor", "end").text(`평년값 그대로 ±${nf1.format(ACC.norm.mae)}`);
+    }
+    const crop = pts.filter((p) => p.t !== "1010"), last = pts.find((p) => p.t === "1010");
+    svg.append("path").attr("class", "rc-acc-line").attr("d", d3.line().x((p) => x(p.x)).y((p) => y(p.a.mae))(crop));
+    if (last && crop.length) svg.append("path").attr("class", "rc-acc-line dash").attr("d", d3.line().x((p) => x(p.x)).y((p) => y(p.a.mae))([crop.at(-1), last]));
+    const tip = (name, a, extra = "") => `${name}: 평균 절대 오차 ±${nf1.format(a.mae)}kg · RMSE ${nf1.format(a.rmse)}kg · 편향 ${kgS(a.bias)} · ${a.n}년${extra}`;
+    const g = svg.append("g");
+    for (const p of pts) {
+      const sd = ACC.sido8?.[`m${p.t}`], sgv = ACC.sigun?.[`m${p.t}`];
+      g.append("circle").attr("class", `rc-acc-pt${p.t === FC.cur ? " cur" : ""}`).attr("cx", x(p.x)).attr("cy", y(p.a.mae)).attr("r", p.t === FC.cur ? 4.2 : 3.2)
+        .append("title").text(tip(`모델 ${FC.lab[p.t]} 예측${p.t === "1010" ? "(국가데이터처 예상 반영)" : "(그날까지 기상)"}`, p.a, `${sd != null ? ` · 8도 RMSE ${nf1.format(sd)}kg` : ""}${sgv != null ? ` · 시군 RMSE ${nf1.format(sgv)}kg` : ""}`));
+      g.append("text").attr("class", "rc-lab rc-acc-v").attr("x", x(p.x)).attr("y", y(p.a.mae) - 7).attr("text-anchor", "middle").text(nf1.format(p.a.mae));
+    }
+    for (const o of orgs) {
+      g.append("rect").attr("class", `rc-acc-org ${o.k}`).attr("x", x(o.x) - 3.5).attr("y", y(o.a.mae) - 3.5).attr("width", 7).attr("height", 7)
+        .append("title").text(tip(ORG[o.k].name, o.a));
+    }
+    svg.append("text").attr("class", "rc-lab rc-acc-cap").attr("x", m.l + 2).attr("y", m.t - 6).text("전국 단수 평균 절대 오차(kg) · 예측 시점별");
   }
   const ERR_SER = () => ["stat", "krei", "m0915", "m1010"].filter((k) => ACC.years[k]?.length);
   function drawErr() {
@@ -627,7 +674,7 @@
     const cx = (yy) => x(yy) + x.bandwidth() / 2;
     hover(svg, m, w, h, cx, ys, (yy) => {
       const s = val("stat", yy), k = val("krei", yy), a = val("m0915", yy), b = val("m1010", yy);
-      return `<b>${yy}년</b>확정 ${int(at(NATION, "y", yy))}kg · 국가데이터처 ${kgS(s)} · KREI ${ok(k) ? kgS(k) : "없음"}${ok(a) ? ` · 모델 9/15 ${kgS(a)}` : ""}${ok(b) ? ` · 모델 10월 ${kgS(b)}` : ""}`;
+      return `<b>${yy}년</b>확정 ${int(at(NATION, "y", yy))}kg · 국가데이터처 ${kgS(s)} · KREI ${ok(k) ? kgS(k) : "없음"}${ok(a) ? ` · ${ORG.m0915.name} ${kgS(a)}` : ""}${ok(b) ? ` · ${ORG.m1010.name} ${kgS(b)}` : ""}`;
     });
   }
 
@@ -636,22 +683,31 @@
     const k = state.key, y = state.year;
     $("#unit-name").textContent = fullLabel(k);
     const fr = fcRow(k, y);
+    // 예측 연도: 시점별 예측(최근 시점 먼저)을 한 표로. 확정 전 = 범위와 비교 기준(전년 확정·평년), 확정 뒤 = 확정 대비 오차
+    const fin = !fr && FC && y === FCY && FC.v[FC.cur]?.[k] && ok(atv(k, "y", y));
+    const tab = !!(fr || fin);
     $("#unit-year").textContent = `${y}년${fr ? " · 확정 전" : ""}`;
-    // 확정 전 연도: 예측 시점별 값(최근 시점 먼저)과 비교 기준(전년 확정·평년)을 한 표로
-    $("#u-stats").hidden = !!fr;
-    $("#u-fctab").hidden = !fr;
-    if (fr) {
+    $("#u-stats").hidden = tab;
+    $("#u-fctab").hidden = !tab;
+    if (tab) {
       const rng = (lo, hi, f) => (ok(lo) && ok(hi) ? ` <small>${f(lo)}~${f(hi)}</small>` : "");
       const kgN = (v) => int(v), tonN = (v) => tonS(v).replace(/ ?톤$/, "").replace(/만$/, "");
-      const times = Object.keys(FC.v).sort().reverse(); // 1010, 0915 …
+      const yF = atv(k, "y", y), pF = atv(k, "p", y);
+      const err = (v, o) => (ok(v) && ok(o) ? ` <small>${pctS(ratio(v, o))}</small>` : "");
+      const times = [...(FC.order || Object.keys(FC.v).sort())].reverse().filter((t) => FC.v[t]?.[k]);
       const pP = atv(k, "p", y - 1), yP = atv(k, "y", y - 1), nn = atv(k, "n", y);
-      $("#u-fctab").innerHTML = `<thead><tr><th></th><th>생산량</th><th>단수 <small>10a당</small></th></tr></thead><tbody>`
-        + times.filter((t) => FC.v[t]?.[k]).map((t) => {
-          const r = FC.v[t][k];
-          return `<tr class="${t === FC.cur ? "cur" : ""}"><th>${FC.lab[t]} 예측</th><td><b>${tonS(r[2])}</b>${rng(r[5], r[6], tonN)}</td><td><b>${int(r[0])}kg</b>${rng(r[3], r[4], kgN)}</td></tr>`;
+      const KOSIS = `<small>KOSIS</small>`;
+      $("#u-fctab").innerHTML = `<thead><tr><th><small>${fin ? "작은 글씨: 확정 대비" : "작은 글씨: 80% 범위"}</small></th><th>생산량</th><th>단수 <small>10a당</small></th></tr></thead><tbody>`
+        + (fin ? `<tr class="fin"><th title="국가데이터처 농작물생산조사(논벼), KOSIS">${y}년 확정${KOSIS}</th><td><b>${tonS(pF)}</b></td><td><b>${int(yF)}kg</b></td></tr>` : "")
+        + times.map((t) => {
+          const r = FC.v[t][k], cur = t === FC.cur;
+          const tip = `${FC.lab[t]} 예측${t === "1010" ? "(국가데이터처 예상 반영)" : "(그날까지 기상)"} · 80% 범위 생산량 ${tonS(r[5])}~${tonS(r[6])}, 단수 ${int(r[3])}~${int(r[4])}kg`;
+          const pc = fin ? err(r[2], pF) : cur ? rng(r[5], r[6], tonN) : "";
+          const yc = fin ? err(r[0], yF) : cur ? rng(r[3], r[4], kgN) : "";
+          return `<tr class="${cur && !fin ? "cur" : ""}" title="${tip}"><th>${FC.lab[t]} 예측</th><td><b>${tonS(r[2])}</b>${pc}</td><td><b>${int(r[0])}kg</b>${yc}</td></tr>`;
         }).join("")
-        + `<tr class="base"><th title="국가데이터처 농작물생산조사(논벼), KOSIS">${y - 1}년 확정<small>KOSIS</small></th><td>${tonS(pP)}</td><td>${ok(yP) ? `${int(yP)}kg` : "–"}</td></tr>`
-        + (ok(nn) ? `<tr class="base"><th title="KOSIS 단수로 계산: 직전 5년 중 최고·최저를 뺀 3년 평균">평년<small>KOSIS</small></th><td></td><td>${int(nn)}kg</td></tr>` : "")
+        + (fin ? "" : `<tr class="base"><th title="국가데이터처 농작물생산조사(논벼), KOSIS">${y - 1}년 확정${KOSIS}</th><td>${tonS(pP)}</td><td>${ok(yP) ? `${int(yP)}kg` : "–"}</td></tr>`
+          + (ok(nn) ? `<tr class="base"><th title="KOSIS 단수로 계산: 직전 5년 중 최고·최저를 뺀 3년 평균">평년${KOSIS}</th><td></td><td>${int(nn)}kg</td></tr>` : ""))
         + `</tbody>`;
     }
     const yv = at(k, "y", y), n = at(k, "n", y);
@@ -663,7 +719,7 @@
     $("#u-dev").innerHTML = deltaHTML(at(k, "d", y), "평년 대비");
     const a10 = ratio(a, at(k, "a", y - 10));
     $("#u-line").innerHTML = fr
-      ? `<span>작은 글씨는 80% 범위</span><span>재배면적 <b>${haS(a)}</b>(추정, 시점 공통)</span>`
+      ? `<span>재배면적 <b>${haS(a)}</b>(추정, 9월 1일 전 시점은 작년 면적)</span>`
       : ok(a) ? `<span>재배면적 <b>${haS(a)}</b>${ok(a10) ? ` (10년 전 대비 ${pctS(a10)})` : ""}</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}` : `<span>${y}년 시군 자료 없음</span>`;
     // 확정 연도를 보고 있어도 올해 예측을 숫자로 (누르면 예측 연도로)
     const fy = fcRow(k, FCY), ufc = $("#u-fc");
@@ -1343,7 +1399,7 @@
     drawMap();
     paintMap();
   }).observe($("#map-wrap"));
-  const redraw = { "chart-nat": () => drawNat(false), "chart-err": drawErr, "chart-unit": () => drawUnit(false), "chart-prod": drawProd, "chart-ndvi": () => drawNdvi(false), "sat-strip": drawStrip };
+  const redraw = { "chart-nat": () => drawNat(false), "chart-err": drawErr, "chart-unit": () => drawUnit(false), "chart-prod": drawProd, "chart-ndvi": () => drawNdvi(false), "sat-strip": drawStrip, "chart-acct": () => drawAccTime((FC?.order || []).filter((t) => ACC[`m${t}`])) };
   const ro = new ResizeObserver((entries) => {
     for (const e of entries) {
       const { width, height } = e.contentRect;
@@ -1353,6 +1409,6 @@
       redraw[e.target.id]();
     }
   });
-  Object.keys(redraw).forEach((id) => ro.observe($(`#${id}`)));
+  Object.keys(redraw).forEach((id) => $(`#${id}`) && ro.observe($(`#${id}`)));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
 })();
