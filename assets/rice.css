@@ -237,3 +237,5 @@
 .rc .rc-fctab small.yoy.rc-hi { color: #4fc1a6; }
 .rc .rc-fctab small.yoy.rc-lo { color: #e8894a; }
 @media (min-width: 1281px) and (min-height: 720px) and (max-height: 860px) { .rc .rc-fctab small.yoy { font-size: 9.5px; } .rc .rc-fctab tr.cur td small:not(.yoy) { display: none; } .rc .rc-fctab thead th:first-child small { visibility: hidden; } }
+.rc-peer-tip { background: var(--panel, #1c1f26); color: var(--text, #eee); border: 1px solid rgba(255, 255, 255, 0.15); font-size: 12px; box-shadow: none; }
+.rc-peer-tip::before { display: none; }

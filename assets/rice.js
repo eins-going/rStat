@@ -1026,7 +1026,7 @@
   const PADDY_Z = 13; // 이보다 멀리서는 필지 자료가 없어 영상 전체를 보인다
   const sat = { sat: "s2", idx: "ndvi", mask: true, paddyOnly: true, paddyLine: true, labels: true, sid: null, year: NOW.getMonth() >= 4 ? NOW.getFullYear() : NOW.getFullYear() - 1, date: null, dates: [], key: null };
   const satCache = new Map(), sidCache = new Map();
-  let L_ = null, lmap = null, base = null, labelLayer = null, pcLayer = null, paddyLayer = null, lineLayer = null, outline = null, maskLayer = null, leafletReady = null;
+  let L_ = null, lmap = null, base = null, labelLayer = null, peerLayer = null, pcLayer = null, paddyLayer = null, lineLayer = null, outline = null, maskLayer = null, leafletReady = null;
   const satBar = $("#sat-bar"), satHint = $("#sat-hint");
 
   function hint(msg, err = false) {
@@ -1156,7 +1156,18 @@
   function setSatRegion(k) {
     const L = L_;
     const f = featOf.get(k);
-    outline?.remove(); maskLayer?.remove();
+    outline?.remove(); maskLayer?.remove(); peerLayer?.remove();
+    // 다른 시군: 흐린 점선 경계, 마우스를 올리면 이름, 누르면 그 시군 위성 영상으로
+    const PEER = { color: "#fff", weight: 0.9, opacity: 0.5, dashArray: "3 3", fill: true, fillOpacity: 0 };
+    peerLayer = L.geoJSON({ type: "FeatureCollection", features: unitFeatures.filter((u) => u.properties.key !== k && u.geometry) }, {
+      style: () => PEER,
+      onEachFeature: (u, layer) => {
+        layer.bindTooltip(`${esc(fullLabel(u.properties.key))}<br><span class="tip-hint">누르면 위성 영상</span>`, { sticky: true, direction: "top", className: "rc-peer-tip" });
+        layer.on("mouseover", () => layer.setStyle({ weight: 1.6, opacity: 0.9, dashArray: null, fillColor: "#fff", fillOpacity: 0.08 }));
+        layer.on("mouseout", () => layer.setStyle(PEER));
+        layer.on("click", () => { state.key = u.properties.key; state.view = "sat"; render(true); });
+      },
+    }).addTo(lmap);
     outline = L.geoJSON(f.geometry, { style: { color: "#fff", weight: 1.6, opacity: 0.9, fill: false }, interactive: false }).addTo(lmap);
     // 시군 밖은 어둡게
     const polys = f.geometry.type === "MultiPolygon" ? f.geometry.coordinates : [f.geometry.coordinates];
