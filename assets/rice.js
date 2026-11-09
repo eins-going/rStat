@@ -444,7 +444,8 @@
     const n = at(NATION, "n", CUR) ?? normOf(NATION, CUR);
     const st = o.stat, kr = o.krei;
     const pPrev = at(NATION, "p", CUR - 1), pFin = at(NATION, "p", CUR);
-    $("#nat-l1").textContent = `${CUR}년 통계청 예상`;
+    const md = (d) => (d ? `${+d.slice(5, 7)}.${+d.slice(8, 10)}` : ""); // 발표일 2026-10-08 → 10.8
+    $("#nat-l1").textContent = `${CUR}년 통계청 예상${st?.date ? ` (${md(st.date)})` : ""}`;
     $("#nat-v1").textContent = ok(st?.p) ? nf1.format(st.p / 1e4) : "–";
     $("#nat-u1").textContent = ok(st?.p) ? "만 톤" : "";
     $("#nat-d1").innerHTML = deltaHTML(ratio(st?.p, pPrev), "전년 대비");
@@ -463,7 +464,7 @@
     const krTxt = kr ? (ok(kr.lo) && ok(kr.hi) && kr.lo !== kr.hi ? `${int(kr.lo)}~${int(kr.hi)}kg` : `${int(kr.y)}kg`) : null;
     $("#nat-line").innerHTML = [
       ok(st?.y) ? `<span>단수 <b>${int(st.y)}kg</b> (평년 ${int(n)}kg 대비 ${pctS(ratio(st.y, n))})</span>` : "",
-      krTxt ? `<span>KREI 단수 전망 <b>${krTxt}</b></span>` : "",
+      krTxt ? `<span>KREI 단수 전망${kr.date ? `(${md(kr.date)})` : ""} <b>${krTxt}</b></span>` : "",
       ok(st?.a) ? `<span>재배면적 <b>${haS(st.a)}</b></span>` : "",
       fcNat(CUR) ? `<span class="rc-fcl">모델 단수 ${FCL} <b>${int(fcNat(CUR)[0])}kg</b>${FC.cur === "1010" && FC.v["0915"]?.["00"] ? ` · ${FC.lab["0915"]} 예측 ${int(FC.v["0915"]["00"][0])}kg` : ""}</span>` : "",
     ].join("");
