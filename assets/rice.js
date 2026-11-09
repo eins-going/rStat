@@ -260,11 +260,17 @@
     drawLabels(t, false);
   }, () => applyView(true));
 
-  // 시군을 누르면 그 시군의 위성 영상으로
+  // 전국 지도에서 누르면 그 시도로, 시도 지도에서 그 시도의 시군을 누르면 그 시군의 위성 영상으로 (다른 시도를 누르면 그 시도로)
+  const clickGoesSido = (k) => sidoOf(state.key) !== sidoOf(k);
   function onRegionClick(k) {
     tip.hidden = true;
-    state.key = k;
-    state.view = "sat";
+    if (clickGoesSido(k)) {
+      state.key = sidoOf(k);
+      state.view = "map";
+    } else {
+      state.key = k;
+      state.view = "sat";
+    }
     render(true);
   }
 
@@ -305,7 +311,9 @@
       + sc.rows.map(([c, t]) => `<span class="row"><span class="sw" style="background:${c}"></span>${t}</span>`).join("")
       + (missing ? `<span class="row"><span class="sw" style="background:${EMPTY};outline:1px solid #3a3f48"></span>자료 없음 ${missing}</span>` : "")
       + (m.key.startsWith("area") ? "" : `<span class="rc-lg-small" title="재배면적 ${SMALL_HA}ha 미만: 단수가 크게 흔들려 흐리게 칠함"><i></i>흐림 = ${SMALL_HA}ha 미만</span>`);
-    $("#metric-note").textContent = fcMode(y) ? `모델 예측(${FC.lab[FC.cur]}) · 면적은 작년 시군 면적 × 올해 시도 면적 증감 · 시군을 누르면 80% 범위` : m.note;
+    const clickHint = sidoOf(state.key) ? "시군을 누르면 위성 영상" : "지역을 누르면 그 시도 지도";
+    $("#metric-note").textContent = (fcMode(y) ? `모델 예측(${FC.lab[FC.cur]}) · 면적은 작년 시군 면적 × 올해 시도 면적 증감 · 시군 풍선에 80% 범위` : m.note).replace("시군을 누르면 위성 영상", clickHint)
+      + (fcMode(y) ? ` · ${clickHint}` : "");
   }
 
   function showTip(e, k) {
@@ -316,7 +324,7 @@
       tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${y}년 ${FCL} 단수 <b style="display:inline">${int(fr[0])}kg</b>${ok(fr[3]) ? ` (${int(fr[3])}~${int(fr[4])})` : ""}`
         + (ok(n) ? `<br>평년 ${int(n)}kg · ${pctS(ratio(fr[0], n))}` : "")
         + `<br>${FCL} 생산량 ${tonS(fr[2])} · 면적 ${haS(fr[1])}`
-        + `<br><span class="tip-hint">누르면 위성 영상</span>`;
+        + `<br><span class="tip-hint">${clickGoesSido(k) ? `누르면 ${T.sidos[sidoOf(k)].short} 지도` : "누르면 위성 영상"}</span>`;
       const rr = $("#map-wrap").getBoundingClientRect();
       tip.style.left = `${e.clientX - rr.left}px`;
       tip.style.top = `${e.clientY - rr.top}px`;
@@ -326,7 +334,7 @@
     tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${y}년 단수 ${ok(yv) ? `<b style="display:inline">${int(yv)}kg</b>` : "자료 없음"}`
       + (ok(n) ? `<br>평년 ${int(n)}kg · ${pctS(at(k, "d", y))}` : "")
       + (ok(at(k, "a", y)) ? `<br>재배면적 ${haS(at(k, "a", y))}${small(k, y) ? ' · <span style="color:var(--accent)">면적 작음</span>' : ""}` : "")
-      + `<br><span class="tip-hint">누르면 위성 영상</span>`;
+      + `<br><span class="tip-hint">${clickGoesSido(k) ? `누르면 ${T.sidos[sidoOf(k)].short} 지도` : "누르면 위성 영상"}</span>`;
     const r = $("#map-wrap").getBoundingClientRect();
     tip.style.left = `${e.clientX - r.left}px`;
     tip.style.top = `${e.clientY - r.top}px`;
