@@ -1100,7 +1100,9 @@
       b.textContent = on ? "작게 보기" : "크게 보기";
       b.title = on ? "Esc로도 작게 볼 수 있습니다" : "";
     }
-    requestAnimationFrame(() => { lmap?.invalidateSize({ pan: false }); drawStrip(); });
+    // 크게·작게 바꾸면 시군을 다시 가운데로. 영상을 닫으면서 작게 할 때는 다음에 열 때 맞춘다
+    if (state.view === "sat") requestAnimationFrame(() => { fitRegion(); drawStrip(); });
+    else refitPending = true;
   }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && satFull) setSatFull(false); });
   $("#sat-big").addEventListener("click", () => setSatFull(!satFull));
@@ -1206,7 +1208,14 @@
     const world = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
     const holes = polys.map((p) => p[0].map(([lon, lat]) => [lat, lon]));
     maskLayer = L.polygon([world, ...holes], { pane: "rc-mask", stroke: false, fillColor: "#0b0c0f", fillOpacity: 0.55, interactive: false }).addTo(lmap);
-    lmap.invalidateSize();
+    fitRegion();
+  }
+  // 고른 시군을 지도 가운데에 꽉 차게 (크기가 바뀐 뒤에도 다시 부른다)
+  let refitPending = false;
+  function fitRegion() {
+    if (!lmap || !outline) return;
+    refitPending = false;
+    lmap.invalidateSize({ pan: false });
     lmap.fitBounds(outline.getBounds(), { padding: [12, 12], maxZoom: 13, animate: false });
     if (lmap.getZoom() < 10) lmap.setZoom(10, { animate: false });
   }
@@ -1414,7 +1423,7 @@
       setSatRegion(k);
       loadDates();
     } else {
-      lmap.invalidateSize();
+      if (refitPending) fitRegion(); else lmap.invalidateSize();
       drawStrip();
     }
   }
