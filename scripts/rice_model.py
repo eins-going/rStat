@@ -9,9 +9,10 @@
   그다음 update.py가 scripts/build_rice.py로 data/rice.js를 만든다.
 
 보일 시점: 기본 시점(7/31·8/15·9/1·9/15·10/1) 중 어제까지 지난 것 + 어제(기본 시점이 아니면 '최신').
+  국가데이터처 예상(10월 초) 뒤 확정(11월 중순) 전: 'S'+어제 = 국가데이터처 예상 + 어제까지 기상 작물모델 (값이 거의 같아도 새 자료로 다시 추정한 최신값).
   어제 날짜 시점도 모든 해를 그 날짜 기준으로 다시 계산해 재현 정확도와 80% 범위를 낸다.
   10월 국가데이터처 예상을 반영한 값(1010)은 statdown·statfix 자료가 그해 것으로 있을 때만 나온다(해마다 10월에 직접 넣음).
-시즌(7/20~10/12) 밖이면 아무것도 하지 않는다. --force: 시즌 밖에도 기본 시점 전부로 다시 계산. --no-fetch: 1단계 건너뜀. --date·--dry: 점검용.
+시즌(7/20~10/12, 또는 국가데이터처 예상 뒤~확정 전) 밖이면 아무것도 하지 않는다. --force: 시즌 밖에도 기본 시점 전부로 다시 계산. --no-fetch: 1단계 건너뜀. --date·--dry: 점검용.
 """
 import argparse
 import datetime as dt
@@ -24,6 +25,17 @@ R = os.path.join(ROOT, "research", "rice")
 PY = os.path.join(ROOT, ".venv", "bin", "python")
 GRID = ["0731", "0815", "0901", "0915", "1001"]
 SEASON = ("0720", "1012")
+STAT = os.path.join(R, "statdown", "stat_forecast_sido.csv")
+KOSIS = os.path.join(ROOT, "db", "raw", "kosis_rice", "dt_1et0034.csv")
+
+
+def stat_and_final(fy):
+    """그해 국가데이터처 예상이 있나, KOSIS 확정(전국 10a당 생산량)이 있나."""
+    import csv
+    st = os.path.exists(STAT) and any(r["year"] == str(fy) for r in csv.DictReader(open(STAT, encoding="utf-8")))
+    fin = os.path.exists(KOSIS) and any(r.get("year") == str(fy) and r.get("code") == "00" and r.get("item") == "10a당 생산량"
+                                        for r in csv.DictReader(open(KOSIS, encoding="utf-8")))
+    return st, fin
 
 
 def step(name, args, env=None, mem="4G", cwd=R):
@@ -45,22 +57,26 @@ def main():
     yday = today - dt.timedelta(days=1)
     md = yday.strftime("%m%d")
     in_season = SEASON[0] <= md <= SEASON[1]
-    if not in_season and not a.force:
-        print(f"시즌({SEASON[0]}~{SEASON[1]}) 밖이라 건너뜀 ({today})")
+    has_stat, has_final = stat_and_final(yday.year)
+    in_late = has_stat and not has_final and md >= "1001"  # 국가데이터처 예상 뒤 ~ 확정 전
+    if not (in_season or in_late or a.force):
+        print(f"시즌({SEASON[0]}~{SEASON[1]}·국가데이터처 예상 뒤~확정 전) 밖이라 건너뜀 ({today})")
         return
-    if in_season:
-        show = [g for g in GRID if g <= md] + ([md] if md not in GRID and md < GRID[-1] else [])
+    if in_season and md < GRID[-1]:
+        show = [g for g in GRID if g <= md] + ([md] if md not in GRID else [])
     else:
         show = list(GRID)
-    print("보일 시점", show, "| 기상 기준일", yday)
+    late = md if (in_late or (a.force and has_stat and not has_final and md >= "1001")) else None
+    asof = show + ([late] if late and late not in show else [])
+    print("보일 시점", show, "| 국가데이터처 반영 최신", late, "| 기상 기준일", yday)
     if a.dry:
         return
     if not a.no_fetch:
         step("올해 기상 받기", ["wx2026/fetch_2026.py", "--start", f"{yday.year}0101", "--end", yday.strftime("%Y%m%d")], mem="2G")
     step("시군 일기상", ["cropmodel/build_weather.py"], mem="5G")
-    step("작물 생리 지표", ["cropmodel/components.py"], env={"RICE_ASOF": ",".join(show)})
+    step("작물 생리 지표", ["cropmodel/components.py"], env={"RICE_ASOF": ",".join(asof)})
     step("재현·올해 예측", ["cropmodel/run_final.py"])
-    step("내보내기", ["prod/pipeline.py"], env={"RICE_SHOW": ",".join(show + ["1010"])})
+    step("내보내기", ["prod/pipeline.py"], env={"RICE_SHOW": ",".join(show + ["1010"]), **({"RICE_LATE": late} if late else {})})
     print("완료")
 
 

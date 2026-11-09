@@ -148,12 +148,15 @@ def build_fc(fc, years, Y, v, final, outlook, acc):
     """예측 연도(확정 없는 마지막 해)의 시점별 값 + 재현 정확도(전국·8도·시군)를 acc에 더한다"""
     fy = max(y for a in fc.values() for d in a.values() for y in d)
     st = outlook.get(str(fy), {}).get("stat") or {}
-    crop = sorted(a for a in fc if a != "1010")
-    cur = "1010" if st and "1010" in fc else crop[-1]
+    crop = sorted(a for a in fc if a != "1010" and not a.startswith("S"))
+    late = sorted(a for a in fc if a.startswith("S"))  # 국가데이터처 예상 + 최신 기상(확정 전 최신 추정)
+    cur = late[-1] if st and late else "1010" if st and "1010" in fc else crop[-1]
     md = lambda d: f"{int(d[5:7])}월 {int(d[8:10])}일"  # noqa: E731  2026-10-08 → 10월 8일
     lab = {a: f"{int(a[:2])}월 {int(a[2:])}일" for a in crop}
     if "1010" in fc:
         lab["1010"] = md(st["date"]) if st.get("date") else "10월"
+    for a in late:
+        lab[a] = f"{int(a[1:3])}월 {int(a[3:])}일"
     # 국가데이터처 예상 그 자체(전국·시도): 모델의 '국가데이터처 반영' 값과 나란히 보이려고
     stat = {}
     sp = os.path.join(ROOT, "research", "rice", "statdown", "stat_forecast_sido.csv")
@@ -161,8 +164,8 @@ def build_fc(fc, years, Y, v, final, outlook, acc):
         for r in csv.DictReader(open(sp, encoding="utf-8")):
             if int(r["year"]) == fy and r["sido_code"] in fc.get("1010", {}):
                 stat[r["sido_code"]] = [num(r["yield_kg10a"]), num(r["prod_ton"])]
-    out = {"year": fy, "cur": cur, "lab": lab, "order": crop + (["1010"] if "1010" in fc else []),
-           "tag": {"1010": "국가데이터처 반영"}, "stat": stat, "statDate": st.get("date"),
+    out = {"year": fy, "cur": cur, "lab": lab, "order": crop + (["1010"] if "1010" in fc else []) + late,
+           "tag": {"1010": "국가데이터처 반영", **{a: "국가데이터처 반영 + 최신 기상" for a in late}}, "stat": stat, "statDate": st.get("date"),
            "v": {a: {k: [None if x is None else round(x, 1) for x in d[fy]] for k, d in sorted(fc[a].items()) if fy in d} for a in fc},
            "bt": {}}
     for k, d in fc[cur].items():

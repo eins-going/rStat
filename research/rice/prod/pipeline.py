@@ -39,7 +39,10 @@ fy_sd = pd.read_csv(f"{CM}/pred_fy_sido.csv", dtype={"sc": str, "asof": str})
 FY = int(fy_sg.y.iloc[0])
 SHOW = os.environ.get("RICE_SHOW")  # scripts/rice_model.py: 보일 시점만 (시즌 중엔 아직 오지 않은 기본 시점 빼기)
 SHOW = set(SHOW.split(",")) if SHOW else None
-ASOFS = sorted(a for a in fy_sg["asof"].unique() if os.path.exists(f"{CM}/pred_sigun_{a}.csv") and (SHOW is None or a in SHOW))
+ALLA = sorted(a for a in fy_sg["asof"].unique() if os.path.exists(f"{CM}/pred_sigun_{a}.csv"))  # 계산한 작물모델 시점 전부
+ASOFS = [a for a in ALLA if SHOW is None or a in SHOW]  # 그대로 내보낼 작물모델 시점
+LATE = os.environ.get("RICE_LATE")  # 국가데이터처 예상 뒤 최신 기상 시점(mmdd) → 'S'+mmdd: 국가데이터처 예상 + 그날까지 기상 작물모델
+LATE = LATE if LATE in ALLA else None
 print("예측 연도", FY, "시점", ASOFS)
 
 # ---------- 정답·평년·면적 ----------
@@ -98,23 +101,33 @@ if FY in nb.index and pd.notna(nb.loc[FY, "gust_fill"]):
     EH[FY] = float(b[0] + b[1] * nb.loc[FY, "gust_fill"])
 print("태풍 보정 ê", {y: round(v, 4) for y, v in EH.items() if y >= 2020})
 
-SD = {a: sido_crop(a) for a in ASOFS}
+SD = {a: sido_crop(a) for a in ALLA}
+
+
+def sido_blend(ck):
+    """시도: W·국가데이터처 예상×(1+ê) + (1−W)·작물모델(ck). W는 그해 이전 8도 오차로."""
+    g = SY[SY.sc != "00"].merge(SD[ck][["y", "sc", "p"]].rename(columns={"p": "pc"}), on=["y", "sc"], how="left")
+    g["ps"] = g.stat * (1 + g.y.map(EH).fillna(0.0))
+    W = {}
+    for Y in sorted(g.y.unique()):
+        tr = g[(g.y < Y) & g.sc.isin(P8) & g["yield"].notna() & g.ps.notna() & g.pc.notna()]
+        W[Y] = 1.0 if tr.y.nunique() < 3 else min(np.linspace(0, 1, 21), key=lambda w: np.average((w * tr.ps + (1 - w) * tr.pc - tr["yield"]) ** 2, weights=tr.area))
+    g["p"] = np.where(g.ps.notna(), g.y.map(W) * g.ps + (1 - g.y.map(W)) * g.pc, np.nan)
+    return g.dropna(subset=["p"]), W
+
+
 WANT1010 = "0915" in SD and (SHOW is None or "1010" in SHOW)
-g9 = (SD["0915"] if "0915" in SD else sido_crop("0915"))[["y", "sc", "p"]].rename(columns={"p": "p0915"})
-g = SY[SY.sc != "00"].merge(g9, on=["y", "sc"], how="left")
-g["ps"] = g.stat * (1 + g.y.map(EH).fillna(0.0))
-W = {}
-for Y in sorted(g.y.unique()):
-    tr = g[(g.y < Y) & g.sc.isin(P8) & g["yield"].notna() & g.ps.notna() & g.p0915.notna()]
-    W[Y] = 1.0 if tr.y.nunique() < 3 else min(np.linspace(0, 1, 21), key=lambda w: np.average((w * tr.ps + (1 - w) * tr.p0915 - tr["yield"]) ** 2, weights=tr.area))
-g["p"] = np.where(g.ps.notna(), g.y.map(W) * g.ps + (1 - g.y.map(W)) * g.p0915, np.nan)
-HAS1010 = WANT1010 and bool(g[(g.y == FY)].p.notna().any())
-SD["1010"] = g.dropna(subset=["p"])
+SD["1010"], W = sido_blend("0915")
+HAS1010 = WANT1010 and bool((SD["1010"].y == FY).any())
 print("국가데이터처 가중 W", {y: round(v, 2) for y, v in W.items() if y >= 2020}, "| FY 국가데이터처 예상", "있음" if HAS1010 else "없음")
+SKEY = f"S{LATE}" if LATE and HAS1010 else None
+if SKEY:
+    SD[SKEY], WL = sido_blend(LATE)
+    print(f"{SKEY} 국가데이터처 가중 W", {y: round(v, 2) for y, v in WL.items() if y >= 2020})
 
 # ---------- 시군 ----------
 SG = {}
-for a in ASOFS:
+for a in ALLA:
     p = pd.read_csv(f"{CM}/pred_sigun_{a}.csv", dtype={"sc": str})
     p = p[p.y < FY]
     d = p.merge(t[["y", "sc", "stem", "base", "a", "res1", "area"]], on=["y", "sc", "stem"], how="left")
@@ -132,25 +145,38 @@ for a in ASOFS:
             te["pred_yield"] = te.base * (1 + te.ahat + rho * te.res1.fillna(0))
         out.append(te[["y", "sc", "stem", "pred_yield"]])
     SG[a] = pd.concat(out, ignore_index=True)
-    print(a, "시군 잔차 계수 ρ(FY)", round(rho, 3))
-# 1010 시군: 재현은 blend/stat_crop.py, FY는 statdown 내려쓰기 × (1+ê)와 0915의 가중(W는 재현 오차로)
-st_bt = pd.read_csv(f"{R}/blend/pred_stat_crop.csv", dtype={"sc": str})
-st_bt = st_bt[st_bt.y < FY]
-p1010 = [st_bt[["y", "sc", "stem", "pred_yield"]]]
-sdp = f"{R}/statdown/pred_{FY}.csv"
-if HAS1010 and os.path.exists(sdp):
+print("시군 잔차 계수 ρ(FY)", round(rho, 3))
+
+
+def sg_blend(ck):
+    """시군: 국가데이터처 시도 예상 내려쓰기(statfix beta_p, 태풍 보정)와 작물모델(ck)의 가중. W는 그해 이전 시군 오차로(blend/stat_crop.py와 같음)."""
     ps = pd.read_csv(f"{R}/blend/pred_statfix_beta_p.csv", dtype={"sc": str}).rename(columns={"pred_yield": "p_stat"})
-    cr = SG["0915"].rename(columns={"pred_yield": "p_crop"})
-    dd = ps[ps.y < FY].merge(cr, on=["y", "sc", "stem"], how="left").merge(t[["y", "sc", "stem", "yield", "area"]], on=["y", "sc", "stem"])
-    dd["p_crop"] = dd.p_crop.fillna(dd.p_stat)
-    Wsg = min(np.linspace(0, 1, 21), key=lambda w: np.average((w * dd.p_stat + (1 - w) * dd.p_crop - dd["yield"]) ** 2, weights=dd.area))
-    s26 = pd.read_csv(sdp, dtype={"sc": str})[["sc", "stem", "pred_yield"]].rename(columns={"pred_yield": "p_stat"})
-    s26["p_stat"] *= 1 + EH.get(FY, 0.0)
-    f = cr[cr.y == FY].merge(s26, on=["sc", "stem"], how="left")
-    f["pred_yield"] = np.where(f.p_stat.notna(), Wsg * f.p_stat + (1 - Wsg) * f.p_crop, f.p_crop)
-    p1010.append(f[["y", "sc", "stem", "pred_yield"]])
-    print("1010 시군 가중 W", round(float(Wsg), 2))
-SG["1010"] = pd.concat(p1010, ignore_index=True)
+    cr = SG[ck].rename(columns={"pred_yield": "p_crop"})
+    d = ps[ps.y < FY].merge(cr, on=["y", "sc", "stem"], how="left").merge(t[["y", "sc", "stem", "yield", "area"]], on=["y", "sc", "stem"])
+    d["p_crop"] = d.p_crop.fillna(d.p_stat)
+    Wy = {}
+    for Y in sorted(d.y.unique()) + [FY]:
+        tr = d[d.y < Y]
+        Wy[Y] = 1.0 if tr.y.nunique() < 3 else min(np.linspace(0, 1, 21), key=lambda w: np.average((w * tr.p_stat + (1 - w) * tr.p_crop - tr["yield"]) ** 2, weights=tr.area))
+    d["pred_yield"] = d.y.map(Wy) * d.p_stat + (1 - d.y.map(Wy)) * d.p_crop
+    out = [d[["y", "sc", "stem", "pred_yield"]]]
+    sdp = f"{R}/statdown/pred_{FY}.csv"
+    if HAS1010 and os.path.exists(sdp):
+        s26 = pd.read_csv(sdp, dtype={"sc": str})[["sc", "stem", "pred_yield"]].rename(columns={"pred_yield": "p_stat"})
+        s26["p_stat"] *= 1 + EH.get(FY, 0.0)
+        f = cr[cr.y == FY].merge(s26, on=["sc", "stem"], how="left")
+        f["pred_yield"] = np.where(f.p_stat.notna(), Wy[FY] * f.p_stat + (1 - Wy[FY]) * f.p_crop, f.p_crop)
+        out.append(f[["y", "sc", "stem", "pred_yield"]])
+    print(f"{ck} 시군 국가데이터처 가중 W(FY)", round(float(Wy[FY]), 2))
+    return pd.concat(out, ignore_index=True)
+
+
+SG["1010"] = sg_blend("0915")
+if SKEY:
+    SG[SKEY] = sg_blend(LATE)
+# 재현 점검: 예전 blend/stat_crop.py 결과와 같아야 한다
+_old = pd.read_csv(f"{R}/blend/pred_stat_crop.csv", dtype={"sc": str}).merge(SG["1010"], on=["y", "sc", "stem"], suffixes=("_o", "_n"))
+print("1010 시군 재현 점검: stat_crop.py와 최대 차이", round(float((_old.pred_yield_o - _old.pred_yield_n).abs().max()), 3), "kg")
 
 # ---------- 내보내기 ----------
 # 시군 행: 2013~FY-1 재현(정답 있음) + FY(직전해 행을 한 해 밀고, 확정 있으면 정답도)
@@ -162,7 +188,7 @@ if not (TT.y == FY).any():
 TT = TT.merge(SY[["y", "sc", "area", "area1", "base"]].rename(columns={"area": "sa", "area1": "sa1", "base": "sbase"}), on=["y", "sc"], how="left")
 cls = lambda a: np.where(a < 2000, 0, np.where(a < 8000, 1, 2))  # noqa: E731
 rows = []
-for asof in ASOFS + (["1010"] if WANT1010 else []):
+for asof in ASOFS + (["1010"] if WANT1010 else []) + ([SKEY] if SKEY else []):
     early = asof < EARLY
     T = TT.copy()
     T["parea"] = T.a1 if early else T.a1 * T.sa / T.sa1
