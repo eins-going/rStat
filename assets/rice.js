@@ -62,20 +62,6 @@
   const isLate = (t) => t?.startsWith("S"); // 국가데이터처 예상 + 그날까지 기상으로 다시 추정한 확정 전 예측
   let fcAll = false; // 시군 패널 표: 중간 시점까지 다 보기
   const fcName = (t) => `${FC.lab[t]} 예측`;
-  // '모델 예측'에 마우스를 올리면 뜨는 모델 설명 (정확도 숫자는 자료에서)
-  function modelTip() {
-    const mae = (k) => (ACC[k]?.mae != null ? `${nf1.format(ACC[k].mae)}kg` : null);
-    const ts = (FC?.order || []).filter((t) => ACC[`m${t}`]);
-    const acc = [ts[0], "0915", "1010"].filter((t, i, a) => t && ts.includes(t) && a.indexOf(t) === i)
-      .map((t) => `${FC.lab[t]} ${mae(`m${t}`)}`).join(" → ");
-    return `<div class="rc-mtip"><b>모델 예측</b>그해 날씨로 쌀 단수를 계산하는 작물 생리 모델
-      <ul><li>시군 논에 가까운 기상청 관측소 일자료로 출수일을 잡고, 생육 단계별로 이삭 수(출수 전 일조)·여묾(등숙기 일사×기온)·불임(저온·고온)·강풍·호우·도열병(출수기 비 온 날)을 셈</li>
-      <li>8개 도 1985년 이후 자료로 학습(릿지 회귀) → 시군 단수 = 시군 평년 × (1 + 시도 증감)</li>
-      <li>7월 31일~10월 1일: 그날까지 기상 · 국가데이터처 예상 뒤: 그 시도 예상 + 태풍 보정을 더함</li>
-      <li>생산량 = 단수 × 재배면적 (시군 면적 = 작년 시군 면적 × 올해 시도 증감)</li>
-      <li>정확도(${ACC.from ?? 2013}~2025, 그해 이전 자료로만 재현) 전국 단수 평균 오차 ${acc}${ACC.norm ? ` · 평년값 ${mae("norm")}` : ""}${ACC.stat ? ` · 국가데이터처 예상 ${mae("stat")}` : ""}</li>
-      <li>80% 범위 = 재현 오차의 10~90%</li></ul></div>`.replace(/"/g, "&quot;");
-  }
   const fcRow = (k, y) => (FC && y === FCY && atv(k, "y", y) == null ? FCV[k] ?? null : null);
   const at = (k, f, y) => {
     const v = atv(k, f, y);
@@ -332,8 +318,8 @@
       + (m.key.startsWith("area") ? "" : `<span class="rc-lg-small" title="재배면적 ${SMALL_HA}ha 미만: 단수가 크게 흔들려 흐리게 칠함"><i></i>흐림 = ${SMALL_HA}ha 미만</span>`);
     const clickHint = sidoOf(state.key) ? "시군을 누르면 위성 영상" : "지역을 누르면 그 시도 지도";
     const unitWord = sidoMode() ? "시도" : "시군";
-    $("#metric-note").innerHTML = (sidoMode() ? "시도 값 · " : "")
-      + (fcMode(y) ? `<span class="rc-has-tip" data-tip="${modelTip()}">모델 예측(${FC.lab[FC.cur]})</span>${sidoMode() ? "" : " · 면적은 작년 시군 면적 × 올해 시도 면적 증감"} · ${unitWord} 풍선에 80% 범위` : m.note).replace("시군을 누르면 위성 영상", clickHint)
+    $("#metric-note").textContent = (sidoMode() ? "시도 값 · " : "")
+      + (fcMode(y) ? `모델 예측(${FC.lab[FC.cur]})${sidoMode() ? "" : " · 면적은 작년 시군 면적 × 올해 시도 면적 증감"} · ${unitWord} 풍선에 80% 범위` : m.note).replace("시군을 누르면 위성 영상", clickHint)
       + (fcMode(y) ? ` · ${clickHint}` : "");
   }
 
@@ -517,11 +503,11 @@
       const ts = (FC.order || Object.keys(FC.v).sort()).filter((t) => FC.v[t]?.[NATION]);
       const show = [...new Set([FC.cur, ts[0]])];
       const item = (t) => { const r = FC.v[t][NATION]; return `${fcName(t)} ${tonS(r[2])}(${int(r[0])}kg${o.final && ok(pFin) ? `, 확정 대비 ${pctS(ratio(r[2], pFin))}` : ""})`; };
-      fcEl.innerHTML = `<span class="lab rc-has-tip" data-tip="${modelTip()}">모델 예측${o.final && ok(pFin) ? ` <small>%는 확정 대비</small>` : ""}</span><span class="items">` + show.map((t) => {
+      fcEl.title = "모델 시점별 예측\n" + [...ts].reverse().map(item).join("\n");
+      fcEl.innerHTML = `<span class="lab">모델 예측${o.final && ok(pFin) ? ` <small>%는 확정 대비</small>` : ""}</span><span class="items">` + show.map((t) => {
         const r = FC.v[t][NATION];
         return `<span class="${t === FC.cur ? "cur" : ""}">${FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg${o.final && ok(pFin) ? ` · ${pctS(ratio(r[2], pFin))}` : ""})</span>`;
       }).join("") + "</span>";
-      fcEl.querySelector(".items").title = "모델 시점별 예측\n" + [...ts].reverse().map(item).join("\n");
     }
     drawNat();
   }
@@ -543,7 +529,7 @@
   });
   function drawNat(animate = false) {
     if (natMode === "p") return drawNatProd(animate);
-    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>국가데이터처 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span>${fcNat(CUR) ? `<span class="rc-has-tip" data-tip="${modelTip()}"><i class="fc"></i>모델</span>` : ""}<span><i class="prev"></i>평년</span>`;
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>국가데이터처 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span><i class="prev"></i>평년</span>`;
     const el = $("#chart-nat");
     const { svg, w, h } = frame(el, 150);
     const ys = d3.range(NFROM, CUR + 1);
@@ -589,7 +575,7 @@
 
   // 전국 생산량: 확정(선)과 국가데이터처 10월 예상(점). KREI는 단수로만 전망해 단수 그래프에서 본다
   function drawNatProd(animate = false) {
-    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>국가데이터처 10월 예상</span>${fcNat(CUR) ? `<span class="rc-has-tip" data-tip="${modelTip()}"><i class="fc"></i>모델</span>` : ""}<span>단위 만 톤</span>`;
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>국가데이터처 10월 예상</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span>단위 만 톤</span>`;
     const el = $("#chart-nat");
     const { svg, w, h } = frame(el, 150);
     const ys = d3.range(NFROM, CUR + 1);
@@ -638,7 +624,7 @@
     const sg = ACC.sigun;
     const md = (d) => (d ? `${+d.slice(0, 2)}/${+d.slice(-2)}` : "");
     $("#acc-rows").innerHTML = `<div class="chart rc-chart rc-acct" id="chart-acct" aria-label="예측 시점별 전국 단수 평균 절대 오차"></div>`
-      + `<div class="pw-key rc-acc-key"><span class="rc-has-tip" data-tip="${modelTip()}"><i class="rc-k-m"></i>모델</span>`
+      + `<div class="pw-key rc-acc-key"><span><i class="rc-k-m"></i>모델</span>`
       + [["stat", "국가데이터처"], ["krei", "KREI"]].filter(([k_]) => ACC[k_]).map(([k_, nm]) => `<span><i class="rc-k-${k_}"></i>${nm} <b>±${nf1.format(ACC[k_].mae)}</b> (${md(ACC.when?.[k_])})</span>`).join("") + `</div>`
       + (sg && ts.length ? `<div class="rc-acc-sg" title="시군 단수 오차(면적 가중 RMSE). 국가데이터처·KREI는 시군 전망을 내지 않는다">시군 오차 `
         + [ts[0], "0915", ts.at(-1)].filter((t, i, a) => sg[`m${t}`] != null && a.indexOf(t) === i).map((t) => `${FC.lab[t]} <b>${nf1.format(sg[`m${t}`])}</b>`).join(" → ")
@@ -792,7 +778,7 @@
         + `<span>단수 <b>${int(fy[0])}kg</b>${ok(fy[3]) ? ` <small>${int(fy[3])}~${int(fy[4])}</small>` : ""}</span><span>면적 <b>${haS(fy[1])}</b></span>`;
       ufc.title = `모델 예측(${FC.lab[FC.cur]}) · 범위는 80% · 누르면 ${FCY}년 예측 지도로`;
     }
-    $("#unit-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="prev"></i>평년</span>${FC?.bt[k] || fcRow(k, FCY) ? `<span class="rc-has-tip" data-tip="${modelTip()}"><i class="fc"></i>모델 예측(${FC.lab[FC.cur]})</span>` : ""}`;
+    $("#unit-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="prev"></i>평년</span>${FC?.bt[k] || fcRow(k, FCY) ? `<span><i class="fc"></i>모델 예측(${FC.lab[FC.cur]})</span>` : ""}`;
     drawUnit(animate);
     drawProd();
   }

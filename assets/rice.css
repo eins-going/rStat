@@ -291,10 +291,3 @@ html.rc-lock, html.rc-lock body { overflow: hidden; }
   .rc #p-unit .rc-fctab th, .rc #p-unit .rc-fctab td { line-height: 1.25; }
   .rc #p-unit .pw-key { margin-top: 2px; }
 }
-
-/* 모델 설명 풍선 */
-.rc-has-tip { cursor: help; text-decoration: underline dotted var(--faint); text-underline-offset: 3px; }
-.chart-tip .rc-mtip { white-space: normal; width: min(360px, calc(100vw - 24px)); line-height: 1.5; color: var(--muted); }
-.rc-mtip b { display: block; margin: 0 0 2px; }
-.rc-mtip ul { margin: 4px 0 0; padding-left: 14px; }
-.rc-mtip li { margin: 2px 0; }
