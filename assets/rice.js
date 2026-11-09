@@ -58,7 +58,11 @@
   const atv = (k, f, y) => (YI[y] == null ? null : V[k]?.[f]?.[YI[y]] ?? null);
   // 모델 예측: 확정이 없는 예측 연도(FCY)에는 예측값을 대신 쓴다 [단수, 면적, 생산량, 단수 하한·상한, 생산량 하한·상한]
   const FC = R.fc, FCY = FC?.year ?? null, FCV = FC ? FC.v[FC.cur] : {};
-  const FCL = FC ? `${FC.lab[FC.cur]} 예측` : "예측"; // 예측 시점 이름(예: 10월 예측)
+  const FCL = FC ? `${FC.lab[FC.cur]} 예측` : "예측"; // 예측 시점 이름(예: 10월 8일 예측)
+  // 국가데이터처 예상(10/8) 뒤 확정 전: 오늘 기준 최신 예측 = 마지막 시점 값 (10/8 뒤 기상은 시험해 보니 정확도를 못 올려 반영 안 함)
+  const TODAY = new Date();
+  const LATEST = FC && FC.cur === "1010" && FC.year === TODAY.getFullYear() && FC.statDate && TODAY.toISOString().slice(0, 10) > FC.statDate
+    ? { lab: `${TODAY.getMonth() + 1}월 ${TODAY.getDate()}일`, tip: `오늘 기준 최신 예측은 ${FC.lab["1010"]} 값 그대로입니다. 그 뒤 나온 정보(10월 기상)로 고쳐 보는 시험을 했지만 지난해들에서 정확도가 오르지 않아 반영하지 않습니다. 확정 발표 때까지 이 값이 최선입니다.` } : null;
   const fcRow = (k, y) => (FC && y === FCY && atv(k, "y", y) == null ? FCV[k] ?? null : null);
   const at = (k, f, y) => {
     const v = atv(k, f, y);
@@ -480,11 +484,12 @@
     if (fcNat(CUR)) {
       const ts = (FC.order || Object.keys(FC.v).sort()).filter((t) => FC.v[t]?.[NATION]);
       const show = [...new Set([FC.cur, ts[0]])];
+      const late = LATEST && !o.final;
       const item = (t) => { const r = FC.v[t][NATION]; return `${FC.lab[t]} ${tonS(r[2])}(${int(r[0])}kg${o.final && ok(pFin) ? `, 확정 대비 ${pctS(ratio(r[2], pFin))}` : ""})`; };
       fcEl.title = "모델 시점별 예측\n" + [...ts].reverse().map(item).join("\n");
       fcEl.innerHTML = `<span class="lab">모델 예측${o.final && ok(pFin) ? ` <small>%는 확정 대비</small>` : ""}</span><span class="items">` + show.map((t) => {
         const r = FC.v[t][NATION];
-        return `<span class="${t === FC.cur ? "cur" : ""}">${FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg${o.final && ok(pFin) ? ` · ${pctS(ratio(r[2], pFin))}` : ""})</span>`;
+        return `<span class="${t === FC.cur ? "cur" : ""}"${late && t === FC.cur ? ` title="${LATEST.tip}"` : ""}>${late && t === FC.cur ? `최신(${LATEST.lab}) = ${FC.lab[t]}` : FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg${o.final && ok(pFin) ? ` · ${pctS(ratio(r[2], pFin))}` : ""})</span>`;
       }).join("") + "</span>";
     }
     drawNat();
@@ -704,13 +709,16 @@
       const KOSIS = `<small>KOSIS</small>`;
       $("#u-fctab").innerHTML = `<thead><tr><th><small>${fin ? "작은 글씨: 확정 대비" : "작은 글씨: 80% 범위"}</small></th><th>생산량</th><th>단수 <small>10a당</small></th></tr></thead><tbody>`
         + (fin ? `<tr class="fin"><th title="국가데이터처 농작물생산조사(논벼), KOSIS">${y}년 확정${KOSIS}</th><td><b>${tonS(pF)}</b></td><td><b>${int(yF)}kg</b></td></tr>` : "")
+        + (LATEST && !fin && FC.v[FC.cur]?.[k] ? (() => { const r = FC.v[FC.cur][k];
+          return `<tr class="cur" title="${LATEST.tip} 80% 범위 생산량 ${tonS(r[5])}~${tonS(r[6])}, 단수 ${int(r[3])}~${int(r[4])}kg"><th>${LATEST.lab} 최신<small class="tag">${FC.lab[FC.cur]} 뒤 바뀐 정보 없음</small></th><td><b>${tonS(r[2])}</b>${rng(r[5], r[6], tonN)}</td><td><b>${int(r[0])}kg</b>${rng(r[3], r[4], kgN)}</td></tr>`; })() : "")
         + times.map((t) => {
-          const r = FC.v[t][k], cur = t === FC.cur;
+          const r = FC.v[t][k], cur = t === FC.cur && !(LATEST && !fin);
           const tip = `${FC.lab[t]} 예측${t === "1010" ? "(국가데이터처 예상 반영)" : "(그날까지 기상)"} · 80% 범위 생산량 ${tonS(r[5])}~${tonS(r[6])}, 단수 ${int(r[3])}~${int(r[4])}kg`;
           const pc = fin ? err(r[2], pF) : cur ? rng(r[5], r[6], tonN) : "";
           const yc = fin ? err(r[0], yF) : cur ? rng(r[3], r[4], kgN) : "";
-          return `<tr class="${cur && !fin ? "cur" : ""}" title="${tip}"><th>${FC.lab[t]} 예측</th><td><b>${tonS(r[2])}</b>${pc}</td><td><b>${int(r[0])}kg</b>${yc}</td></tr>`;
+          return `<tr class="${cur && !fin ? "cur" : ""}" title="${tip}"><th>${FC.lab[t]} 예측${FC.tag?.[t] ? `<small class="tag">${FC.tag[t]}</small>` : ""}</th><td><b>${tonS(r[2])}</b>${pc}</td><td><b>${int(r[0])}kg</b>${yc}</td></tr>`;
         }).join("")
+        + (FC.stat?.[k] ? `<tr class="base orgrow" title="국가데이터처 쌀 예상생산량조사(${FC.statDate || ""} 발표) 그대로 — 모델 값 아님"><th>국가데이터처 예상<small>${FC.statDate ? `${+FC.statDate.slice(5, 7)}.${+FC.statDate.slice(8, 10)}` : ""}</small></th><td>${tonS(FC.stat[k][1])}${fin ? err(FC.stat[k][1], pF) : ""}</td><td>${int(FC.stat[k][0])}kg${fin ? err(FC.stat[k][0], yF) : ""}</td></tr>` : "")
         + (fin ? "" : `<tr class="base"><th title="국가데이터처 농작물생산조사(논벼), KOSIS">${y - 1}년 확정${KOSIS}</th><td>${tonS(pP)}</td><td>${ok(yP) ? `${int(yP)}kg` : "–"}</td></tr>`
           + (ok(nn) ? `<tr class="base"><th title="KOSIS 단수로 계산: 직전 5년 중 최고·최저를 뺀 3년 평균">평년${KOSIS}</th><td></td><td>${int(nn)}kg</td></tr>` : ""))
         + `</tbody>`;

@@ -30,7 +30,7 @@
 모델 예측(fc): db/clean/rice/rice_forecast.csv (y, asof mmdd|1010, level nation|sido|sigun, sc, name, yield, area, prod, y_lo, y_hi, p_lo, p_hi)
   ← research/rice/prod/pipeline.py (scripts/rice_model.py가 돌림)
   mmdd(0731·0815·0901·0915·1001, 시즌 중 주간 최신) = 그날까지 기상으로 낸 작물 생리 모델, 1010 = 국가데이터처 시도 예상 + 태풍 보정 + 작물 모델.
-  lab: 시점 이름(1010은 그해 국가데이터처 예상 발표일), when: {stat, krei} 발표일 중앙값(mm-dd, 정확도 그림 가로축). 범위는 그해 이전 검증 오차의 10~90%.
+  lab: 시점 이름(1010은 그해 국가데이터처 예상 발표일), tag: {1010: '국가데이터처 반영'}, stat: {전국·시도 키: [국가데이터처 예상 단수, 생산량]}, when: {stat, krei} 발표일 중앙값(mm-dd, 정확도 그림 가로축). 범위는 그해 이전 검증 오차의 10~90%.
   2013~2025는 그해 이전 자료로만 맞춘 재현값 → 정확도. fc: {year, cur, lab, v:{asof:{키:[단수,면적,생산량,단수 하한,상한,생산량 하한,상한]}}, bt:{키:[years 순 cur 시점 단수]}}
 실행: python scripts/build_rice.py
 """
@@ -154,7 +154,15 @@ def build_fc(fc, years, Y, v, final, outlook, acc):
     lab = {a: f"{int(a[:2])}월 {int(a[2:])}일" for a in crop}
     if "1010" in fc:
         lab["1010"] = md(st["date"]) if st.get("date") else "10월"
+    # 국가데이터처 예상 그 자체(전국·시도): 모델의 '국가데이터처 반영' 값과 나란히 보이려고
+    stat = {}
+    sp = os.path.join(ROOT, "research", "rice", "statdown", "stat_forecast_sido.csv")
+    if os.path.exists(sp):
+        for r in csv.DictReader(open(sp, encoding="utf-8")):
+            if int(r["year"]) == fy and r["sido_code"] in fc.get("1010", {}):
+                stat[r["sido_code"]] = [num(r["yield_kg10a"]), num(r["prod_ton"])]
     out = {"year": fy, "cur": cur, "lab": lab, "order": crop + (["1010"] if "1010" in fc else []),
+           "tag": {"1010": "국가데이터처 반영"}, "stat": stat, "statDate": st.get("date"),
            "v": {a: {k: [None if x is None else round(x, 1) for x in d[fy]] for k, d in sorted(fc[a].items()) if fy in d} for a in fc},
            "bt": {}}
     for k, d in fc[cur].items():
