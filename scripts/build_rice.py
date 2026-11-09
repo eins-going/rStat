@@ -27,8 +27,10 @@
     cells: {"36|해남군": 논 격자 수(연도·합성 중앙값)}
   }
   격자 수가 CELL_MIN 미만인 시군은 넣지 않는다. 평년 곡선(직전 5년 doy별 평균·범위)은 화면에서 계산한다
-모델 예측(fc): db/clean/rice/rice_forecast.csv (y, asof 0915|1010, level nation|sido|sigun, sc, name, yield, area, prod, y_lo, y_hi, p_lo, p_hi)
-  0915 = 기상 작물 모델(9/15까지 기상), 1010 = 국가데이터처 시도 예상 + 태풍 보정 + 작물 모델. 범위는 그해 이전 검증 오차의 10~90%.
+모델 예측(fc): db/clean/rice/rice_forecast.csv (y, asof mmdd|1010, level nation|sido|sigun, sc, name, yield, area, prod, y_lo, y_hi, p_lo, p_hi)
+  ← research/rice/prod/pipeline.py (scripts/rice_model.py가 돌림)
+  mmdd(0731·0815·0901·0915·1001, 시즌 중 주간 최신) = 그날까지 기상으로 낸 작물 생리 모델, 1010 = 국가데이터처 시도 예상 + 태풍 보정 + 작물 모델.
+  lab: 시점 이름(1010은 그해 국가데이터처 예상 발표일), when: {stat, krei} 발표일 중앙값(mm-dd, 정확도 그림 가로축). 범위는 그해 이전 검증 오차의 10~90%.
   2013~2025는 그해 이전 자료로만 맞춘 재현값 → 정확도. fc: {year, cur, lab, v:{asof:{키:[단수,면적,생산량,단수 하한,상한,생산량 하한,상한]}}, bt:{키:[years 순 cur 시점 단수]}}
 실행: python scripts/build_rice.py
 """
@@ -45,7 +47,6 @@ KOSIS = os.path.join(ROOT, "db", "raw", "kosis_rice", "dt_1et0034.csv")
 KREI = os.path.join(ROOT, "db", "raw", "krei", "krei_rice_outlook.csv")
 MODIS = os.path.join(ROOT, "db", "clean", "rice", "modis_curves.csv")
 FCSV = os.path.join(ROOT, "db", "clean", "rice", "rice_forecast.csv")  # 모델 예측(연구 결과 내보내기)
-FC_LAB = {"0915": "9월 15일", "1010": "10월"}
 FC_COLS = ("yield", "area", "prod", "y_lo", "y_hi", "p_lo", "p_hi")
 OUT = os.path.join(ROOT, "data", "rice.js")
 CELL_MIN = 8  # 논 격자가 이보다 적은 시군은 생육 곡선을 싣지 않는다
@@ -146,8 +147,14 @@ def build_ndvi():
 def build_fc(fc, years, Y, v, final, outlook, acc):
     """예측 연도(확정 없는 마지막 해)의 시점별 값 + 재현 정확도(전국·8도·시군)를 acc에 더한다"""
     fy = max(y for a in fc.values() for d in a.values() for y in d)
-    cur = "1010" if outlook.get(str(fy), {}).get("stat") and "1010" in fc else "0915"
-    out = {"year": fy, "cur": cur, "lab": FC_LAB,
+    st = outlook.get(str(fy), {}).get("stat") or {}
+    crop = sorted(a for a in fc if a != "1010")
+    cur = "1010" if st and "1010" in fc else crop[-1]
+    md = lambda d: f"{int(d[5:7])}월 {int(d[8:10])}일"  # noqa: E731  2026-10-08 → 10월 8일
+    lab = {a: f"{int(a[:2])}월 {int(a[2:])}일" for a in crop}
+    if "1010" in fc:
+        lab["1010"] = md(st["date"]) if st.get("date") else "10월"
+    out = {"year": fy, "cur": cur, "lab": lab, "order": crop + (["1010"] if "1010" in fc else []),
            "v": {a: {k: [None if x is None else round(x, 1) for x in d[fy]] for k, d in sorted(fc[a].items()) if fy in d} for a in fc},
            "bt": {}}
     for k, d in fc[cur].items():
@@ -176,7 +183,12 @@ def build_fc(fc, years, Y, v, final, outlook, acc):
             if w:
                 acc.setdefault(lv, {})[f"m{a}"] = round((se / w) ** 0.5, 1)
                 acc[lv]["norm"] = round((sb / w) ** 0.5, 1)
-    print("예측", fy, cur, {k: acc.get(k) for k in ("m0915", "m1010", "sido8", "sigun")})
+    # 정확도 그림 가로축: 국가데이터처·KREI 발표일 중앙값
+    def med(org):
+        ds = sorted(o[org]["date"][5:] for yy, o in outlook.items() if int(yy) >= ERR_FROM and (o.get(org) or {}).get("date"))
+        return ds[len(ds) // 2] if ds else None
+    acc["when"] = {"stat": med("stat"), "krei": med("krei")}
+    print("예측", fy, cur, lab, {k: (acc.get(k) or {}).get("mae") for k in acc if k.startswith("m")}, acc.get("sigun"), acc["when"])
     return out
 
 

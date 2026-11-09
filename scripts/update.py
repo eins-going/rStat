@@ -386,6 +386,11 @@ def due_date(src, today):
     if s["kind"] == "yearly":
         cands = [dt.date(y, m, s.get("day", 1)) for y in (today.year - 1, today.year) for m in s["months"]]
         return max(c for c in cands if c <= today)
+    if s["kind"] == "weekly":  # 정한 달(months)의 정한 요일(weekday, 월=0)마다
+        d = today
+        while not (d.month in s["months"] and d.weekday() == s["weekday"]):
+            d -= dt.timedelta(days=1)
+        return d
     raise ValueError(s)
 
 
@@ -395,6 +400,11 @@ def next_due(src, today):
     if s["kind"] == "monthly":
         d = today.replace(day=min(s["day"], 28))
         return d if d > today else (d.replace(day=1) + dt.timedelta(days=32)).replace(day=min(s["day"], 28))
+    if s["kind"] == "weekly":
+        d = today + dt.timedelta(days=1)
+        while not (d.month in s["months"] and d.weekday() == s["weekday"]):
+            d += dt.timedelta(days=1)
+        return d
     cands = [dt.date(y, m, s.get("day", 1)) for y in (today.year, today.year + 1) for m in s["months"]]
     return min(c for c in cands if c > today)
 
@@ -550,7 +560,8 @@ def write_doc(plan, state):
         if src["method"] != "auto":
             continue
         s = src["schedule"]
-        when = f"매월 {s['day']}일 이후" if s["kind"] == "monthly" else f"매년 {'·'.join(map(str, s['months']))}월 {s.get('day', 1)}일 이후"
+        when = (f"매월 {s['day']}일 이후" if s["kind"] == "monthly" else f"매년 {'·'.join(map(str, s['months']))}월 매주 {'월화수목금토일'[s['weekday']]}요일"
+                if s["kind"] == "weekly" else f"매년 {'·'.join(map(str, s['months']))}월 {s.get('day', 1)}일 이후")
         lines.append(f"- **{src['name']}**: {when} · {' → '.join(f'`{c[0]}`' for c in src['commands'])} · {src.get('note', '')}")
     os.makedirs(os.path.dirname(DOC), exist_ok=True)
     with open(DOC, "w", encoding="utf-8") as fh:

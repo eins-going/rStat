@@ -8,3 +8,12 @@ db/
 .venv/
 at_data/
 report/
+
+# 연구 코드: 코드(.py)와 기록(.md)만 올린다 (자료·결과·내려받은 라이브러리는 이 PC에만)
+research/**
+!research/**/
+!research/**/*.py
+!research/**/*.md
+research/**/_pylib/
+research/**/_bak_*/
+research/**/__pycache__/
