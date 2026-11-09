@@ -85,7 +85,7 @@
       </span>
       <label class="fv-check"><input type="checkbox" data-ui="labels"> 지명</label>
       <label class="fv-check" title="팜맵 농경지 경계선을 끄면 주제도 색이 잘 보입니다(농경지를 누르면 조회는 그대로)"><input type="checkbox" data-ui="edges" checked> 농경지 경계</label>
-      <label class="fv-check" title="VWorld 연속지적도(공부상 지번 경계). 크게 확대(16단계 이상)하면 보입니다"><input type="checkbox" data-ui="cadastre"> 지적 경계</label>
+      <label class="fv-check" title="VWorld 연속지적도(공부상 지번 경계). 농경지 경계와 같이 확대(15단계 이상)하면 보입니다"><input type="checkbox" data-ui="cadastre"> 지적 경계</label>
       <label class="fv-theme"><span>주제도</span><select data-ui="theme" aria-label="주제도">
         <option value="">없음</option>${THEMES.map((t) => `<option value="${t.id}">${t.name}</option>`).join("")}
       </select></label>
@@ -252,14 +252,26 @@
     if (st.lastLand) renderLand(st.lastLand);
   }
 
-  // 지적 경계 (VWorld 연속지적도 WMS). 16단계 이상에서만 그린다
+  // 지적 경계 (VWorld 연속지적도 WMS). VWorld는 축척 약 1:5천(17단계)보다 멀면 빈 그림을 준다.
+  // 그래서 15·16단계에서는 같은 범위를 4·2배 크기 그림으로 받아(서버가 보는 축척 = 17단계) 타일 칸에 줄여 넣는다.
+  // 농경지 경계(팜맵 타일)와 같은 15단계부터 보인다. 15단계 타일은 1.5~2.5MB로 무겁다
+  const CAD_Z = 17;
   let cadLayer = null;
   function syncCadastre() {
     if (!map) return;
     if (st.cadastre) {
-      cadLayer ||= L.tileLayer.wms("https://api.vworld.kr/req/wms", {
+      const CadWMS = L.TileLayer.WMS.extend({
+        getTileUrl(coords) {
+          const p = this.wmsParams, w = p.width, f = Math.min(4, Math.max(1, 2 ** (CAD_Z - coords.z)));
+          p.width = p.height = w * f;
+          const url = L.TileLayer.WMS.prototype.getTileUrl.call(this, coords);
+          p.width = p.height = w;
+          return url;
+        },
+      });
+      cadLayer ||= new CadWMS("https://api.vworld.kr/req/wms", {
         layers: "lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun", styles: "lp_pa_cbnd_bubun,lp_pa_cbnd_bonbun", format: "image/png", transparent: true,
-        version: "1.3.0", key: vkey, tileSize: 512, minZoom: 16, maxZoom: 20, opacity: 0.9, zIndex: 4, className: "fv-cad-tiles",
+        version: "1.3.0", key: vkey, tileSize: 512, minZoom: QUERY_ZOOM, maxZoom: 20, opacity: 0.9, zIndex: 4, className: "fv-cad-tiles",
       });
       cadLayer.addTo(map);
     } else cadLayer?.remove();
