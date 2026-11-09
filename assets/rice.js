@@ -243,7 +243,9 @@
     const [[x0, y0], [x1, y1]] = path.bounds(sidoFeatures.find((f) => f.properties.key === s));
     const pad = 28;
     const k = Math.min(14, (size.w - pad * 2) / (x1 - x0), (size.h - pad * 2) / (y1 - y0));
-    return d3.zoomIdentity.translate(size.w / 2 - ((x0 + x1) / 2) * k, size.h / 2 - ((y0 + y1) / 2) * k).scale(k);
+    // 시군을 골랐으면 축척은 시도 그대로(이웃 시군이 보이게) 두고 그 시군을 가운데로
+    const [[cx0, cy0], [cx1, cy1]] = level(state.key) === 2 && featOf.get(state.key) ? path.bounds(featOf.get(state.key)) : [[x0, y0], [x1, y1]];
+    return d3.zoomIdentity.translate(size.w / 2 - ((cx0 + cx1) / 2) * k, size.h / 2 - ((cy0 + cy1) / 2) * k).scale(k);
   }
   function applyView(animate) {
     const world = mapSvg.select("g.world");
