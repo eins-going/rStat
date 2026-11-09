@@ -457,7 +457,11 @@
     donut("#donut-land", lr, plr);
     const note = `※ 경지율 = 경지면적 ÷ 행정구역 면적(지적통계 ${P.area || ""}년)`;
     setNote("land", note);
-    $("#donut-land").title = `${note}${p ? `\n흰 선은 ${label(p)} ${pct(plr)}` : ""}`;
+    const area = V.area?.[k];
+    donutTip("#donut-land", lr == null ? "경지율 자료 없음" : `<b>경지율 ${pct(lr)}</b><br>행정구역 땅 가운데 농경지(논·밭)가 차지하는 비율`
+      + `<br>= 경지면적 ${nf0.format(t.value)}ha ÷ 행정구역 면적 ${nf0.format(area)}ha`
+      + `<br><span class="tip-src">경지면적: 국가데이터처 농업면적조사 · 행정구역 면적: 지적통계 ${P.area || ""}년</span>`
+      + (p && plr != null ? `<br>흰 선은 ${label(p)} ${pct(plr)}` : ""));
     $("#split-land").innerHTML = t.value ? `
       <div class="split-bar" role="img" aria-label="논 ${nf1.format(pp)}%, 밭 ${nf1.format(100 - pp)}%">
         <span style="flex-basis:${pp}%;background:var(--accent)"></span>
@@ -620,7 +624,7 @@
     else if (label(k).endsWith("시부")) note = `구 예산 합계 (광역시 본청 예산 제외) · 흰 눈금은 ${label(p)} ${pct(ps)}`;
     else note = `흰 눈금은 ${label(p)} ${pct(ps)}${rk ? ` · 비중 ${rk}` : ""}`;
     setNote("budget", note);
-    $("#donut-budget").title = note;
+    donutTip("#donut-budget", `<b>농업ㆍ농촌 예산 비중 ${pct(s)}</b><br>${note}`);
   }
 
   // 예산 막대는 원그래프 옆 좁은 칸에 들어가므로 최근 몇 해만 보여준다
@@ -732,6 +736,20 @@
         svg.selectAll("circle.pt").attr("r", (p, i) => (i === pts.length - 1 ? 4 : 2.5));
         chartTip(null);
       });
+  }
+
+  // 원그래프 설명 풍선: 마우스를 올리면 바로 뜬다(브라우저 기본 title은 늦게 뜨고 잘 안 보임)
+  function donutTip(sel, html) {
+    const el = $(sel);
+    if (!el) return;
+    el.removeAttribute("title");
+    el._tip = html;
+    el.setAttribute("aria-description", html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+    if (el._tipBound) return;
+    el._tipBound = true;
+    el.style.cursor = "help";
+    el.addEventListener("mousemove", (e) => chartTip(e, el._tip));
+    el.addEventListener("mouseleave", () => chartTip(null));
   }
 
   // 그래프 위 값 표시 (화면에 하나)

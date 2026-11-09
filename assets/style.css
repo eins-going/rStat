@@ -1048,3 +1048,4 @@ body {
   .live-table td { padding: 1px 0; }
   .live-table th { padding-bottom: 1px; }
 }
+.chart-tip .tip-src { color: var(--faint); font-size: 11px; }
