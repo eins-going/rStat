@@ -58,6 +58,7 @@
   const atv = (k, f, y) => (YI[y] == null ? null : V[k]?.[f]?.[YI[y]] ?? null);
   // 모델 예측: 확정이 없는 예측 연도(FCY)에는 예측값을 대신 쓴다 [단수, 면적, 생산량, 단수 하한·상한, 생산량 하한·상한]
   const FC = R.fc, FCY = FC?.year ?? null, FCV = FC ? FC.v[FC.cur] : {};
+  const FCL = FC ? `${FC.lab[FC.cur]} 예측` : "예측"; // 예측 시점 이름(예: 10월 예측)
   const fcRow = (k, y) => (FC && y === FCY && atv(k, "y", y) == null ? FCV[k] ?? null : null);
   const at = (k, f, y) => {
     const v = atv(k, f, y);
@@ -295,7 +296,7 @@
     mapSvg.selectAll("path.unit.sel").raise();
     mapSvg.classed("dimmed", level(state.key) === 2);
     const missing = ALL_UNITS.length - vals.length;
-    $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${y}년${fcMode(y) ? ` <b class="rc-fctag">예측</b>` : ""}</span></span>`
+    $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${y}년${fcMode(y) ? ` <b class="rc-fctag">${FCL}</b>` : ""}</span></span>`
       + sc.rows.map(([c, t]) => `<span class="row"><span class="sw" style="background:${c}"></span>${t}</span>`).join("")
       + (missing ? `<span class="row"><span class="sw" style="background:${EMPTY};outline:1px solid #3a3f48"></span>자료 없음 ${missing}</span>` : "")
       + (m.key.startsWith("area") ? "" : `<span class="rc-lg-small" title="재배면적 ${SMALL_HA}ha 미만: 단수가 크게 흔들려 흐리게 칠함"><i></i>흐림 = ${SMALL_HA}ha 미만</span>`);
@@ -307,9 +308,9 @@
     const yv = at(k, "y", y), n = at(k, "n", y);
     const fr = fcRow(k, y);
     if (fr) {
-      tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${y}년 예측 단수 <b style="display:inline">${int(fr[0])}kg</b>${ok(fr[3]) ? ` (${int(fr[3])}~${int(fr[4])})` : ""}`
+      tip.innerHTML = `<b>${esc(fullLabel(k))}</b>${y}년 ${FCL} 단수 <b style="display:inline">${int(fr[0])}kg</b>${ok(fr[3]) ? ` (${int(fr[3])}~${int(fr[4])})` : ""}`
         + (ok(n) ? `<br>평년 ${int(n)}kg · ${pctS(ratio(fr[0], n))}` : "")
-        + `<br>예측 생산량 ${tonS(fr[2])} · 면적 ${haS(fr[1])}`
+        + `<br>${FCL} 생산량 ${tonS(fr[2])} · 면적 ${haS(fr[1])}`
         + `<br><span class="tip-hint">누르면 위성 영상</span>`;
       const rr = $("#map-wrap").getBoundingClientRect();
       tip.style.left = `${e.clientX - rr.left}px`;
@@ -353,7 +354,7 @@
       </button>`;
     const scope = s ? `${T.sidos[s].short} 시군` : "시군";
     const minNote = m.key.startsWith("area") ? "" : ` · ${nf0.format(RANK_MIN_HA)}ha 이상`;
-    const meta = `<span class="rank-meta">${y}년${fcMode(y) ? " 예측" : ""} · ${list.length}곳${minNote}</span>`;
+    const meta = `<span class="rank-meta">${y}년${fcMode(y) ? ` ${FCL}` : ""} · ${list.length}곳${minNote}</span>`;
     let body;
     if (m.key === "norm") {
       const lo = [...list].reverse().filter(([, v]) => v < 0).slice(0, 5), hi = list.filter(([, v]) => v > 0).slice(0, 5);
@@ -464,7 +465,7 @@
       ok(st?.y) ? `<span>단수 <b>${int(st.y)}kg</b> (평년 ${int(n)}kg 대비 ${pctS(ratio(st.y, n))})</span>` : "",
       krTxt ? `<span>KREI 단수 전망 <b>${krTxt}</b></span>` : "",
       ok(st?.a) ? `<span>재배면적 <b>${haS(st.a)}</b></span>` : "",
-      fcNat(CUR) ? `<span class="rc-fcl">모델 예측 <b>${int(fcNat(CUR)[0])}kg</b>${FC.cur === "1010" && FC.v["0915"]?.["00"] ? ` (${FC.lab["0915"]} ${int(FC.v["0915"]["00"][0])}kg)` : ""}</span>` : "",
+      fcNat(CUR) ? `<span class="rc-fcl">모델 단수 ${FCL} <b>${int(fcNat(CUR)[0])}kg</b>${FC.cur === "1010" && FC.v["0915"]?.["00"] ? ` · ${FC.lab["0915"]} 예측 ${int(FC.v["0915"]["00"][0])}kg` : ""}</span>` : "",
     ].join("");
     drawNat();
   }
@@ -628,7 +629,24 @@
     const k = state.key, y = state.year;
     $("#unit-name").textContent = fullLabel(k);
     const fr = fcRow(k, y);
-    $("#unit-year").textContent = `${y}년${fr ? " 예측" : ""}`;
+    $("#unit-year").textContent = `${y}년${fr ? " · 확정 전" : ""}`;
+    // 확정 전 연도: 예측 시점별 값(최근 시점 먼저)과 비교 기준(전년 확정·평년)을 한 표로
+    $("#u-stats").hidden = !!fr;
+    $("#u-fctab").hidden = !fr;
+    if (fr) {
+      const rng = (lo, hi, f) => (ok(lo) && ok(hi) ? ` <small>${f(lo)}~${f(hi)}</small>` : "");
+      const kgN = (v) => int(v), tonN = (v) => tonS(v).replace(/ ?톤$/, "").replace(/만$/, "");
+      const times = Object.keys(FC.v).sort().reverse(); // 1010, 0915 …
+      const pP = atv(k, "p", y - 1), yP = atv(k, "y", y - 1), nn = atv(k, "n", y);
+      $("#u-fctab").innerHTML = `<thead><tr><th></th><th>생산량</th><th>단수 <small>10a당</small></th></tr></thead><tbody>`
+        + times.filter((t) => FC.v[t]?.[k]).map((t) => {
+          const r = FC.v[t][k];
+          return `<tr class="${t === FC.cur ? "cur" : ""}"><th>${FC.lab[t]} 예측</th><td><b>${tonS(r[2])}</b>${rng(r[5], r[6], tonN)}</td><td><b>${int(r[0])}kg</b>${rng(r[3], r[4], kgN)}</td></tr>`;
+        }).join("")
+        + `<tr class="base"><th>${y - 1}년 확정</th><td>${tonS(pP)}</td><td>${ok(yP) ? `${int(yP)}kg` : "–"}</td></tr>`
+        + (ok(nn) ? `<tr class="base"><th>평년</th><td></td><td>${int(nn)}kg</td></tr>` : "")
+        + `</tbody>`;
+    }
     const yv = at(k, "y", y), n = at(k, "n", y);
     const a = at(k, "a", y), p = at(k, "p", y);
     $("#u-prod").textContent = !ok(p) ? "–" : p >= 1e4 ? nf1.format(p / 1e4) : int(p);
@@ -637,15 +655,14 @@
     $("#u-yield").textContent = int(yv);
     $("#u-dev").innerHTML = deltaHTML(at(k, "d", y), "평년 대비");
     const a10 = ratio(a, at(k, "a", y - 10));
-    const other = FC && FC.cur === "1010" ? FC.v["0915"]?.[k] : null;
     $("#u-line").innerHTML = fr
-      ? `<span>80% 범위 <b>${tonS(fr[5])}~${tonS(fr[6])}</b> · 단수 <b>${int(fr[3])}~${int(fr[4])}kg</b></span><span>재배면적 <b>${haS(a)}</b>(추정)</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}${other ? `<span>${FC.lab["0915"]} 예측 <b>${int(other[0])}kg</b></span>` : ""}`
+      ? `<span>작은 글씨는 80% 범위</span><span>재배면적 <b>${haS(a)}</b>(추정, 시점 공통)</span>`
       : ok(a) ? `<span>재배면적 <b>${haS(a)}</b>${ok(a10) ? ` (10년 전 대비 ${pctS(a10)})` : ""}</span>${ok(n) ? `<span>평년 단수 <b>${int(n)}kg</b></span>` : ""}` : `<span>${y}년 시군 자료 없음</span>`;
     // 확정 연도를 보고 있어도 올해 예측을 숫자로 (누르면 예측 연도로)
     const fy = fcRow(k, FCY), ufc = $("#u-fc");
     ufc.hidden = !fy || y === FCY;
     if (fy && y !== FCY) {
-      ufc.innerHTML = `<span class="lab">${FCY}년 예측</span><span>생산량 <b>${tonS(fy[2])}</b>${ok(fy[5]) ? ` <small>${tonS(fy[5])}~${tonS(fy[6])}</small>` : ""}</span>`
+      ufc.innerHTML = `<span class="lab">${FCY}년 ${FCL}</span><span>생산량 <b>${tonS(fy[2])}</b>${ok(fy[5]) ? ` <small>${tonS(fy[5])}~${tonS(fy[6])}</small>` : ""}</span>`
         + `<span>단수 <b>${int(fy[0])}kg</b>${ok(fy[3]) ? ` <small>${int(fy[3])}~${int(fy[4])}</small>` : ""}</span><span>면적 <b>${haS(fy[1])}</b></span>`;
       ufc.title = `모델 예측(${FC.lab[FC.cur]}) · 범위는 80% · 누르면 ${FCY}년 예측 지도로`;
     }
@@ -684,7 +701,7 @@
       g.append("circle").attr("class", "rc-fc now").attr("cx", x(FCY)).attr("cy", y(fr[0])).attr("r", 4);
     }
     hover(svg, m, w, h, x, ys, (yy) => {
-      if (yy === FCY && fr) return `<b>${yy}년 예측</b>${int(fr[0])}kg${ok(fr[3]) ? ` (80% ${int(fr[3])}~${int(fr[4])})` : ""}${ok(nor(yy)) ? ` · 평년 ${int(nor(yy))}` : ""}`;
+      if (yy === FCY && fr) return `<b>${yy}년 ${FCL}</b>${int(fr[0])}kg${ok(fr[3]) ? ` (80% ${int(fr[3])}~${int(fr[4])})` : ""}${ok(nor(yy)) ? ` · 평년 ${int(nor(yy))}` : ""}`;
       if (!ok(fin(yy))) return `<b>${yy}년</b>자료 없음`;
       return `<b>${yy}년</b>${int(fin(yy))}kg${ok(nor(yy)) ? ` · 평년 ${int(nor(yy))} · ${pctS(at(k, "d", yy))}` : ""}${ok(btv(yy)) ? ` · 모델 ${int(btv(yy))} (${kgS(btv(yy) - fin(yy))})` : ""}`;
     }, pickYear);
@@ -708,7 +725,7 @@
     const cx = (yy) => x(yy) + x.bandwidth() / 2;
     xYears(svg, cx, h, ys, 5);
     hover(svg, m, w, h, cx, ys, (yy) => (!ok(av(yy)) ? `<b>${yy}년</b>자료 없음`
-      : fcRow(k, yy) ? `<b>${yy}년 예측</b>생산량 ${tonS(av(yy))}${ok(fr[5]) ? ` (80% ${tonS(fr[5])}~${tonS(fr[6])})` : ""} · 면적 ${haS(at(k, "a", yy))} · 단수 ${int(at(k, "y", yy))}kg`
+      : fcRow(k, yy) ? `<b>${yy}년 ${FCL}</b>생산량 ${tonS(av(yy))}${ok(fr[5]) ? ` (80% ${tonS(fr[5])}~${tonS(fr[6])})` : ""} · 면적 ${haS(at(k, "a", yy))} · 단수 ${int(at(k, "y", yy))}kg`
       : `<b>${yy}년</b>생산량 ${tonS(av(yy))} · 재배면적 ${haS(at(k, "a", yy))} · 단수 ${int(at(k, "y", yy))}kg`), pickYear);
   }
 

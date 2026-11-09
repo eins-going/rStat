@@ -172,3 +172,15 @@
 .rc-fcrow .lab { color: #f06f8f; font-weight: 600; }
 .rc-fcrow b { color: var(--text); font-weight: 600; }
 .rc-fcrow small { color: var(--faint); font-size: 11px; }
+/* 확정 전 연도: 예측 시점별 표 */
+.rc-fctab { width: 100%; border-collapse: collapse; margin: 8px 0 2px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.rc-fctab th, .rc-fctab td { padding: 3px 6px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line, rgba(127,127,127,0.18)); }
+.rc-fctab th:first-child { text-align: left; font-weight: 500; color: var(--muted); }
+.rc-fctab thead th { font-size: 11.5px; font-weight: 500; color: var(--faint); }
+.rc-fctab tbody tr:last-child th, .rc-fctab tbody tr:last-child td { border-bottom: 0; }
+.rc-fctab b { font-weight: 600; color: var(--text); }
+.rc-fctab small { color: var(--faint); font-size: 11px; margin-left: 3px; }
+.rc-fctab tr.cur th:first-child { color: #f06f8f; font-weight: 600; }
+.rc-fctab tr.cur b { font-size: 17px; }
+.rc-fctab tr.base td { color: var(--muted); }
+#u-stats[hidden], .rc-fctab[hidden], .rc-fcrow[hidden] { display: none; }
