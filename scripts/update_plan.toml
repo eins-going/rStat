@@ -706,6 +706,25 @@ cadence = "7월 말~10월 초 매주"
 period = "rice"
 
 [[source]]
+id = "ncpms_rice"
+name = "NCPMS 논벼 병해충 예찰 (벼 작황 10/1 도열병 보정)"
+page = "벼 작황"
+method = "auto"
+schedule = { kind = "daily", months = [6, 7, 8, 9, 10] }
+commands = [["scripts/fetch_ncpms_rice.py"]]
+outputs = []
+keys = ["NCPMS_API_KEY"]
+note = "6~10월 매일 벼관찰포 기본조사 회차(해마다 8회, 6/1~9/16 기준)를 받아 ncpms 특징을 다시 만든다(배포할 파일 없음, 다음 월요일 rice_model이 씀). 10/1 예측은 9/16 회차 도열병 감수율을 쓴다. research/rice/ncpms/data/first_seen.csv에 회차별 처음 보인 날·8도 다 찬 날을 기록해 공개 시차를 잰다(2027 시즌부터)."
+
+[[source.dataset]]
+name = "논벼 병해충 예찰 (시도·시군구, 회차별 감수율)"
+origin = "농촌진흥청 NCPMS 국가농작물병해충관리시스템 OpenAPI (SVC51·52·53)"
+freq = "반월"
+cadence = "6~9월 매월 1·16일 기준 조사"
+period = "static:6~9월 반월"
+where = "research/rice/ncpms/data · 화면엔 직접 안 보임(10/1 예측 보정에만)"
+
+[[source]]
 id = "live"
 name = "팜맵 필지·VWorld 지도 (자세히 보기)"
 page = "주요통계 > 자세히 보기"
