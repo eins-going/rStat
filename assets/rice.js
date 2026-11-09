@@ -88,7 +88,8 @@
   ];
   const DEFAULT_METRIC = METRICS[0];
   const RANK_MIN_HA = 1000; // 순위는 재배면적 1천 ha 이상 시군만 (작은 시군의 단수는 흔들림이 크다)
-  const state = { key: NATION, year: LASTY, metric: DEFAULT_METRIC, view: "map" };
+  const DEFY = Math.max(LASTY, FCY ?? LASTY); // 처음 여는 연도: 예측 연도가 있으면 그해
+  const state = { key: NATION, year: DEFY, metric: DEFAULT_METRIC, view: "map" };
 
   // ---------- 선택 ----------
   const selSido = $("#sido"), selSgg = $("#sgg"), selYear = $("#year");
@@ -115,7 +116,7 @@
     const k = state.key;
     const path = k === NATION ? "" : level(k) === 1 ? T.sidos[k].name : `${T.sidos[sidoOf(k)].name}/${label(k)}`;
     const q = new URLSearchParams();
-    if (state.year !== LASTY) q.set("y", state.year);
+    if (state.year !== DEFY) q.set("y", state.year);
     if (state.metric !== DEFAULT_METRIC) q.set("m", state.metric.key);
     if (state.view === "sat") q.set("v", "sat");
     const url = `${location.pathname}${q.toString() ? `?${q}` : ""}${path ? `#${encodeURIComponent(path)}` : ""}`;
@@ -127,7 +128,7 @@
     state.key = s ? (b && UNITS_BY_SIDO[s].find((k) => label(k) === b)) || s : NATION;
     const q = new URLSearchParams(location.search);
     const y = +q.get("y");
-    state.year = MAP_YEARS.includes(y) ? y : LASTY;
+    state.year = MAP_YEARS.includes(y) ? y : DEFY;
     state.metric = METRICS.find((m) => m.key === q.get("m")) || DEFAULT_METRIC;
     state.view = q.get("v") === "sat" && level(state.key) === 2 ? "sat" : "map";
   }
