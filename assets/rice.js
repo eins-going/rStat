@@ -986,6 +986,7 @@
     $("#title-what").textContent = sat ? "위성 영상" : "벼 작황";
     $("#crumb").textContent = level(k) === 0 ? "" : level(k) === 1 ? "전국 ›" : `전국 › ${T.sidos[sidoOf(k)].name} ›`;
     viewBtn.hidden = level(k) !== 2;
+    $("#sat-big").hidden = !sat;
     viewBtn.textContent = sat ? "시군 지도로" : "위성 영상 보기";
     viewBtn.classList.toggle("back", sat);
     const reset = $("#reset");
@@ -1074,7 +1075,8 @@
       <label class="rc-check" data-tip="<b>논만</b> 팜맵 논 필지 안쪽만 영상을 남기고<br>나머지는 흐린 항공사진으로 둔다<br>(지도를 ${PADDY_Z}단계 이상 확대했을 때)"><input type="checkbox" data-ui="ponly"${sat.paddyOnly ? " checked" : ""}> 논만</label>
       <label class="rc-check" data-tip="<b>논 경계</b> 팜맵 논 필지 경계선<br>(지도를 ${PADDY_Z + 1}단계 이상 확대했을 때)"><input type="checkbox" data-ui="pline"${sat.paddyLine ? " checked" : ""}> 논 경계</label>
       <label class="rc-check" data-tip="<b>지명</b> 시군·읍면·마을 이름과 도로 (VWorld)"><input type="checkbox" data-ui="labels"${sat.labels ? " checked" : ""}> 지명</label>
-      ${s.cloud ? `<label class="rc-check" data-tip="<b>구름 가리기</b> 구름·구름 그림자로 판정된 화소를 투명하게"><input type="checkbox" data-ui="mask"${sat.mask ? " checked" : ""}> 구름 가리기</label>` : ""}`;
+      ${s.cloud ? `<label class="rc-check" data-tip="<b>구름 가리기</b> 구름·구름 그림자로 판정된 화소를 투명하게"><input type="checkbox" data-ui="mask"${sat.mask ? " checked" : ""}> 구름 가리기</label>` : ""}
+      <button type="button" class="view-btn back rc-big" data-ui="big" aria-pressed="${satFull}"${satFull ? ' title="Esc로도 작게 볼 수 있습니다"' : ""}>${satFull ? "작게 보기" : "크게 보기"}</button>`;
     satBar.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => { if (sat.sat === b.dataset.sat) return; sat.sat = b.dataset.sat; sat.date = null; buildSatBar(); loadDates(); }));
     satBar.querySelectorAll("[data-idx]").forEach((b) => b.addEventListener("click", () => { sat.idx = b.dataset.idx; buildSatBar(); drawLayer(); }));
     satBar.querySelector('[data-ui="year"]').addEventListener("change", (e) => { sat.year = +e.target.value; sat.date = null; loadDates(); });
@@ -1082,8 +1084,26 @@
     satBar.querySelector('[data-ui="ponly"]').addEventListener("change", (e) => { sat.paddyOnly = e.target.checked; syncPaddy(); });
     satBar.querySelector('[data-ui="pline"]').addEventListener("change", (e) => { sat.paddyLine = e.target.checked; syncPaddy(); });
     satBar.querySelector('[data-ui="labels"]').addEventListener("change", (e) => { sat.labels = e.target.checked; syncLabels(); });
+    satBar.querySelector('[data-ui="big"]').addEventListener("click", () => setSatFull(false));
     renderSatLegend();
   }
+
+  // 크게 보기: 지도 카드(도구 줄·영상·날짜 띠·범례)를 화면 가득 펼친다. Esc로 되돌린다
+  let satFull = false;
+  function setSatFull(on) {
+    satFull = on;
+    $("#map-card").classList.toggle("rc-full", on);
+    document.documentElement.classList.toggle("rc-lock", on);
+    for (const b of [satBar.querySelector('[data-ui="big"]'), $("#sat-big")]) {
+      if (!b) continue;
+      b.setAttribute("aria-pressed", on);
+      b.textContent = on ? "작게 보기" : "크게 보기";
+      b.title = on ? "Esc로도 작게 볼 수 있습니다" : "";
+    }
+    requestAnimationFrame(() => { lmap?.invalidateSize({ pan: false }); drawStrip(); });
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && satFull) setSatFull(false); });
+  $("#sat-big").addEventListener("click", () => setSatFull(!satFull));
 
   function initLeaflet() {
     const L = (L_ = window.L);
@@ -1230,16 +1250,14 @@
       hint(`위성 영상 서비스에 연결하지 못했습니다 (${e.message})`, true);
     }
   }
-  // 처음 날짜: 7월 중순~9월 중순(출수 전후)에서 구름이 가장 적은 날, 없으면 가장 맑은 날. 레이더는 8월에 가까운 날
+  // 처음 날짜: 가장 최근의 맑은 날(장면 구름 20% 미만, 없으면 40% 미만, 그래도 없으면 가장 맑은 날). 레이더는 가장 최근 날
   function defaultDate(dates) {
-    const yr = sat.year;
-    const inWin = dates.filter((e) => e.d >= `${yr}-07-15` && e.d <= `${yr}-09-15`);
-    if (!SAT[sat.sat].cloud) {
-      const tgt = Date.parse(`${yr}-08-10`);
-      return dates.reduce((a, b) => (Math.abs(Date.parse(b.d) - tgt) < Math.abs(Date.parse(a.d) - tgt) ? b : a)).d;
+    if (!SAT[sat.sat].cloud) return dates[dates.length - 1].d;
+    for (const lim of [20, 40]) {
+      const ok = dates.filter((e) => (e.cloud ?? 100) < lim);
+      if (ok.length) return ok[ok.length - 1].d;
     }
-    const pool = inWin.some((e) => e.cloud < 30) ? inWin : dates;
-    return pool.reduce((a, b) => ((b.cloud ?? 100) < (a.cloud ?? 100) ? b : a)).d;
+    return dates.reduce((a, b) => ((b.cloud ?? 100) < (a.cloud ?? 100) ? b : a)).d;
   }
 
   // 날짜 띠: 4~11월 축 위에 날짜마다 막대 (높을수록 맑다). 누르거나 ←→로 고른다
@@ -1401,6 +1419,7 @@
     }
   }
   function hideSat() {
+    if (satFull) setSatFull(false);
     $("#map-card").classList.remove("sat-on");
     satBar.hidden = true; $("#sat-map").hidden = true; $("#sat-dates").hidden = true; $("#sat-legend").hidden = true;
     hint("");

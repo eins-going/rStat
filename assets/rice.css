@@ -65,6 +65,21 @@
 .sat-on .chipbar, .sat-on .legend, .sat-on .rank, .sat-on .pw-mnote, .sat-on .zoom-ctl, .sat-on .tip { display: none; }
 .sat-on #map { visibility: hidden; }
 .sat-on .reset { display: none; }
+.rc-satbar .rc-big { display: none; margin-left: auto; font-size: 12px; padding: 3px 10px; } /* 크게 본 동안만 (평소엔 제목 줄 단추) */
+.rc-full .rc-satbar .rc-big { display: inline-block; }
+
+/* 크게 보기: 지도 카드를 화면 가득 */
+html.rc-lock, html.rc-lock body { overflow: hidden; }
+.map-card.rc-full {
+  position: fixed; inset: 16px; z-index: 1000; margin: 0;
+  display: flex; flex-direction: column; padding: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 0 0 100vmax rgba(8, 9, 12, 0.72), 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+.rc-full .map-wrap { flex: 1; min-height: 0; height: auto; margin-top: 8px; }
+@media (max-width: 760px) {
+  .map-card.rc-full { inset: 0; border: 0; border-radius: 0; padding: 8px; }
+}
 
 /* 날짜 띠 */
 .rc-dates { margin-top: 6px; }
