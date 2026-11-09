@@ -221,3 +221,7 @@
 }
 .rc-fctab tr.orgrow th:first-child { color: #5fb3ff; }
 .rc-fctab small.tag { display: block; margin: 0; font-size: 10px; line-height: 1.2; }
+/* 전국 화면: 시도 값으로 칠함 — 시군 경계는 흐리게, 마우스를 올린 시도 전체를 밝게 */
+.rc svg.rc-sidomode .region { stroke-opacity: 0.15; }
+.rc svg.rc-sidomode .region:hover, .rc svg.rc-sidomode .region:focus-visible { stroke: #14161b; stroke-width: 0.6; }
+.rc svg.rc-sidomode .region.rc-hl { filter: brightness(1.22); }

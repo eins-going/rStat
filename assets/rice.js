@@ -188,8 +188,8 @@
     world.selectAll("g.units").data([0]).join("g").attr("class", "units")
       .selectAll("path").data(unitFeatures, (d) => d.properties.key).join("path")
       .attr("class", "region unit").attr("d", path).attr("tabindex", 0).attr("role", "button")
-      .on("mousemove", (e, d) => showTip(e, d.properties.key))
-      .on("mouseleave", () => { tip.hidden = true; })
+      .on("mousemove", (e, d) => { showTip(e, mapKey(d)); if (sidoMode()) mapSvg.selectAll("path.unit").classed("rc-hl", (q) => q.properties.sido === d.properties.sido); })
+      .on("mouseleave", () => { tip.hidden = true; mapSvg.selectAll("path.unit.rc-hl").classed("rc-hl", false); })
       .on("click", (e, d) => onRegionClick(d.properties.key))
       .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRegionClick(d.properties.key); } });
     world.selectAll("path.mesh-sido-bg").data([sidoMesh]).join("path").attr("class", "mesh-sido-bg").attr("d", path);
@@ -294,25 +294,31 @@
     return { fn: q, rows: RAMP.map((c, i) => [c, `${m.fmt(e[i])}–${m.fmt(e[i + 1])}`]) };
   }
 
+  // 전국 화면은 시도 값으로 칠하고(시도를 먼저 고르므로), 시도를 고르면 그 안의 시군 값으로
+  const sidoMode = () => !sidoOf(state.key);
+  const mapKey = (d) => (sidoMode() ? d.properties.sido : d.properties.key);
   function paintMap() {
     const m = state.metric, y = state.year, s = sidoOf(state.key);
-    const vals = ALL_UNITS.map((k) => m.get(k, y)).filter(ok);
+    const keys = sidoMode() ? SIDO_CODES : ALL_UNITS;
+    const vals = keys.map((k) => m.get(k, y)).filter(ok);
     const sc = scaleFor(m, vals);
     mapSvg.selectAll("path.unit")
-      .attr("fill", (d) => { const v = m.get(d.properties.key, y); return ok(v) ? sc.fn(v) : EMPTY; })
+      .attr("fill", (d) => { const v = m.get(mapKey(d), y); return ok(v) ? sc.fn(v) : EMPTY; })
       .classed("sel", (d) => d.properties.key === state.key)
       .classed("pw-ctx", (d) => !!s && d.properties.sido !== s)
-      .classed("rc-small", (d) => !m.key.startsWith("area") && small(d.properties.key, y))
-      .attr("aria-label", (d) => `${fullLabel(d.properties.key)} ${m.label} ${m.fmt(m.get(d.properties.key, y))}`);
+      .classed("rc-small", (d) => !m.key.startsWith("area") && small(mapKey(d), y))
+      .attr("aria-label", (d) => `${fullLabel(mapKey(d))} ${m.label} ${m.fmt(m.get(mapKey(d), y))}`);
     mapSvg.selectAll("path.unit.sel").raise();
-    mapSvg.classed("dimmed", level(state.key) === 2);
-    const missing = ALL_UNITS.length - vals.length;
+    mapSvg.classed("dimmed", level(state.key) === 2).classed("rc-sidomode", sidoMode());
+    const missing = keys.length - vals.length;
     $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${y}년${fcMode(y) ? ` <b class="rc-fctag">${FCL}</b>` : " 확정 <small>KOSIS</small>"}</span></span>`
       + sc.rows.map(([c, t]) => `<span class="row"><span class="sw" style="background:${c}"></span>${t}</span>`).join("")
       + (missing ? `<span class="row"><span class="sw" style="background:${EMPTY};outline:1px solid #3a3f48"></span>자료 없음 ${missing}</span>` : "")
       + (m.key.startsWith("area") ? "" : `<span class="rc-lg-small" title="재배면적 ${SMALL_HA}ha 미만: 단수가 크게 흔들려 흐리게 칠함"><i></i>흐림 = ${SMALL_HA}ha 미만</span>`);
     const clickHint = sidoOf(state.key) ? "시군을 누르면 위성 영상" : "지역을 누르면 그 시도 지도";
-    $("#metric-note").textContent = (fcMode(y) ? `모델 예측(${FC.lab[FC.cur]}) · 면적은 작년 시군 면적 × 올해 시도 면적 증감 · 시군 풍선에 80% 범위` : m.note).replace("시군을 누르면 위성 영상", clickHint)
+    const unitWord = sidoMode() ? "시도" : "시군";
+    $("#metric-note").textContent = (sidoMode() ? "시도 값 · " : "")
+      + (fcMode(y) ? `모델 예측(${FC.lab[FC.cur]})${sidoMode() ? "" : " · 면적은 작년 시군 면적 × 올해 시도 면적 증감"} · ${unitWord} 풍선에 80% 범위` : m.note).replace("시군을 누르면 위성 영상", clickHint)
       + (fcMode(y) ? ` · ${clickHint}` : "");
   }
 
@@ -355,8 +361,8 @@
   // ---------- 순위: 평년 대비는 낮은 쪽·높은 쪽 5곳씩, 나머지는 큰 값 10곳 ----------
   function renderRank() {
     const m = state.metric, y = state.year, s = sidoOf(state.key);
-    const peers = (s ? UNITS_BY_SIDO[s] : ALL_UNITS).filter((k) => (m.key.startsWith("area") ? true : (at(k, "a", y) || 0) >= RANK_MIN_HA));
-    const name = (k) => (s ? label(k) : fullLabel(k));
+    const peers = (s ? UNITS_BY_SIDO[s] : SIDO_CODES).filter((k) => (m.key.startsWith("area") ? true : (at(k, "a", y) || 0) >= RANK_MIN_HA));
+    const name = (k) => (s ? label(k) : k === "36" ? "전남" : T.sidos[k]?.short ?? label(k));
     const list = peers.map((k) => [k, m.get(k, y)]).filter(([, v]) => ok(v)).sort((a, b) => b[1] - a[1]);
     const max = Math.max(...list.map(([, v]) => Math.abs(v)), 0) || 1;
     const row = ([k, v], no) => `
@@ -365,7 +371,7 @@
         <span class="track"><span class="fill${v < 0 ? " neg" : m.kind === "div" ? " pos" : ""}" style="width:${(Math.abs(v) / max) * 100}%"></span></span>
         <span class="val">${m.fmt(v)}</span><span></span>
       </button>`;
-    const scope = s ? `${T.sidos[s].short} 시군` : "시군";
+    const scope = s ? `${T.sidos[s].short} 시군` : "시도";
     const minNote = m.key.startsWith("area") ? "" : ` · ${nf0.format(RANK_MIN_HA)}ha 이상`;
     const meta = `<span class="rank-meta">${y}년${fcMode(y) ? ` ${FCL}` : " 확정"} · ${list.length}곳${minNote}</span>`;
     let body;
