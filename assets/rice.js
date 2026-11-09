@@ -60,6 +60,7 @@
   const FC = R.fc, FCY = FC?.year ?? null, FCV = FC ? FC.v[FC.cur] : {};
   const FCL = FC ? `${FC.lab[FC.cur]} 예측` : "예측"; // 예측 시점 이름(예: 10월 8일 예측)
   const isLate = (t) => t?.startsWith("S"); // 국가데이터처 예상 + 최신 기상으로 다시 추정한 확정 전 최신값
+  let fcAll = false; // 시군 패널 표: 중간 시점까지 다 보기
   const fcName = (t) => `${FC.lab[t]} ${isLate(t) ? "최신" : "예측"}`;
   const fcRow = (k, y) => (FC && y === FCY && atv(k, "y", y) == null ? FCV[k] ?? null : null);
   const at = (k, f, y) => {
@@ -729,21 +730,32 @@
           const sd = FC.statDate ? FC.statDate.slice(5).replace("-", "") : null;
           const statRow = FC.stat?.[k] ? `<tr class="base orgrow" title="국가데이터처 쌀 예상생산량조사(${FC.statDate || ""} 발표) 그대로 — 모델 값 아님"><th>${FC.statDate ? `${+FC.statDate.slice(5, 7)}월 ${+FC.statDate.slice(8, 10)}일 ` : ""}예상(국가데이터처)</th><td>${tonS(FC.stat[k][1])}${fin ? err(FC.stat[k][1], pF) : ""}</td><td>${int(FC.stat[k][0])}kg${fin ? err(FC.stat[k][0], yF) : ""}</td></tr>` : "";
           let placed = !statRow;
+          // 기본은 핵심 시점만(최신·국가데이터처 반영·9/15·가장 이른 시점), 나머지는 '더 보기'
+          const keyT = new Set([FC.cur, "1010", "0915", times.at(-1)]);
+          const hiddenN = times.filter((t) => !keyT.has(t)).length;
           const out = times.map((t) => {
             const r = FC.v[t][k], cur = t === FC.cur;
             const tip = `${fcName(t)}${t === "1010" ? "(국가데이터처 예상 반영)" : isLate(t) ? `(국가데이터처 예상 + ${FC.lab[t]}까지 기상으로 다시 추정)` : "(그날까지 기상)"} · 80% 범위 생산량 ${tonS(r[5])}~${tonS(r[6])}, 단수 ${int(r[3])}~${int(r[4])}kg${!fin && ok(pP) ? ` · 전년 대비 생산량 ${pctS(ratio(r[2], pP))}, 단수 ${pctS(ratio(r[0], yP))}` : ""}`;
             // 최신 행: 80% 범위 + 전년(확정) 대비 변화. 다른 행은 풍선에
-            const yoy = (v, o) => { const d = ratio(v, o); return ok(d) ? `<small class="yoy ${d > 0 ? "rc-hi" : d < 0 ? "rc-lo" : ""}">전년 대비 ${d > 0 ? "▲" : d < 0 ? "▼" : "–"}${nf1.format(Math.abs(d))}%</small>` : ""; };
-            const pc = fin ? err(r[2], pF) : cur ? rng(r[5], r[6], tonN) + yoy(r[2], pP) : "";
-            const yc = fin ? err(r[0], yF) : cur ? rng(r[3], r[4], kgN) + yoy(r[0], yP) : "";
+            // 범위와 전년 대비를 값 아래 한 줄로: "349.1~356.2 · 전년 ▼0.5%"
+            const sub = (lo, hi, f, v, o) => {
+              const d = ratio(v, o), rg = ok(lo) && ok(hi) ? `<span class="rg">${f(lo)}~${f(hi)}</span>` : "";
+              const yy = ok(d) ? `<span class="yoy ${d > 0 ? "rc-hi" : d < 0 ? "rc-lo" : ""}">전년 ${d > 0 ? "▲" : d < 0 ? "▼" : "–"}${nf1.format(Math.abs(d))}%</span>` : "";
+              return rg || yy ? `<small class="sub">${[rg, yy].filter(Boolean).join('<span class="dot"> · </span>')}</small>` : "";
+            };
+            const pc = fin ? err(r[2], pF) : cur ? sub(r[5], r[6], tonN, r[2], pP) : "";
+            const yc = fin ? err(r[0], yF) : cur ? sub(r[3], r[4], kgN, r[0], yP) : "";
             const pre = !placed && sd && mmdd(t) < sd ? ((placed = true), statRow) : "";
-            return pre + `<tr class="${cur && !fin ? "cur" : ""}" title="${tip}"><th>${fcName(t)}${FC.tag?.[t] ? `<small class="tag">${FC.tag[t]}</small>` : ""}</th><td><b>${tonS(r[2])}</b>${pc}</td><td><b>${int(r[0])}kg</b>${yc}</td></tr>`;
+            const more = !keyT.has(t) ? (fcAll ? " more" : " more off") : "";
+            return pre + `<tr class="${cur && !fin ? "cur" : ""}${more}" title="${tip}"><th>${fcName(t)}${FC.tag?.[t] ? `<small class="tag">${FC.tag[t]}</small>` : ""}</th><td><b>${tonS(r[2])}</b>${pc}</td><td><b>${int(r[0])}kg</b>${yc}</td></tr>`;
           }).join("");
-          return out + (placed ? "" : statRow);
+          const tog = hiddenN ? `<tr class="fc-more-row"><td colspan="3"><button type="button" class="fc-more">${fcAll ? "핵심 시점만 보기" : `시점 ${hiddenN}개 더 보기`}</button></td></tr>` : "";
+          return out + (placed ? "" : statRow) + tog;
         })()
         + (fin ? "" : `<tr class="base"><th title="국가데이터처 농작물생산조사(논벼), KOSIS">${y - 1}년 확정${KOSIS}</th><td>${tonS(pP)}</td><td>${ok(yP) ? `${int(yP)}kg` : "–"}</td></tr>`
           + (ok(nn) ? `<tr class="base"><th title="KOSIS 단수로 계산: 직전 5년 중 최고·최저를 뺀 3년 평균">평년${KOSIS}</th><td></td><td>${int(nn)}kg</td></tr>` : ""))
         + `</tbody>`;
+      $("#u-fctab .fc-more")?.addEventListener("click", () => { fcAll = !fcAll; renderUnit(false); });
     }
     const yv = at(k, "y", y), n = at(k, "n", y);
     const a = at(k, "a", y), p = at(k, "p", y);
@@ -783,7 +795,7 @@
     const x = d3.scaleLinear().domain([ys[0] - 0.4, ys.at(-1) + 0.4]).range([m.l, w - m.r]);
     const lo = d3.min(vals), hi = d3.max(vals);
     const y = d3.scaleLinear().domain([lo - (hi - lo) * 0.08 - 2, hi + (hi - lo) * 0.08 + 2]).nice(4).range([h - m.b, m.t]);
-    yAxis(svg, y, m, w, h < 120 ? 3 : 4, (d) => d);
+    yAxis(svg, y, m, w, h < 56 ? 2 : h < 120 ? 3 : 4, (d) => d);
     xYears(svg, x, h, ys, 5);
     svg.append("line").attr("class", "pw-mark").attr("x1", x(state.year)).attr("x2", x(state.year)).attr("y1", m.t).attr("y2", h - m.b);
     const g = sweepClip(svg, el, m.l, w, h, false);
@@ -815,7 +827,7 @@
     const x = d3.scaleBand().domain(ys).range([m.l, w - m.r]).padding(0.2);
     const y = d3.scaleLinear().domain([0, max * 1.08]).range([h - m.b, m.t]);
     const short = (d) => (!d ? "0" : max >= 1e5 ? `${nf0.format(d / 1e4)}만` : max >= 1e4 ? `${nf1.format(d / 1e4)}만` : max >= 1e3 ? `${nf1.format(d / 1e3)}천` : int(d));
-    yAxis(svg, y, m, w, 2, short);
+    yAxis(svg, y, m, w, h < 56 ? 1 : 2, short);
     svg.append("g").selectAll("rect").data(ys.filter((yy) => ok(av(yy)))).join("rect")
       .attr("class", (d) => `rc-bar${d === state.year ? " sel" : ""}${fcRow(k, d) ? " fc" : ""}`)
       .attr("x", (d) => x(d)).attr("width", x.bandwidth()).attr("y", (d) => y(av(d))).attr("height", (d) => y(0) - y(av(d))).attr("rx", 1.5);
