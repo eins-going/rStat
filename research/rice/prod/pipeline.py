@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 R = "/home/eins/project/rStat/research/rice"
-sys.path[:0] = [R, f"{R}/statdown", f"{R}/statfix"]
+sys.path[:0] = [R, f"{R}/statdown", f"{R}/statfix", f"{R}/prod"]
 import common as C  # noqa: E402
 
 OUT = "/home/eins/project/rStat/db/clean/rice/rice_forecast.csv"
@@ -72,11 +72,24 @@ def area_col(asof):
 
 
 # ---------- 시도·전국: 작물모델 시점 ----------
+ADJ_ASOF = "1001"  # 11-10 채택: 10/1 시도 â에 NCPMS 도열병 + 시도 잔차 2년 지속 보정 (prod/sido_adjust.py)
+
+
 def sido_crop(asof):
-    c = pd.read_csv(f"{CM}/contrib_sido_{asof}.csv", dtype={"sc": str})[["sc", "y", "ahat"]]
+    c = pd.read_csv(f"{CM}/contrib_sido_{asof}.csv", dtype={"sc": str})[["sc", "y", "a", "ahat"]]
     c = c[c.y < FY]
-    f = fy_sd[(fy_sd["asof"] == asof) & fy_sd.sc.isin(P8)][["sc", "ahat"]].assign(y=FY)
-    g = SY.merge(pd.concat([c, f]), on=["sc", "y"], how="left")
+    f = fy_sd[(fy_sd["asof"] == asof) & fy_sd.sc.isin(P8)][["sc", "ahat"]].assign(y=FY, a=np.nan)
+    cf = pd.concat([c, f], ignore_index=True)
+    if asof == ADJ_ASOF:
+        import sido_adjust as SA
+        nc = pd.read_csv(f"{R}/ncpms/feat_sido.csv", dtype={"sc": str, "asof": str})
+        nc = nc[nc["asof"] == asof]
+        cf = cf.merge(SY[["sc", "y", "area"]], on=["sc", "y"], how="left")
+        cf["area"] = cf.area.fillna(cf.groupby("sc").area.transform("last"))
+        a0 = cf.ahat.copy()
+        cf["ahat"] = SA.adjust(cf, nc, range(2013, FY + 1))
+        print(f"{asof} 시도 â 보정(NCPMS 도열병+2년 지속) FY:", {s: round(float(v), 4) for s, v in zip(cf.sc[cf.y == FY], (cf.ahat - a0)[cf.y == FY])})
+    g = SY.merge(cf[["sc", "y", "ahat"]], on=["sc", "y"], how="left")
     g = g[g.sc != "00"].copy()
     ac = area_col(asof)
     aN = g[g.sc.isin(P8) & g.ahat.notna()].groupby("y").apply(lambda q: np.average(q.ahat, weights=q[ac])).rename("aN")
