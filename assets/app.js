@@ -608,6 +608,8 @@
     const years = P.budget;
     const a = lastOf(V.budgetAgri[k]);
     setYear("p-budget", `${years[a.i] ?? years.at(-1)}년`);
+    // 지방재정365 지자체 예산: 전국·시도·광역시 시부는 여러 지자체를 더한 값, 시군은 그 지자체 하나
+    $("#budget-scope").textContent = level(k) === 2 && !label(k).endsWith("시부") ? "(지자체)" : "(지자체 합계)";
     countTo($('[data-v="budget"]'), a.value == null ? null : a.value * 1e6, won);
     setD("budget", deltaHTML(a.value, a.prev));
     drawBudget(k);
