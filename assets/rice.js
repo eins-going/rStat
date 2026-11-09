@@ -59,9 +59,9 @@
   // 모델 예측: 확정이 없는 예측 연도(FCY)에는 예측값을 대신 쓴다 [단수, 면적, 생산량, 단수 하한·상한, 생산량 하한·상한]
   const FC = R.fc, FCY = FC?.year ?? null, FCV = FC ? FC.v[FC.cur] : {};
   const FCL = FC ? `${FC.lab[FC.cur]} 예측` : "예측"; // 예측 시점 이름(예: 10월 8일 예측)
-  const isLate = (t) => t?.startsWith("S"); // 국가데이터처 예상 + 최신 기상으로 다시 추정한 확정 전 최신값
+  const isLate = (t) => t?.startsWith("S"); // 국가데이터처 예상 + 그날까지 기상으로 다시 추정한 확정 전 예측
   let fcAll = false; // 시군 패널 표: 중간 시점까지 다 보기
-  const fcName = (t) => `${FC.lab[t]} ${isLate(t) ? "최신" : "예측"}`;
+  const fcName = (t) => `${FC.lab[t]} 예측`;
   const fcRow = (k, y) => (FC && y === FCY && atv(k, "y", y) == null ? FCV[k] ?? null : null);
   const at = (k, f, y) => {
     const v = atv(k, f, y);
@@ -506,7 +506,7 @@
       fcEl.title = "모델 시점별 예측\n" + [...ts].reverse().map(item).join("\n");
       fcEl.innerHTML = `<span class="lab">모델 예측${o.final && ok(pFin) ? ` <small>%는 확정 대비</small>` : ""}</span><span class="items">` + show.map((t) => {
         const r = FC.v[t][NATION];
-        return `<span class="${t === FC.cur ? "cur" : ""}">${isLate(t) ? `최신(${FC.lab[t]})` : FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg${o.final && ok(pFin) ? ` · ${pctS(ratio(r[2], pFin))}` : ""})</span>`;
+        return `<span class="${t === FC.cur ? "cur" : ""}">${FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg${o.final && ok(pFin) ? ` · ${pctS(ratio(r[2], pFin))}` : ""})</span>`;
       }).join("") + "</span>";
     }
     drawNat();
@@ -665,7 +665,7 @@
     for (const p of pts) {
       const sd = ACC.sido8?.[`m${p.t}`], sgv = ACC.sigun?.[`m${p.t}`];
       g.append("circle").attr("class", `rc-acc-pt${p.t === FC.cur ? " cur" : ""}`).attr("cx", x(p.x)).attr("cy", y(p.a.mae)).attr("r", p.t === FC.cur ? 4.2 : 3.2)
-        .append("title").text(tip(`모델 ${fcName(p.t)}${p.t === "1010" ? "(국가데이터처 예상 반영)" : isLate(p.t) ? "(국가데이터처 예상 + 최신 기상)" : "(그날까지 기상)"}`, p.a, `${sd != null ? ` · 8도 RMSE ${nf1.format(sd)}kg` : ""}${sgv != null ? ` · 시군 RMSE ${nf1.format(sgv)}kg` : ""}`));
+        .append("title").text(tip(`모델 ${fcName(p.t)}${p.t === "1010" ? "(국가데이터처 예상 반영)" : isLate(p.t) ? "(국가데이터처 예상 + 그날까지 기상)" : "(그날까지 기상)"}`, p.a, `${sd != null ? ` · 8도 RMSE ${nf1.format(sd)}kg` : ""}${sgv != null ? ` · 시군 RMSE ${nf1.format(sgv)}kg` : ""}`));
       g.append("text").attr("class", "rc-lab rc-acc-v").attr("x", x(p.x)).attr("y", y(p.a.mae) - 7).attr("text-anchor", "middle").text(nf1.format(p.a.mae));
     }
     for (const o of orgs) {

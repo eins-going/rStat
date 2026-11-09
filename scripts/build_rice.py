@@ -165,7 +165,7 @@ def build_fc(fc, years, Y, v, final, outlook, acc):
             if int(r["year"]) == fy and r["sido_code"] in fc.get("1010", {}):
                 stat[r["sido_code"]] = [num(r["yield_kg10a"]), num(r["prod_ton"])]
     out = {"year": fy, "cur": cur, "lab": lab, "order": crop + (["1010"] if "1010" in fc else []) + late,
-           "tag": {"1010": "국가데이터처 반영", **{a: "국가데이터처 반영 + 최신 기상" for a in late}}, "stat": stat, "statDate": st.get("date"),
+           "tag": {"1010": "국가데이터처 반영", **{a: "국가데이터처 반영 + 그날까지 기상" for a in late}}, "stat": stat, "statDate": st.get("date"),
            "v": {a: {k: [None if x is None else round(x, 1) for x in d[fy]] for k, d in sorted(fc[a].items()) if fy in d} for a in fc},
            "bt": {}}
     for k, d in fc[cur].items():
