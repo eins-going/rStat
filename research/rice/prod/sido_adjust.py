@@ -2,8 +2,9 @@
 
 N: NCPMS 논벼 예찰 도열병(잎·이삭) 9/16 회차 '같은 해 8도 평균 대비'(ncpms/feat_sido.csv np_blast_c)로 M4 잔차를 릿지(λ10, 표준화 원점).
    그 해 전 자료만, 3년 이상 쌓인 해부터. 평년에는 거의 0, 발생 해(2020 강원·2021 전북)에 낮춰 줌.
-P: N 적용 뒤 예측의 실시간 잔차 직전 2년 평균 × ρ (그 해 전 쌍으로 추정, 0~1). 시도 고유 편차가 이어지는 몫.
-재현(2013~25, 8도 시도 RMSE): 13.53 → 12.90kg, 시군 skill +0.310 → +0.324 (13년 중 8년 개선).
+P: N 적용 뒤 예측의 실시간 잔차 직전 2년 평균 × ρ (그 해 전 쌍으로 추정, 0~1)에서 그해 8도 면적가중 평균을 뺀 것
+   (시도 사이 재배분만, 8도 공통 이동 없음 → 전국은 N만큼만 움직임). 11-10 사용자 "전국 오차도 지켜야" → explore/combo_center.py.
+재현(2013~25): 8도 시도 RMSE 13.53 → 12.84kg, 시군 skill +0.310 → +0.325, 8도 합 MAE 5.71 → 5.53·RMSE 7.90 → 7.59, 13년 중 10년 개선.
 """
 import numpy as np
 import pandas as pd
@@ -38,5 +39,8 @@ def adjust(d, nc, years):
         past = o[(o.y < Y) & o.lag.notna() & o.r.notna() & o.sc.isin(P8)]
         rho = float(np.clip(np.sum(past.lag * past.r) / np.sum(past.lag ** 2), 0, 1)) if len(past) >= 16 else 0.0
         te = o.y == Y
-        out[te] = o.n[te] + rho * o.lag[te].fillna(0)
+        sh = rho * o.lag[te].fillna(0)
+        w = o.area[te].fillna(o.area.mean())
+        sh = sh - np.average(sh, weights=w) if w.sum() > 0 else sh  # 8도 공통 이동은 빼고 시도 사이 재배분만 (전국 지키기)
+        out[te] = o.n[te] + sh
     return out.reindex(d.index).values
