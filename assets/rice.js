@@ -932,9 +932,9 @@
   // 팜맵 논 필지 (주요통계 '자세히 보기'와 같은 R2 전국 타일, 확대 13~15단계 자료, c=1이 논)
   const PADDY_TILES = "https://pub-6a32610bd1414a8d8dc3adc9eecd3632.r2.dev/farmmap/2025/kr.pmtiles";
   const PADDY_Z = 13; // 이보다 멀리서는 필지 자료가 없어 영상 전체를 보인다
-  const sat = { sat: "s2", idx: "ndvi", mask: true, paddyOnly: true, paddyLine: true, sid: null, year: NOW.getMonth() >= 4 ? NOW.getFullYear() : NOW.getFullYear() - 1, date: null, dates: [], key: null };
+  const sat = { sat: "s2", idx: "ndvi", mask: true, paddyOnly: true, paddyLine: true, labels: true, sid: null, year: NOW.getMonth() >= 4 ? NOW.getFullYear() : NOW.getFullYear() - 1, date: null, dates: [], key: null };
   const satCache = new Map(), sidCache = new Map();
-  let L_ = null, lmap = null, base = null, pcLayer = null, paddyLayer = null, lineLayer = null, outline = null, maskLayer = null, leafletReady = null;
+  let L_ = null, lmap = null, base = null, labelLayer = null, pcLayer = null, paddyLayer = null, lineLayer = null, outline = null, maskLayer = null, leafletReady = null;
   const satBar = $("#sat-bar"), satHint = $("#sat-hint");
 
   function hint(msg, err = false) {
@@ -969,6 +969,7 @@
       <label class="rc-ysel select"><span>연도</span><select data-ui="year">${years.map((y) => `<option value="${y}"${y === sat.year ? " selected" : ""}>${y}</option>`).join("")}</select></label>
       <label class="rc-check" data-tip="<b>논만</b> 팜맵 논 필지 안쪽만 영상을 남기고<br>나머지는 흐린 항공사진으로 둔다<br>(지도를 ${PADDY_Z}단계 이상 확대했을 때)"><input type="checkbox" data-ui="ponly"${sat.paddyOnly ? " checked" : ""}> 논만</label>
       <label class="rc-check" data-tip="<b>논 경계</b> 팜맵 논 필지 경계선<br>(지도를 ${PADDY_Z + 1}단계 이상 확대했을 때)"><input type="checkbox" data-ui="pline"${sat.paddyLine ? " checked" : ""}> 논 경계</label>
+      <label class="rc-check" data-tip="<b>지명</b> 시군·읍면·마을 이름과 도로 (VWorld)"><input type="checkbox" data-ui="labels"${sat.labels ? " checked" : ""}> 지명</label>
       ${s.cloud ? `<label class="rc-check" data-tip="<b>구름 가리기</b> 구름·구름 그림자로 판정된 화소를 투명하게"><input type="checkbox" data-ui="mask"${sat.mask ? " checked" : ""}> 구름 가리기</label>` : ""}`;
     satBar.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => { if (sat.sat === b.dataset.sat) return; sat.sat = b.dataset.sat; sat.date = null; buildSatBar(); loadDates(); }));
     satBar.querySelectorAll("[data-idx]").forEach((b) => b.addEventListener("click", () => { sat.idx = b.dataset.idx; buildSatBar(); drawLayer(); }));
@@ -976,6 +977,7 @@
     satBar.querySelector('[data-ui="mask"]')?.addEventListener("change", (e) => { sat.mask = e.target.checked; drawLayer(); });
     satBar.querySelector('[data-ui="ponly"]').addEventListener("change", (e) => { sat.paddyOnly = e.target.checked; syncPaddy(); });
     satBar.querySelector('[data-ui="pline"]').addEventListener("change", (e) => { sat.paddyLine = e.target.checked; syncPaddy(); });
+    satBar.querySelector('[data-ui="labels"]').addEventListener("change", (e) => { sat.labels = e.target.checked; syncLabels(); });
     renderSatLegend();
   }
 
@@ -990,12 +992,19 @@
       if (!cfg?.vworld) return;
       base = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${cfg.vworld}/Satellite/{z}/{y}/{x}.jpeg`, { minZoom: 7, maxZoom: 19, zIndex: 0, opacity: 0.55 });
       base.addTo(lmap);
+      // 지명: VWorld 하이브리드(이름·도로) — 영상(0~1) < 논만(2) < 논 경계(3) < 지명(4)
+      labelLayer = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${cfg.vworld}/Hybrid/{z}/{y}/{x}.png`, { minZoom: 7, maxZoom: 19, zIndex: 4 });
+      syncLabels();
       lmap.attributionControl.addAttribution("배경 VWorld");
     }).catch(() => {});
     lmap.on("zoomend", zoomHint);
     new ResizeObserver(() => lmap.invalidateSize({ pan: false })).observe($("#sat-map"));
   }
 
+  function syncLabels() {
+    if (!labelLayer || !lmap) return;
+    if (sat.labels) labelLayer.addTo(lmap); else labelLayer.remove();
+  }
   function zoomHint() {
     const z = lmap.getZoom();
     if (z < 10) hint("확대하면 위성 영상이 보입니다");
