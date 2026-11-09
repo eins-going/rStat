@@ -35,11 +35,30 @@ def key():
     sys.exit("DATA_PORTAL_API_KEY 없음")
 
 
+class Limited(Exception):
+    pass
+
+
+LIMIT_MARK = ("LIMITED_NUMBER_OF_SERVICE_REQUESTS", "<returnReasonCode>22<", "API rate limit")
+
+
 def get(url, params, tries=4):
     q = urllib.parse.urlencode(params)
     for i in range(tries):
         try:
-            return urllib.request.urlopen(f"{url}?{q}", timeout=60).read().decode("utf-8", "ignore")
+            txt = urllib.request.urlopen(f"{url}?{q}", timeout=60).read().decode("utf-8", "ignore")
+            if any(m in txt for m in LIMIT_MARK):
+                raise Limited()
+            return txt
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                raise Limited()
+            if i == tries - 1:
+                raise
+            time.sleep(3 * (i + 1))
+            print("  재시도", e, flush=True)
+        except Limited:
+            raise
         except Exception as e:  # 일시 오류는 잠깐 쉬고 다시
             if i == tries - 1:
                 raise
@@ -49,10 +68,6 @@ def get(url, params, tries=4):
 
 def items(xml):
     return [dict(re.findall(r"<(\w+)>([^<]*)</\1>", it)) for it in re.findall(r"<item>(.*?)</item>", xml, re.S)]
-
-
-class Limited(Exception):
-    pass
 
 
 def term_fetch(k, code, y0, y1, page=1000):
@@ -100,44 +115,69 @@ def main():
     spots.to_csv(os.path.join(HERE, "data", "spots.csv"), index=False)
     print("관측소", len(spots), flush=True)
     this_year = date.today().year
+    today = date.today()
+    n_call = n_rows = 0
+    try:
+        n_call, n_rows = year_pass(k, spots, a, this_year)
+    except Limited:
+        print(f"하루 호출 한도 도달 — 내일 이어받기 (받은 파일 {len(os.listdir(RAW))}개)", flush=True)
+        sys.exit(75)
+    # 모든 관측소의 지난 해가 다 있으면 올해 파일만 하루 한 번 새로 받는다
+    try:
+        for _, s in spots.iterrows():
+            fn = os.path.join(RAW, f"{s.Obsr_Spot_Code}_{this_year}.csv")
+            if os.path.exists(fn) and date.fromtimestamp(os.path.getmtime(fn)) >= today:
+                continue
+            if a.y1 >= this_year:
+                year_one(k, s.Obsr_Spot_Code, this_year, fn)
+    except Limited:
+        print("올해 자료 새로 받기 중 한도 도달 — 받은 것까지로 합침", flush=True)
+    merge()
+
+
+def year_one(k, code, y, fn):
+    xml = get(f"{BASE}/WeatherObsrInfo/V3/GnrlWeather/getWeatherYearDayList3",
+              {"serviceKey": k, "Page_No": 1, "Page_Size": 400, "search_Year": y, "obsr_Spot_Cd": code})
+    if "<result_Code>200" not in xml and "<items>" not in xml:
+        print("  응답 이상", code, y, xml[:200].replace("\n", " "), flush=True)
+        time.sleep(2)
+        return 0
+    df = pd.DataFrame(items(xml))
+    if not df.empty:
+        df = df[[c for c in COLS if c in df.columns]]
+        num = [c for c in df.columns if c != "date"]
+        df[num] = df[num].apply(pd.to_numeric, errors="coerce")
+        df = df.dropna(subset=["temp", "srqty", "rn"], how="all")  # 관측 전 빈 행 버림
+    df.to_csv(fn, index=False)  # 빈 해도 빈 파일로 남겨 다시 묻지 않는다
+    time.sleep(0.15)
+    return len(df)
+
+
+def year_pass(k, spots, a, this_year):
+    """없는 관측소-연도 파일만 받는다 (올해 파일은 없을 때만; 새로 받기는 main에서 마지막에)."""
     n_call = n_rows = 0
     for i, s in spots.iterrows():
         code = s.Obsr_Spot_Code
         if a.term:
             if all(os.path.exists(os.path.join(RAW, f"{code}_{y}.csv")) for y in range(a.y0, this_year)):
                 continue
-            try:
-                c, n = term_fetch(k, code, a.y0, a.y1)
-            except Limited:
-                print("하루 호출 한도(1,000) 도달 — 내일 이어받기", flush=True)
-                return
+            c, n = term_fetch(k, code, a.y0, a.y1)
             n_call += c
             n_rows += n
             print(f"{i + 1}/{len(spots)} {code} {s.Obsr_Spot_Nm} · 호출 {c} · 행 {n}", flush=True)
             continue
         for y in range(a.y0, a.y1 + 1):
             fn = os.path.join(RAW, f"{code}_{y}.csv")
-            if os.path.exists(fn) and y != this_year:
+            if os.path.exists(fn):
                 continue
-            xml = get(f"{BASE}/WeatherObsrInfo/V3/GnrlWeather/getWeatherYearDayList3",
-                      {"serviceKey": k, "Page_No": 1, "Page_Size": 400, "search_Year": y, "obsr_Spot_Cd": code})
+            n_rows += year_one(k, code, y, fn)
             n_call += 1
-            if "<result_Code>200" not in xml and "<items>" not in xml:
-                print("  응답 이상", code, y, xml[:200].replace("\n", " "), flush=True)
-                time.sleep(2)
-                continue
-            df = pd.DataFrame(items(xml))
-            if not df.empty:
-                df = df[[c for c in COLS if c in df.columns]]
-                num = [c for c in df.columns if c != "date"]
-                df[num] = df[num].apply(pd.to_numeric, errors="coerce")
-                df = df.dropna(subset=["temp", "srqty", "rn"], how="all")  # 관측 전 빈 행 버림
-            df.to_csv(fn, index=False)  # 빈 해도 빈 파일로 남겨 다시 묻지 않는다
-            n_rows += len(df)
-            time.sleep(0.15)
-        if i % 20 == 0:
+        if i % 10 == 0:
             print(f"{i + 1}/{len(spots)} {code} {s.Obsr_Spot_Nm} · 호출 {n_call} · 행 {n_rows}", flush=True)
-    # 합치기
+    return n_call, n_rows
+
+
+def merge():
     parts = []
     for f in sorted(os.listdir(RAW)):
         if not f.endswith(".csv") or os.path.getsize(f"{RAW}/{f}") < 20:
