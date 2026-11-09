@@ -296,7 +296,7 @@
     mapSvg.selectAll("path.unit.sel").raise();
     mapSvg.classed("dimmed", level(state.key) === 2);
     const missing = ALL_UNITS.length - vals.length;
-    $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${y}년${fcMode(y) ? ` <b class="rc-fctag">${FCL}</b>` : ""}</span></span>`
+    $("#legend").innerHTML = `<span class="title">${m.label} <span style="color:var(--faint);font-weight:400">${y}년${fcMode(y) ? ` <b class="rc-fctag">${FCL}</b>` : " 확정 <small>KOSIS</small>"}</span></span>`
       + sc.rows.map(([c, t]) => `<span class="row"><span class="sw" style="background:${c}"></span>${t}</span>`).join("")
       + (missing ? `<span class="row"><span class="sw" style="background:${EMPTY};outline:1px solid #3a3f48"></span>자료 없음 ${missing}</span>` : "")
       + (m.key.startsWith("area") ? "" : `<span class="rc-lg-small" title="재배면적 ${SMALL_HA}ha 미만: 단수가 크게 흔들려 흐리게 칠함"><i></i>흐림 = ${SMALL_HA}ha 미만</span>`);
@@ -354,7 +354,7 @@
       </button>`;
     const scope = s ? `${T.sidos[s].short} 시군` : "시군";
     const minNote = m.key.startsWith("area") ? "" : ` · ${nf0.format(RANK_MIN_HA)}ha 이상`;
-    const meta = `<span class="rank-meta">${y}년${fcMode(y) ? ` ${FCL}` : ""} · ${list.length}곳${minNote}</span>`;
+    const meta = `<span class="rank-meta">${y}년${fcMode(y) ? ` ${FCL}` : " 확정"} · ${list.length}곳${minNote}</span>`;
     let body;
     if (m.key === "norm") {
       const lo = [...list].reverse().filter(([, v]) => v < 0).slice(0, 5), hi = list.filter(([, v]) => v > 0).slice(0, 5);
