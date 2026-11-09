@@ -1,5 +1,5 @@
 (() => {
-  // 벼 작황 — 시군·연도별 쌀 단수와 평년 대비, 통계청 예상·KREI 전망의 정확도, 시군 위성 영상 (data/rice.js)
+  // 벼 작황 — 시군·연도별 쌀 단수와 평년 대비, 국가데이터처 예상·KREI 전망의 정확도, 시군 위성 영상 (data/rice.js)
   // 지역 체계·지도는 농사용 전기(power.js)와 같다. 위성 영상은 시군을 고를 때만 Leaflet과 함께 불러온다.
   const R = window.AGRI_RICE;
   const T = window.AGRI_TOPO;
@@ -445,7 +445,7 @@
     const st = o.stat, kr = o.krei;
     const pPrev = at(NATION, "p", CUR - 1), pFin = at(NATION, "p", CUR);
     const md = (d) => (d ? `${+d.slice(5, 7)}.${+d.slice(8, 10)}` : ""); // 발표일 2026-10-08 → 10.8
-    $("#nat-l1").textContent = `${CUR}년 통계청 예상${st?.date ? ` (${md(st.date)})` : ""}`;
+    $("#nat-l1").textContent = `${CUR}년 국가데이터처 예상${st?.date ? ` (${md(st.date)})` : ""}`;
     $("#nat-v1").textContent = ok(st?.p) ? nf1.format(st.p / 1e4) : "–";
     $("#nat-u1").textContent = ok(st?.p) ? "만 톤" : "";
     $("#nat-d1").innerHTML = deltaHTML(ratio(st?.p, pPrev), "전년 대비");
@@ -488,7 +488,7 @@
   });
   function drawNat(animate = false) {
     if (natMode === "p") return drawNatProd(animate);
-    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span><i class="prev"></i>평년</span>`;
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>국가데이터처 10월 예상</span><span><i class="krei"></i>KREI 9월 전망</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span><i class="prev"></i>평년</span>`;
     const el = $("#chart-nat");
     const { svg, w, h } = frame(el, 150);
     const ys = d3.range(NFROM, CUR + 1);
@@ -524,7 +524,7 @@
       const parts = [`<b>${yy}년</b>`];
       if (ok(fin(yy))) parts.push(`확정 ${int(fin(yy))}kg`);
       else if (o.pending) parts.push("확정 대기");
-      if (ok(o.stat?.y)) parts.push(`통계청 ${int(o.stat.y)}${ok(o.stat.err) ? ` (${kgS(o.stat.err)})` : ""}`);
+      if (ok(o.stat?.y)) parts.push(`국가데이터처 ${int(o.stat.y)}${ok(o.stat.err) ? ` (${kgS(o.stat.err)})` : ""}`);
       if (ok(o.krei?.y)) parts.push(`KREI ${o.krei.lo !== o.krei.hi && ok(o.krei.lo) ? `${int(o.krei.lo)}~${int(o.krei.hi)}` : int(o.krei.y)}${ok(o.krei.err) ? ` (${kgS(o.krei.err)})` : ""}`);
       if (fcNat(yy)) parts.push(`모델 ${int(fcNat(yy)[0])}`);
       if (ok(nor(yy))) parts.push(`평년 ${int(nor(yy))}`);
@@ -532,9 +532,9 @@
     }, pickYear);
   }
 
-  // 전국 생산량: 확정(선)과 통계청 10월 예상(점). KREI는 단수로만 전망해 단수 그래프에서 본다
+  // 전국 생산량: 확정(선)과 국가데이터처 10월 예상(점). KREI는 단수로만 전망해 단수 그래프에서 본다
   function drawNatProd(animate = false) {
-    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>통계청 10월 예상</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span>단위 만 톤</span>`;
+    $("#nat-key").innerHTML = `<span><i class="cur"></i>확정</span><span><i class="stat"></i>국가데이터처 10월 예상</span>${fcNat(CUR) ? `<span><i class="fc"></i>모델</span>` : ""}<span>단위 만 톤</span>`;
     const el = $("#chart-nat");
     const { svg, w, h } = frame(el, 150);
     const ys = d3.range(NFROM, CUR + 1);
@@ -560,7 +560,7 @@
       const parts = [`<b>${yy}년</b>`];
       if (ok(fin(yy))) parts.push(`확정 ${tonS(fin(yy))}`);
       else if (o.pending) parts.push("확정 대기");
-      if (ok(est(yy))) parts.push(`통계청 예상 ${tonS(est(yy))}${ok(fin(yy)) ? ` (${pctS(ratio(est(yy), fin(yy)))})` : ""}`);
+      if (ok(est(yy))) parts.push(`국가데이터처 예상 ${tonS(est(yy))}${ok(fin(yy)) ? ` (${pctS(ratio(est(yy), fin(yy)))})` : ""}`);
       if (fcNat(yy)) parts.push(`모델 ${tonS(fcNat(yy)[2])}`);
       return parts.join(" · ");
     }, pickYear);
@@ -568,9 +568,9 @@
 
   // ---------- 왼쪽: 전망 정확도 ----------
   const ORG = {
-    m1010: { name: "모델 10월", color: "#f06f8f", cls: "rc-e-m1010", tip: "통계청 시도 예상에 태풍 보정과 기상 모델을 더함" },
+    m1010: { name: "모델 10월", color: "#f06f8f", cls: "rc-e-m1010", tip: "국가데이터처 시도 예상에 태풍 보정과 기상 모델을 더함" },
     m0915: { name: "모델 9월 15일", color: "#e0a458", cls: "rc-e-m0915", tip: "9월 15일까지 기상으로 계산(작물 생리 모델)" },
-    stat: { name: "통계청 10월 예상", color: "#5fb3ff", cls: "rc-e-stat" },
+    stat: { name: "국가데이터처 10월 예상", color: "#5fb3ff", cls: "rc-e-stat" },
     krei: { name: "KREI 9월 전망", color: "#5fb37c", cls: "rc-e-krei" },
     norm: { name: "평년값 그대로", color: "#4a505b" },
   };
@@ -589,8 +589,8 @@
           <span class="track"><span class="fill" style="width:${(a.mae / max) * 100}%;background:${ORG[k].color}"></span></span>
           <span class="val">±${nf1.format(a.mae)}kg</span><span class="rm">${nf1.format(a.rmse)}kg</span></div>`;
       }).join("")
-      + (ACC.sigun ? `<div class="rc-acc-sg" title="시군 단수 오차(면적 가중 RMSE). 통계청·KREI는 시군 전망을 내지 않는다">시군 오차 <b>모델 10월 ${nf1.format(ACC.sigun.m1010)}kg</b> · 9월 15일 ${nf1.format(ACC.sigun.m0915)}kg · 평년 ${nf1.format(ACC.sigun.norm)}kg</div>` : "");
-    $("#err-key").innerHTML = ERR_SER().map((k) => `<span><i class="${k}b"></i>${{ stat: "통계청", krei: "KREI", m0915: "모델 9/15", m1010: "모델 10월" }[k]}</span>`).join("")
+      + (ACC.sigun ? `<div class="rc-acc-sg" title="시군 단수 오차(면적 가중 RMSE). 국가데이터처·KREI는 시군 전망을 내지 않는다">시군 오차 <b>모델 10월 ${nf1.format(ACC.sigun.m1010)}kg</b> · 9월 15일 ${nf1.format(ACC.sigun.m0915)}kg · 평년 ${nf1.format(ACC.sigun.norm)}kg</div>` : "");
+    $("#err-key").innerHTML = ERR_SER().map((k) => `<span><i class="${k}b"></i>${{ stat: "국가데이터처", krei: "KREI", m0915: "모델 9/15", m1010: "모델 10월" }[k]}</span>`).join("")
       + (missing("krei").length ? `<span>KREI ${missing("krei").join("·")}년 없음</span>` : "");
     drawErr();
   }
@@ -621,7 +621,7 @@
     const cx = (yy) => x(yy) + x.bandwidth() / 2;
     hover(svg, m, w, h, cx, ys, (yy) => {
       const s = val("stat", yy), k = val("krei", yy), a = val("m0915", yy), b = val("m1010", yy);
-      return `<b>${yy}년</b>확정 ${int(at(NATION, "y", yy))}kg · 통계청 ${kgS(s)} · KREI ${ok(k) ? kgS(k) : "없음"}${ok(a) ? ` · 모델 9/15 ${kgS(a)}` : ""}${ok(b) ? ` · 모델 10월 ${kgS(b)}` : ""}`;
+      return `<b>${yy}년</b>확정 ${int(at(NATION, "y", yy))}kg · 국가데이터처 ${kgS(s)} · KREI ${ok(k) ? kgS(k) : "없음"}${ok(a) ? ` · 모델 9/15 ${kgS(a)}` : ""}${ok(b) ? ` · 모델 10월 ${kgS(b)}` : ""}`;
     });
   }
 
@@ -644,8 +644,8 @@
           const r = FC.v[t][k];
           return `<tr class="${t === FC.cur ? "cur" : ""}"><th>${FC.lab[t]} 예측</th><td><b>${tonS(r[2])}</b>${rng(r[5], r[6], tonN)}</td><td><b>${int(r[0])}kg</b>${rng(r[3], r[4], kgN)}</td></tr>`;
         }).join("")
-        + `<tr class="base"><th>${y - 1}년 확정</th><td>${tonS(pP)}</td><td>${ok(yP) ? `${int(yP)}kg` : "–"}</td></tr>`
-        + (ok(nn) ? `<tr class="base"><th>평년</th><td></td><td>${int(nn)}kg</td></tr>` : "")
+        + `<tr class="base"><th title="국가데이터처 농작물생산조사(논벼), KOSIS">${y - 1}년 확정<small>KOSIS</small></th><td>${tonS(pP)}</td><td>${ok(yP) ? `${int(yP)}kg` : "–"}</td></tr>`
+        + (ok(nn) ? `<tr class="base"><th title="KOSIS 단수로 계산: 직전 5년 중 최고·최저를 뺀 3년 평균">평년<small>KOSIS</small></th><td></td><td>${int(nn)}kg</td></tr>` : "")
         + `</tbody>`;
     }
     const yv = at(k, "y", y), n = at(k, "n", y);

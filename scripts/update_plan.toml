@@ -658,7 +658,7 @@ commands = [["scripts/fetch_kosis_rice.py"], ["scripts/build_rice.py"]]
 outputs = ["data/rice.js"]
 check = "rice"
 keys = ["KOSIS_API_KEY"]
-note = "매년 11월 중순 쌀 생산량 확정 공표 다음 날부터 받는다. 확정치가 들어오면 화면의 '확정'과 '통계청 예상 오차'가 저절로 채워진다. 공표가 늦으면 45일 동안 1주마다 다시 확인한다. 통계청 10월 예상생산량·KREI 쌀 관측 전망(db/raw/krei/krei_rice_outlook.csv)은 해마다 9~10월에 직접 넣는다."
+note = "매년 11월 중순 쌀 생산량 확정 공표 다음 날부터 받는다. 확정치가 들어오면 화면의 '확정'과 '국가데이터처 예상 오차'가 저절로 채워진다. 공표가 늦으면 45일 동안 1주마다 다시 확인한다. 국가데이터처 10월 예상생산량·KREI 쌀 관측 전망(db/raw/krei/krei_rice_outlook.csv)은 해마다 9~10월에 직접 넣는다."
 
 [[source.dataset]]
 name = "논벼 재배면적·10a당 생산량·생산량 (시군, 정곡)"

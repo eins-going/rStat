@@ -184,3 +184,4 @@
 .rc-fctab tr.cur b { font-size: 17px; }
 .rc-fctab tr.base td { color: var(--muted); }
 #u-stats[hidden], .rc-fctab[hidden], .rc-fcrow[hidden] { display: none; }
+.rc-fctab th small { margin-left: 4px; font-weight: 400; }

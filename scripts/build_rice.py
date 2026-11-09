@@ -3,7 +3,7 @@
 원자료
 - KOSIS 논벼 생산량(DT_1ET0034): db/raw/kosis_rice/dt_1et0034.csv (year, code, name, item, value)
   item: 재배면적(ha) · 10a당 생산량(kg, 정곡) · 생산량(톤, 정곡). 전국·시도 1980~, 시군 1996~
-- KREI 쌀 관측 전망 + 통계청(국가데이터처) 예상생산량: db/raw/krei/krei_rice_outlook.csv
+- KREI 쌀 관측 전망 + 국가데이터처(옛 통계청) 예상생산량: db/raw/krei/krei_rice_outlook.csv
 
 지역 키는 다른 화면과 같다: '00' 전국, '31' 시도, '31|수원시' 시군(현행 시군, data/geo.js).
 - 시군: 현행 단위로 합친다(청원군→청주시, 마산·진해→창원시, 연기군→세종시, 군위군→대구). 합친 해의 단수는 생산량÷면적으로 다시 계산
@@ -15,7 +15,7 @@
 - n 평년 단수: 직전 5년 중 최고·최저를 뺀 3년 평균(올림픽 평균, 5년 모두 있을 때) · d 평년 대비(%)
 
 전망(outlook)
-- stat: 통계청 10월 예상(단수·생산량·면적·발표일) · krei: 통계청 예상 발표 전 마지막 KREI 전망(범위 가운데 값)
+- stat: 국가데이터처 10월 예상(단수·생산량·면적·발표일) · krei: 국가데이터처 예상 발표 전 마지막 KREI 전망(범위 가운데 값)
 - kreiAll: 그해 KREI 발표 전부 · final: 확정치(KOSIS 전국) · pending: 확정 발표 대기
 - err: 기관별 오차(전망 − 확정, kg/10a). 요약은 KREI가 9월 하순 전망을 낸 2013년부터의 공통 기간
 
@@ -28,7 +28,7 @@
   }
   격자 수가 CELL_MIN 미만인 시군은 넣지 않는다. 평년 곡선(직전 5년 doy별 평균·범위)은 화면에서 계산한다
 모델 예측(fc): db/clean/rice/rice_forecast.csv (y, asof 0915|1010, level nation|sido|sigun, sc, name, yield, area, prod, y_lo, y_hi, p_lo, p_hi)
-  0915 = 기상 작물 모델(9/15까지 기상), 1010 = 통계청 시도 예상 + 태풍 보정 + 작물 모델. 범위는 그해 이전 검증 오차의 10~90%.
+  0915 = 기상 작물 모델(9/15까지 기상), 1010 = 국가데이터처 시도 예상 + 태풍 보정 + 작물 모델. 범위는 그해 이전 검증 오차의 10~90%.
   2013~2025는 그해 이전 자료로만 맞춘 재현값 → 정확도. fc: {year, cur, lab, v:{asof:{키:[단수,면적,생산량,단수 하한,상한,생산량 하한,상한]}}, bt:{키:[years 순 cur 시점 단수]}}
 실행: python scripts/build_rice.py
 """
@@ -329,7 +329,7 @@ def main():
         "ndvi": build_ndvi(),  # 위성 생육 곡선 (형식은 이 파일 머리 주석)
     }
     with open(OUT, "w", encoding="utf-8") as fh:
-        fh.write("// KOSIS 논벼 생산량(시군·시도·전국) + KREI 쌀 관측 전망 + 통계청 예상생산량 (scripts/build_rice.py)\n")
+        fh.write("// KOSIS 논벼 생산량(시군·시도·전국) + KREI 쌀 관측 전망 + 국가데이터처 예상생산량 (scripts/build_rice.py)\n")
         fh.write("// ndvi: MODIS 논 NDVI 곡선 {src, years, doy, v:{키:[[연도별 doy순 NDVI×1000]]}, cells:{키:논 격자 수}}\n")
         fh.write("window.AGRI_RICE = ")
         json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
