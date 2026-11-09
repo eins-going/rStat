@@ -462,10 +462,15 @@
       $("#nat-u2").textContent = o.pending ? "발표 예정" : "";
       $("#nat-d2").innerHTML = ok(pPrev) ? `<span class="d-lab">${CUR - 1}년</span><span>${tonS(pPrev)}</span>` : "";
     }
-    const krTxt = kr ? (ok(kr.lo) && ok(kr.hi) && kr.lo !== kr.hi ? `${int(kr.lo)}~${int(kr.hi)}kg` : `${int(kr.y)}kg`) : null;
+    const rngTxt = (q) => (ok(q.lo) && ok(q.hi) && q.lo !== q.hi ? `${int(q.lo)}~${int(q.hi)}kg` : `${int(q.y)}kg`);
+    const krTxt = kr ? rngTxt(kr) : null;
+    // 국가데이터처 예상 뒤 KREI(11월호 등): 모델이 아닌 참고. 지난해들의 확정 대비 오차를 풍선에
+    const kl = o.kreiLate, klPast = (ACC.years.kreiLate || []).filter(([yy]) => yy < CUR);
+    const klTxt = kl ? `<span title="KREI ${esc(kl.rel || "")} · 국가데이터처 예상 뒤 나온 전망(참고, 모델 아님)${ok(kl.err) ? ` · 확정 대비 ${kgS(kl.err)}` : ""}${klPast.length ? ` · 지난 기록 ${klPast.map(([yy, e]) => `${yy}년 ${kgS(e)}`).join(", ")}` : " · 지난 기록이 적어 정확도는 아직 모름"}">KREI ${/(\d+)월호/.test(kl.rel || "") ? `${kl.rel.match(/(\d+)월호/)[1]}월 ` : ""}전망(${md(kl.date)}) <b>${rngTxt(kl)}</b>${ok(kl.err) ? ` (${kgS(kl.err)})` : ""}</span>` : "";
     $("#nat-line").innerHTML = [
       ok(st?.y) ? `<span>단수 <b>${int(st.y)}kg</b> (평년 ${int(n)}kg 대비 ${pctS(ratio(st.y, n))})</span>` : "",
       krTxt ? `<span>KREI 단수 전망${kr.date ? `(${md(kr.date)})` : ""} <b>${krTxt}</b></span>` : "",
+      klTxt,
       ok(st?.a) ? `<span>재배면적 <b>${haS(st.a)}</b></span>` : "",
     ].join("");
     // 모델 예측은 따로 한 줄: 시점별 생산량(단수), 최근 시점 먼저

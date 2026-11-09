@@ -16,7 +16,7 @@
 
 전망(outlook)
 - stat: 국가데이터처 10월 예상(단수·생산량·면적·발표일) · krei: 국가데이터처 예상 발표 전 마지막 KREI 전망(범위 가운데 값)
-- kreiAll: 그해 KREI 발표 전부 · final: 확정치(KOSIS 전국) · pending: 확정 발표 대기
+- kreiLate: 국가데이터처 예상 뒤 마지막 KREI(11월호 등, 참고·확정 대비 err) · kreiAll: 그해 KREI 발표 전부 · final: 확정치(KOSIS 전국) · pending: 확정 발표 대기
 - err: 기관별 오차(전망 − 확정, kg/10a). 요약은 KREI가 9월 하순 전망을 낸 2013년부터의 공통 기간
 
 위성 생육(ndvi): db/clean/rice/modis_curves.csv (level sigun/sido/nation, sido 이름, sigun 이름, y, doy, ndvi, n 논 격자 수)
@@ -278,7 +278,7 @@ def main():
     for r in out_rows:
         by_year[int(r["year"])].append(r)
     outlook = {}
-    err = {"stat": [], "krei": []}
+    err = {"stat": [], "krei": [], "kreiLate": []}
 
     def point(r):
         lo, hi = num(r["yield_lo"]), num(r["yield_hi"])
@@ -301,6 +301,10 @@ def main():
         if main_k:
             o["krei"] = {"y": point(main_k), "lo": num(main_k["yield_lo"]), "hi": num(main_k["yield_hi"]),
                          "date": main_k["release_date"], "rel": main_k["release"]}
+        post = [r for r in kr if st and r["release_date"] > cut]  # 국가데이터처 예상 뒤 KREI(11월호 등): 참고로만, 확정 대비 기록을 쌓는다
+        if post:
+            o["kreiLate"] = {"y": point(post[-1]), "lo": num(post[-1]["yield_lo"]), "hi": num(post[-1]["yield_hi"]),
+                             "date": post[-1]["release_date"], "rel": post[-1]["release"]}
         o["kreiAll"] = [{"y": point(r), "lo": num(r["yield_lo"]), "hi": num(r["yield_hi"]), "date": r["release_date"],
                          "rel": r["release"]} for r in kr]
         f = final.get(y)
@@ -308,7 +312,7 @@ def main():
         if y in PENDING and not f:
             o["pending"] = PENDING[y]
         if f:
-            for org in ("stat", "krei"):
+            for org in ("stat", "krei", "kreiLate"):
                 if o.get(org, {}).get("y"):
                     e = round(o[org]["y"] - f, 1)
                     o[org]["err"] = e
@@ -326,7 +330,7 @@ def main():
     # 평년값을 전망으로 썼다면(기준선): 같은 기간 확정치 대비 오차
     base = [[y, round(nat["n"][Y[y]] - final[y], 1)] for y in years if y >= ERR_FROM and y in final and nat["n"][Y[y]]]
     acc = {"from": ERR_FROM, "stat": summary(err["stat"]), "krei": summary(err["krei"]), "norm": summary(base),
-           "years": {"stat": err["stat"], "krei": err["krei"], "norm": base}}
+           "years": {"stat": err["stat"], "krei": err["krei"], "norm": base, "kreiLate": err["kreiLate"]}}
 
     fcd = build_fc(fc, years, Y, v, final, outlook, acc) if fc else None
 
