@@ -466,8 +466,13 @@
       ok(st?.y) ? `<span>단수 <b>${int(st.y)}kg</b> (평년 ${int(n)}kg 대비 ${pctS(ratio(st.y, n))})</span>` : "",
       krTxt ? `<span>KREI 단수 전망${kr.date ? `(${md(kr.date)})` : ""} <b>${krTxt}</b></span>` : "",
       ok(st?.a) ? `<span>재배면적 <b>${haS(st.a)}</b></span>` : "",
-      fcNat(CUR) ? `<span class="rc-fcl">모델 단수 ${FCL} <b>${int(fcNat(CUR)[0])}kg</b>${FC.cur === "1010" && FC.v["0915"]?.["00"] ? ` · ${FC.lab["0915"]} 예측 ${int(FC.v["0915"]["00"][0])}kg` : ""}</span>` : "",
     ].join("");
+    // 모델 예측은 따로 한 줄: 시점별 생산량(단수), 최근 시점 먼저
+    const fcEl = $("#nat-fc");
+    fcEl.hidden = !fcNat(CUR);
+    if (fcNat(CUR)) fcEl.innerHTML = `<span class="lab">모델 예측</span><span class="items">` + Object.keys(FC.v).sort().reverse()
+      .filter((t) => FC.v[t]?.[NATION])
+      .map((t) => { const r = FC.v[t][NATION]; return `<span class="${t === FC.cur ? "cur" : ""}">${FC.lab[t]} <b>${tonS(r[2])}</b>(${int(r[0])}kg)</span>`; }).join("") + "</span>";
     drawNat();
   }
   const fcNat = (y) => (FC && y === FCY ? FCV[NATION] ?? null : null);
