@@ -586,9 +586,9 @@ document.addEventListener("keydown", (e) => {
 let wasHidden = false;
 document.addEventListener("visibilitychange", () => { if (document.hidden && !tl.paused()) { tl.pause(); wasHidden = true; } else if (!document.hidden && wasHidden) { wasHidden = false; tl.play(); } });
 
-// ── 배경음악 (소리는 사용자가 켤 때만) ─────────────────────
+// ── 배경음악 (처음부터 소리 켬, 아래 스피커로 끈다) ─────────────
 const music = createMusic({ T, TOTAL, voice: { lines: LINES, base: "assets/intro/voice/" } });
-const sndBtn = $("#snd"), volIn = $("#vol"), sndHint = $("#sndhint"), voBtn = $("#vo");
+const sndBtn = $("#snd"), volIn = $("#vol"), voBtn = $("#vo");
 stage.insertAdjacentHTML("beforeend", `<div class="cap" id="cap" aria-live="off"><span></span></div>`);
 const cap = $("#cap"), capT = cap.firstElementChild;
 let capId = null;
@@ -607,27 +607,26 @@ function sndUI() {
   sndBtn.setAttribute("aria-pressed", music.on);
   sndBtn.setAttribute("aria-label", music.on ? "소리 끄기" : "소리 켜기");
   sndBtn.dataset.on = music.on ? "1" : "0";
-  if (music.on) sndHint.hidden = true;
 }
 async function soundOn() {
   if (+volIn.value < 5) { volIn.value = 70; music.setVolume(0.7); store.set("intro-vol", 70); } // 음량이 0으로 저장돼 있으면 켜도 안 들린다
   await music.enable(); store.set("intro-snd", "1"); sndUI();
 }
 sndBtn.addEventListener("click", async () => { if (music.on) { music.disable(); store.set("intro-snd", "0"); } else await soundOn(); sndUI(); });
-// 지난번에 소리를 켰으면 이번에도 켠다. 브라우저가 소리 자동 재생을 막으면(새로 고침·주소로 바로 들어온 경우) 화면 어디든 처음 누르거나 키를 누를 때 켠다
-if (store.get("intro-snd") === "1") {
+// 소리는 처음부터 켠다(스피커로 끈 사람만 끈 채로). 브라우저가 몸짓 없는 소리를 막으면 화면 어디든 처음 누르거나 키를 누를 때 켠다
+if (store.get("intro-snd") !== "0") {
   music.tryEnable().then((ok) => {
     if (ok) return sndUI();
-    const off = () => { document.removeEventListener("click", first, true); document.removeEventListener("keydown", first, true); };
+    const evs = ["pointerdown", "keydown", "touchend"];
+    const off = () => evs.forEach((t) => document.removeEventListener(t, first, true));
     const first = (e) => {
       off();
-      if (music.on || e.target.closest?.("#snd, #sndhint, #vol") || (e.type === "keydown" && e.key === "m")) return; // 소리 단추는 제 일을 한다
+      if (music.on || e.target.closest?.("#snd, #vol") || (e.type === "keydown" && e.key === "m")) return; // 소리 단추는 제 일을 한다
       soundOn();
     };
-    document.addEventListener("click", first, true); document.addEventListener("keydown", first, true);
+    evs.forEach((t) => document.addEventListener(t, first, true));
   });
 }
-sndHint.addEventListener("click", soundOn);
 volIn.addEventListener("input", async () => {
   const v = +volIn.value; music.setVolume(v / 100); store.set("intro-vol", v);
   if (v > 0 && !music.on) await soundOn();
