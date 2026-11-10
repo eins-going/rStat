@@ -12,7 +12,8 @@
   };
   const intro = btn("intro", "소개", /\/intro(\.html)?$/, "intro-btn");
   const maker = btn("about", "만든이", /\/about(\.html)?$/, "maker-btn");
-  tabs.after(intro, maker);
+  tabs.before(intro); // 소개는 주요통계 앞
+  tabs.after(maker);
   // 좁은 화면에서 탭 줄이 넘치면 지금 화면 탭이 보이게 민다
   const cur = tabs.querySelector('[aria-current="page"]');
   if (cur && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = cur.offsetLeft - (tabs.clientWidth - cur.offsetWidth) / 2;

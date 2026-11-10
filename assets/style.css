@@ -1009,7 +1009,6 @@ body {
 .about-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .about-btn[aria-current="page"] { color: #14161b; background: var(--accent); border-color: var(--accent); font-weight: 700; }
 .intro-btn::before { content: ""; width: 0; height: 0; margin-right: 5px; border-left: 6px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; opacity: 0.85; }
-.brand-wrap .maker-btn { margin-left: -6px; } /* 소개·만든이를 한 묶음처럼 붙인다 */
 
 /* 만든이 화면 */
 .ab-main { flex: 1; display: grid; place-items: center; min-height: 60vh; padding: 24px 0 48px; }
