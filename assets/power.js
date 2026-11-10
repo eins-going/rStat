@@ -710,4 +710,36 @@
   });
   Object.keys(redraw).forEach((id) => ro.observe($(`#${id}`)));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = () => window.RSTAT_REGIONS();
+  const SRC = "한전 전력데이터 개방포털";
+  const YEARS = [...new Set(M.map((m) => m.slice(0, 4)))];
+  const MM = d3.range(1, 13);
+  const mi = (y, m) => M.indexOf(`${y}-${String(m).padStart(2, "0")}`);
+  const val = (k, f, i) => (i < 0 || gap(k, i) ? null : at(k, f, i));
+  // 시트(연도)마다 시군 × 1~12월. sum이면 12달이 다 있을 때 합계 열을 붙인다
+  const monthly = (f, sum) => (y) => REG().map((r) => {
+    const v = MM.map((m) => val(r.key, f, mi(y, m)));
+    return [r.sido, r.sgg, ...v, ...(sum ? [v.every(ok) ? v.reduce((a, b) => a + b, 0) : null] : [])];
+  });
+  const GAPNOTE = "원자료에서 일부 시군구가 빠진 달은 비움";
+  const W0 = M.findIndex((_, i) => ok(at(NATION, "w", i)));
+  window.RSTAT_EXPORT = { sets: [
+    { id: "use", name: "월별 사용량", src: SRC, years: YEARS, note: `검침월 기준 · 농사용 · ${GAPNOTE}`,
+      cols: [...MM.map((m) => `${m}월 사용량(MWh)`), "연간 합계(MWh)"], rows: monthly("k", true) },
+    { id: "cust", name: "월별 고객 수", src: SRC, years: YEARS, note: `3·11월은 계절 고객이 함께 잡혀 크게 나옴 · ${GAPNOTE}`,
+      cols: MM.map((m) => `${m}월 고객 수(호)`), rows: monthly("c") },
+    { id: "kw", name: "월별 계약전력", src: SRC, years: YEARS.filter((y) => y >= M[W0].slice(0, 4)), note: `${M[W0].slice(0, 4)}년부터 · ${GAPNOTE}`,
+      cols: MM.map((m) => `${m}월 계약전력(kW)`), rows: monthly("w") },
+    { id: "invest", name: "신설·증설·해지", src: SRC, years: YEARS, note: `한전 산업분류 농업·임업·어업 고객 · 연간 합계(한 달이라도 없으면 비움) · ${YEARS.at(-1)}년은 ${+M[LAST].slice(5)}월까지`,
+      cols: ["신설(건)", "증설(건)", "해지(건)"],
+      rows: (y) => REG().map((r) => [r.sido, r.sgg, ...["n", "e", "x"].map((f) => {
+        const v = MM.map((m) => mi(y, m)).filter((i) => i >= 0).map((i) => at(r.key, f, i));
+        return v.length && v.every(ok) ? v.reduce((a, b) => a + b, 0) : null;
+      })]) },
+    { id: "season", name: "계절 유형", src: SRC, years: null, note: `${P.seasonYears[0]}~${P.seasonYears[1]}년 사용량 · 월 지수는 그해 월평균 = 100 · 검침월`,
+      cols: ["계절 유형", "가장 많은 달 ÷ 가장 적은 달(배)", ...MM.map((m) => `${m}월 지수`)],
+      rows: () => REG().map((r) => { const s = seasonOf(r.key); return [r.sido, r.sgg, ...(s ? [P.types[s[0]], s[1] / 100, ...s.slice(2)] : new Array(14).fill(null))]; }) },
+  ] };
 })();

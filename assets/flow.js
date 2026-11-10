@@ -815,4 +815,62 @@
   });
   Object.keys(redraw).forEach((id) => ro.observe($(`#${id}`)));
   $("#updated").textContent = `${D.source}`;
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  // 기종점 집계는 컨테이너(od.js)만 싣는다. 다른 기기는 고를 때 불러오므로 기기별 합계(flow_mon.js)로 싣는다
+  const REG = () => window.RSTAT_REGIONS();
+  let RANK = null; // export.js는 about.js가 뒤에 불러온다
+  const KEYS = R.map((k, i) => [NATION, rSido[i], ...(level(k) === 2 ? [k] : [])]);
+  const regName = (i) => [T.sidos[rSido[i]]?.name ?? rSido[i], level(R[i]) === 2 ? label(R[i]) : "시군 미상"];
+  const r1 = (v) => Math.round(v * 10) / 10;
+  // 한 해 컨테이너 행을 지역(전국·시도·시군)마다 n칸 배열로 모은다. put(배열, 행, 출발 쪽인지, 열들)
+  function byReg(y, n, put) {
+    const F = D.f[Y.indexOf(+y)], acc = new Map();
+    const get = (k) => acc.get(k) || acc.set(k, new Float64Array(n)).get(k);
+    for (let j = 0; j < F[5].length; j++) {
+      for (const k of KEYS[F[0][j]]) put(get(k), j, true, F);
+      for (const k of KEYS[F[1][j]]) put(get(k), j, false, F);
+    }
+    return acc;
+  }
+  const regRows = (acc, fn) => REG().map((r) => [r.sido, r.sgg, ...(acc.has(r.key) ? fn(acc.get(r.key)) : fn(null))]);
+  const YS = Y.map(String), MY = MON.years.map(String);
+  const src = D.source;
+  const SIDES = [["o", "보낸"], ["d", "받은"]];
+  window.RSTAT_EXPORT = { sets: [
+    { id: "flow", name: "보낸·받은 양(컨테이너)", src, years: YS, note: "시도 줄은 시군 미상 포함",
+      cols: ["보낸 양(개)", "받은 양(개)", "다른 시도로 보낸 양(개)", "보낸 평균 직선거리(km)"],
+      rows: (y) => regRows(byReg(y, 4, (a, j, out, [O, Dd, , , , Q]) => {
+        if (!out) { a[1] += Q[j]; return; }
+        a[0] += Q[j]; a[3] += Q[j] * DIST[O[j] * NR + Dd[j]];
+        if (rSido[O[j]] !== rSido[Dd[j]]) a[2] += Q[j];
+      }), (a) => (a ? [a[0], a[1], a[2], a[0] ? r1(a[3] / a[0]) : null] : [null, null, null, null])) },
+    { id: "od", name: "시군 간 이동(컨테이너)", src, years: YS,
+      note: "앞 두 칸은 출발 시도·시군구, 그다음 도착 시도·시군구 · 시군 미상은 시도만 알려진 자료",
+      cols: ["도착 시도", "도착 시군구", "수량(개)", "직선거리(km)"],
+      rows: (y) => {
+        const [O, Dd, , , , Q] = D.f[Y.indexOf(+y)], m = new Map();
+        for (let j = 0; j < Q.length; j++) { const p = O[j] * NR + Dd[j]; m.set(p, (m.get(p) || 0) + Q[j]); }
+        RANK ||= new Map(REG().map((r, i) => [r.key, i]));
+        const rk = (i) => RANK.get(R[i]) ?? 1e9;
+        return [...m].map(([p, q]) => [Math.floor(p / NR), p % NR, q]).sort((a, b) => rk(a[0]) - rk(b[0]) || b[2] - a[2])
+          .map(([o, d, q]) => [...regName(o), ...regName(d), q, r1(DIST[o * NR + d])]);
+      } },
+    { id: "crop", name: "품목별 보낸·받은 양(컨테이너)", src, years: YS, note: "품목이 있는 줄만",
+      cols: ["품목", "보낸 양(개)", "받은 양(개)"],
+      rows: (y) => {
+        const acc = byReg(y, NC * 2, (a, j, out, F) => { a[F[2][j] * 2 + (out ? 0 : 1)] += F[5][j]; });
+        return REG().flatMap((r) => { const a = acc.get(r.key); return a ? D.crops.map((c, i) => [r.sido, r.sgg, c, a[i * 2], a[i * 2 + 1]]).filter((x) => x[3] || x[4]) : []; });
+      } },
+    { id: "mix", name: "판로·출하 주체(컨테이너)", src, years: YS, note: "출발지 기준 보낸 양",
+      cols: [...D.dtypes.map((t) => `판로 ${t}(개)`), ...D.stypes.map((t) => `출하 ${t}(개)`)],
+      rows: (y) => regRows(byReg(y, NT + NS, (a, j, out, [, , , Tt, Sh, Q]) => { if (out) { a[Tt[j]] += Q[j]; a[NT + Sh[j]] += Q[j]; } }),
+        (a) => (a ? [...a] : new Array(NT + NS).fill(null))) },
+    { id: "equip", name: "기기별 사용량", src, years: MY, note: "기기마다 수량 단위가 달라 더하지 않음",
+      cols: SIDES.flatMap(([, s]) => MON.eqNames.map((e) => `${e} ${s} 양(개)`)),
+      rows: (y) => { const i = MY.indexOf(y); return REG().map((r) => [r.sido, r.sgg, ...SIDES.flatMap(([s]) => MON.eqNames.map((_, e) => MON.eq[s][r.key]?.[i]?.[e] ?? null))]); } },
+    { id: "month", name: "월별 흐름", src, years: MY, note: "월 값은 1~11월 합계에 대한 천분율(‰) · 컨테이너·파렛트",
+      cols: ["방향", "기기", "1~11월 합계(개)", ...d3.range(1, 12).map((m) => `${m}월(‰)`)],
+      rows: (y) => { const i = MY.indexOf(y); return REG().flatMap((r) => SIDES.flatMap(([s, sn]) => MON.equips.map((e) => [e, MON[s][e]?.[r.key]?.[i]]).filter(([, a]) => a).map(([e, a]) => [r.sido, r.sgg, sn, e, ...a]))); } },
+  ] };
 })();
