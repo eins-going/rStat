@@ -17,3 +17,4 @@ research/**
 research/**/_pylib/
 research/**/_bak_*/
 research/**/__pycache__/
+node_modules/

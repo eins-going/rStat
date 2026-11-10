@@ -1003,11 +1003,13 @@ body {
 .chart-tip b { color: var(--text); margin-right: 6px; }
 .chart-tip[hidden] { display: none; }
 
-/* 만든이 버튼 (assets/about.js) — 누르면 만든이 화면(about.html) */
+/* 소개·만든이 버튼 (assets/about.js) — 소개 영상(intro.html)·만든이 화면(about.html) */
 .about-btn { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; padding: 0 9px; font-size: 12.5px; color: var(--muted); text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; white-space: nowrap; }
 .about-btn:hover { color: var(--text); border-color: #4a4f59; }
 .about-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .about-btn[aria-current="page"] { color: #14161b; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.intro-btn::before { content: ""; width: 0; height: 0; margin-right: 5px; border-left: 6px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; opacity: 0.85; }
+.brand-wrap .maker-btn { margin-left: -6px; } /* 소개·만든이를 한 묶음처럼 붙인다 */
 
 /* 만든이 화면 */
 .ab-main { flex: 1; display: grid; place-items: center; min-height: 60vh; padding: 24px 0 48px; }
@@ -1020,7 +1022,8 @@ body {
 .ab-card a:hover { text-decoration: underline; }
 @media (max-width: 760px) {
   .brand-wrap { width: 100%; }
-  .about-btn { order: 1; margin-left: auto; height: 28px; padding: 0 10px; font-size: 12px; } /* 폰: 제목 줄 오른쪽에 */
+  .about-btn { order: 1; height: 28px; padding: 0 10px; font-size: 12px; } /* 폰: 제목 줄 오른쪽에 */
+  .intro-btn { margin-left: auto; }
   .brand-wrap .tabs { order: 2; }
 }
 
