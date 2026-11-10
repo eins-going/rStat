@@ -3,8 +3,14 @@
   // 용어 설명(마우스를 올리면 보이는 짧은 설명)
   if (!document.querySelector('script[src$="glossary.js"]')) {
     const g = document.createElement("script");
-    g.src = "assets/glossary.js?v=1";
+    g.src = "assets/glossary.js?v=2";
     document.body.appendChild(g);
+  }
+  // 자료 내려받기 (화면 JS가 window.RSTAT_EXPORT를 두면 바닥글에 링크가 생긴다)
+  if (!document.querySelector('script[src*="export.js"]')) {
+    const x = document.createElement("script");
+    x.src = "assets/export.js?v=1";
+    document.body.appendChild(x);
   }
   const tabs = document.querySelector(".brand-wrap .tabs");
   if (!tabs) return;

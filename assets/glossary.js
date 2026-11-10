@@ -285,7 +285,7 @@
   document.head.appendChild(css);
 
   // ---------- 화면 글자와 사전 맞추기 ----------
-  const SKIP = "svg, script, style, .tabs, .about-btn, .rank-row, .tip, .chart-tip, #gl-tip, select, option, input, textarea";
+  const SKIP = "svg, script, style, .tabs, .about-btn, .dl-back, .rank-row, .tip, .chart-tip, #gl-tip, select, option, input, textarea";
   const own = (el) => {
     let t = "";
     for (const n of el.childNodes) if (n.nodeType === 3) t += n.textContent;

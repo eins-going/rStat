@@ -1383,4 +1383,32 @@
   });
   ["#chart-farm", "#spark-farm", "#spark-rural", "#chart-budget", "#chart-rice", "#chart-grdp", "#bars-crop"].forEach((s) => chartRO.observe($(s)));
   FIT.addEventListener("change", () => { lastSize = ""; drawMap(); render(); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = () => window.RSTAT_REGIONS();
+  const S = D.sources;
+  const byYear = (years, fields) => (y) => { const i = years.indexOf(y); return REG().map((r) => [r.sido, r.sgg, ...fields.map((f) => V[f]?.[r.key]?.[i] ?? null)]); };
+  const once = (fn) => () => REG().map((r) => [r.sido, r.sgg, ...fn(r.key)]);
+  const CROPS = [...new Set(Object.values(V.crops).flatMap((c) => Object.keys(c)))];
+  window.RSTAT_EXPORT = { sets: [
+    { id: "farm", name: "농가·농가인구", src: S.farm, years: P.farm, cols: ["농가(가구)", "농가인구(명)"], rows: byYear(P.farm, ["households", "population"]) },
+    { id: "age", name: "경영주 연령·고령 농가인구", src: S.aging, years: null, note: `${P.aging}년`,
+      cols: ["농가(가구)", "40세 미만 경영주 농가(가구)", "65세 이상 경영주 농가(가구)", "농가인구(명)", "65세 이상 농가인구(명)"],
+      rows: once((k) => { const o = V.operatorAge[k] || [], a = V.aging[k] || []; return [o[0], o[1], o[2], a[0], a[1]]; }) },
+    { id: "return", name: "귀농·귀촌", src: S.returning, years: P.returning, cols: ["귀농가구(가구)", "귀촌인(명)"], rows: byYear(P.returning, ["returnFarm", "returnRural"]) },
+    { id: "land", name: "경지면적", src: S.land, years: P.land, cols: ["경지면적(ha)", "논(ha)", "밭(ha)"], rows: byYear(P.land, ["land", "paddy", "field"]) },
+    ...(FM.year ? [{ id: "farmmap", name: "농경지 구조(팜맵)", src: `팜맵 ${FM.year}`, years: null,
+      cols: ["농경지 면적 중앙값(㎡)", "0.1ha 미만 농경지 비율(%)", "논 경지정리율(%)", "농지 집적도(ha)"],
+      rows: once((k) => [parcelMed(k), parcelSmall(k), paddyArmt(k), landBlock(k)]) }] : []),
+    { id: "rice", name: "쌀 생산량", src: S.rice, years: P.riceYears, note: `재배면적은 ${P.rice}년만`,
+      cols: ["쌀 생산량(톤)", "논벼 재배면적(ha)"],
+      rows: (y) => { const i = P.riceYears.indexOf(y); return REG().map((r) => [r.sido, r.sgg, V.riceSeries[r.key]?.[i] ?? null, y === P.rice ? V.rice[r.key]?.[0] ?? null : null]); } },
+    { id: "crops", name: "채소·특용작물 재배면적", src: S.crops, years: P.cropYears, cols: CROPS.map((c) => `${c}(ha)`),
+      rows: (y) => { const i = P.cropYears.indexOf(y); return REG().map((r) => [r.sido, r.sgg, ...CROPS.map((c) => V.crops[r.key]?.[c]?.[i] ?? null)]); } },
+    { id: "livestock", name: "가축 사육", src: S.livestock, years: null, note: `한육우·젖소·닭 ${P.livestock}, 돼지·오리 ${P.census} 총조사`,
+      cols: ["한육우 농장", "한육우(마리)", "젖소 농장", "젖소(마리)", "돼지 농장", "돼지(마리)", "닭 농장", "닭(마리)", "오리 농장", "오리(마리)"],
+      rows: once((k) => ["cattle", "dairy", "pig", "chicken", "duck"].flatMap((f) => [V[f][k]?.[0] ?? null, V[f][k]?.[1] ?? null])) },
+    { id: "grdp", name: "지역내총생산(GRDP)", src: S.grdp, years: P.grdp.years, note: "명목", cols: ["농림어업 GRDP(백만원)", "전체 GRDP(백만원)"], rows: byYear(P.grdp.years, ["grdpAgri", "grdpTotal"]) },
+    { id: "budget", name: "농업·농촌 예산", src: S.budget, years: P.budget, cols: ["농업·농촌 예산(백만원)", "전체 세출 예산(백만원)"], rows: byYear(P.budget, ["budgetAgri", "budgetTotal"]) },
+  ] };
 })();
