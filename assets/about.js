@@ -1,5 +1,11 @@
 // 탭 옆 '소개'·'만든이' 버튼: 소개 영상(intro.html)과 만든이 화면(about.html)으로 간다. 모든 화면이 함께 쓴다
 (() => {
+  // 용어 설명(마우스를 올리면 보이는 짧은 설명)
+  if (!document.querySelector('script[src$="glossary.js"]')) {
+    const g = document.createElement("script");
+    g.src = "assets/glossary.js?v=1";
+    document.body.appendChild(g);
+  }
   const tabs = document.querySelector(".brand-wrap .tabs");
   if (!tabs) return;
   const btn = (href, text, re, cls) => {
