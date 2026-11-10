@@ -4400,7 +4400,7 @@ void main(){
       <p class="kicker">\uB9CC\uB4E0 \uC774</p>
       <h2 class="hl">${rr(["\uC870\uC2B9\uD604"])}</h2>
       <p class="mk-cred">\uB18D\uC5C5\xB7\uC790\uC6D0\uACBD\uC81C\uD559 \uBC15\uC0AC</p>
-      <p class="mk-field">${["\uADF8\uB9B0\uBC14\uC774\uC624","\uC2A4\uB9C8\uD2B8\uB18D\uC5C5","\uC704\uD5D8\uAD00\uB9AC","\uB18D\uC5C5\uD1B5\uACC4\xB7\uB370\uC774\uD130","\uB18D\uC5C5\uC815\uCC45"].map(s=>`<span>${s}</span>`).join("")}</p>
+      <p class="mk-field">${["\uADF8\uB9B0\uBC14\uC774\uC624","\uC2A4\uB9C8\uD2B8\uB18D\uC5C5","\uC704\uD5D8\uAD00\uB9AC","\uD1B5\uACC4\xB7\uB370\uC774\uD130","\uB18D\uC5C5\uC815\uCC45"].map(s=>`<span>${s}</span>`).join("")}</p>
       <ol class="mk-phil">
         <li><b>\uADF8\uB300\uB85C</b><span>\uACF5\uAC1C\uB41C \uC790\uB8CC\uB97C \uCD9C\uCC98\uC640 \uD568\uAED8, \uACE0\uCE58\uC9C0 \uC54A\uACE0</span></li>
         <li><b>\uC6B0\uB9AC \uC2DC\uAD70</b><span>\uC804\uAD6D \uD3C9\uADE0\uC774 \uC544\uB2C8\uB77C \uB0B4 \uC9C0\uC5ED\uC758 \uC22B\uC790\uB85C</span></li>

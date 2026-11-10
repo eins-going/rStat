@@ -160,7 +160,7 @@ stage.insertAdjacentHTML("beforeend", `
       <p class="kicker">만든 이</p>
       <h2 class="hl">${split(["조승현"])}</h2>
       <p class="mk-cred">농업·자원경제학 박사</p>
-      <p class="mk-field">${["그린바이오", "스마트농업", "위험관리", "농업통계·데이터", "농업정책"].map((t) => `<span>${t}</span>`).join("")}</p>
+      <p class="mk-field">${["그린바이오", "스마트농업", "위험관리", "통계·데이터", "농업정책"].map((t) => `<span>${t}</span>`).join("")}</p>
       <ol class="mk-phil">
         <li><b>그대로</b><span>공개된 자료를 출처와 함께, 고치지 않고</span></li>
         <li><b>우리 시군</b><span>전국 평균이 아니라 내 지역의 숫자로</span></li>
