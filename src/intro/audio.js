@@ -177,7 +177,7 @@ export function createMusic({ T, TOTAL, voice, offline = false, sampleRate = 441
       await Promise.all(VO.lines.map(async (l) => {
         const m = VO.meta.files?.[l.id];
         if (!m) return;
-        const ab = await (await fetch(`${voice.base}${m.file}?v=${VO.meta.made || ""}`)).arrayBuffer();
+        const ab = await (await fetch(`${voice.base}${m.file}?v=${encodeURIComponent(VO.meta.made || "")}`)).arrayBuffer();
         const buf = await ctx.decodeAudioData(ab);
         // 앞뒤 무음을 재서, 말이 정확히 at에 시작하고 말이 끝나면 다음 문장에 자리를 내준다
         const d = buf.getChannelData(0), sr = buf.sampleRate;

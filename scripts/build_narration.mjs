@@ -63,5 +63,5 @@ for (const [i, l] of LINES.entries()) {
 // 대본에 없는 옛 파일은 지운다
 for (const f of fs.readdirSync(OUT)) if (f.endsWith(".mp3") && !files[f.slice(0, -4)]) fs.rmSync(path.join(OUT, f));
 for (const k of Object.keys(files)) if (!LINES.some((l) => l.id === k)) delete files[k];
-fs.writeFileSync(metaPath, JSON.stringify({ engine: "edge-tts", voice: VOICE, rate: RATE, pitch: PITCH, made: new Date().toISOString().slice(0, 10), files }, null, 1));
+fs.writeFileSync(metaPath, JSON.stringify({ engine: "edge-tts", voice: VOICE, rate: RATE, pitch: PITCH, made: new Date().toISOString().slice(0, 16), files }, null, 1));
 console.log(`완료: assets/intro/voice/ (${LINES.length}문장, 넘침 ${over}) · 이어서 node scripts/build_intro.mjs 후 배포`);
