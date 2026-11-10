@@ -628,4 +628,29 @@
     if (!el || !el._wh || Math.abs(el._wh[0] - el.clientWidth) >= 1 || Math.abs(el._wh[1] - el.clientHeight) >= 1) drawTrends();
   }).observe($("#trends"));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = () => window.RSTAT_REGIONS().filter((r) => R(r.key));
+  const SRC = "국립환경과학원 전국오염원조사";
+  const YS = YEARS.map(String), HK = Object.keys(R(NATION).t.h);
+  const CN = L.courts.map((c) => COURT_NAME[c]);
+  const kindRow = (r, kd) => { // kd: -1 = 전체
+    const d = R(r.key), all = kd < 0, k = all ? null : d.k[kd], c = all ? d.c : d.ck[kd], p = all ? d.p : d.pk[kd];
+    return [r.sido, r.sgg, all ? "전체" : L.kinds[kd], all ? d.t.farm[YN] : k[0], all ? sum(d.k.map((x) => x[1])) : k[1], all ? d.t.man[YN] : k[2], ...c.flat(), ...p];
+  };
+  window.RSTAT_EXPORT = { sets: [
+    { id: "manure", name: "가축분뇨 발생량·사육", src: `${SRC} 축산계`, years: YS, note: "분뇨는 수질오염원 기준이라 가금은 거의 0 · 농가는 축종별 합",
+      cols: ["가축분뇨 발생량(톤/일)", "농가 자가처리(톤/일)", "위탁·공공처리(톤/일)", "사육 농가(곳)", ...HK.map((n) => `${n}(마리)`)],
+      rows: (y) => { const i = YS.indexOf(y); return REG().map((r) => { const t = R(r.key).t;
+        return [r.sido, r.sgg, t.man[i] ?? null, t.self[i] ?? null, ok(t.man[i]) && ok(t.self[i]) ? Math.round((t.man[i] - t.self[i]) * 10) / 10 : null, t.farm[i] ?? null, ...HK.map((n) => t.h[n]?.[i] ?? null)]; }); } },
+    { id: "kinds", name: "축종별 규모·처리 방식", src: `${SRC} 축산계`, years: null, note: `${LAST}년 · 처리 방식은 줄마다 적힌 방법으로 분뇨를 나눔`,
+      cols: ["축종", "농가(곳)", "마릿수(마리)", "분뇨(톤/일)", ...CN.flatMap((n) => [`${n} 농가(곳)`, `${n} 마릿수(마리)`, `${n} 분뇨(톤/일)`]), ...L.procs.map((n) => `${n}(톤/일)`)],
+      rows: () => REG().flatMap((r) => [-1, ...L.kinds.map((_, i) => i)].map((kd) => kindRow(r, kd))) },
+    { id: "villages", name: "분뇨가 많은 마을", src: `${SRC} 축산계`, years: null, note: `${LAST}년 · 시군마다 상위 10곳(리, 동 지역은 동)`,
+      cols: ["읍면동", "리", "분뇨(톤/일)", "가장 많은 축종", "농가(곳, 축종별)", "마릿수(마리)"],
+      rows: () => REG().filter((r) => r.sgg).flatMap((r) => R(r.key).v.map(([, emd, ri, v, kd, f, h]) => [r.sido, r.sgg, emd, ri, v, L.kinds[kd], f, h])) },
+    { id: "facilities", name: "가축분뇨 공공처리시설", src: `${SRC} 환경기초시설`, years: null,
+      cols: ["시설", "처리용량(㎥/일)"],
+      rows: () => REG().filter((r) => r.sgg).flatMap((r) => R(r.key).fac.map(([n, c]) => [r.sido, r.sgg, n, c])) },
+  ] };
 })();

@@ -666,4 +666,27 @@
     drawBins();
   }).observe($("#chart-bins"));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = () => window.RSTAT_REGIONS().filter((r) => R(r.key));
+  const SRC = "농촌진흥청 국립농업과학원";
+  const OBK = (l) => S.obst.filter((n) => Object.values(S.r).some((r) => r.o[l] && n in r.o[l]));
+  const CHK = LANDS.flatMap((land) => S.chem.filter((c) => STD[land][c.k]).map((c) => [land, c]));
+  const r1 = (v) => (ok(v) ? Math.round(v * 10) / 10 : null);
+  window.RSTAT_EXPORT = { sets: [
+    { id: "grade", name: "논·밭 적성등급 면적", src: `${SRC} 토양도 기반 토양특성 통계`, years: null, note: `시군 땅 전체(산 포함) · 지금 논·밭은 팜맵 ${S.farmYear}`,
+      cols: [...["논", "밭"].flatMap((l) => CATS.map((c) => `${l} ${c.n}(ha)`)), "지금 논(ha)", "지금 밭(ha)"],
+      rows: () => REG().map((r) => { const d = R(r.key); return [r.sido, r.sgg, ...d.pg, ...d.fg, d.f?.[0] ?? null, d.f?.[1] ?? null]; }) },
+    { id: "obstacle", name: "논·밭 저해요인 면적", src: `${SRC} 토양도 기반 토양특성 통계`, years: null, note: "2~4급지마다 가장 심한 요인 하나",
+      cols: [...OBK("po").map((n) => `논 ${n}(ha)`), ...OBK("fo").map((n) => `밭 ${n}(ha)`)],
+      rows: () => REG().map((r) => { const o = R(r.key).o; return [r.sido, r.sgg, ...OBK("po").map((n) => o.po?.[n] ?? null), ...OBK("fo").map((n) => o.fo?.[n] ?? null)]; }) },
+    { id: "chem", name: "농경지 화학성 판정 비율", src: `${SRC} 농경지화학성 통계`, years: null, note: "검정 필지 누적 면적 기준 · 적정범위는 흙토람 · 걸침은 구간이 기준 경계에 걸침",
+      cols: ["용도", "항목", "단위", "적정범위", "검정 면적(ha)", "낮음(%)", "적정(%)", "높음(%)", "걸침(%)"],
+      rows: () => REG().flatMap((r) => CHK.map(([land, c]) => { const j = judge(r.key, c.k, land); const on = j?.tot > 0;
+        return [r.sido, r.sgg, land, c.name, c.unit, STD[land][c.k][0], j?.tot ?? null, ...["L", "O", "H", "X"].map((x) => (on ? r1(j[x]) : null))]; })) },
+    { id: "chembins", name: "농경지 화학성 구간 면적", src: `${SRC} 농경지화학성 통계`, years: null, note: "검정 필지 누적 면적 · 판정은 흙토람 경지구분별 적정범위",
+      cols: ["용도", "항목", "단위", "구간", "판정", "검정 면적(ha)"],
+      rows: () => REG().flatMap((r) => CHK.flatMap(([land, c]) => { const b = binsOf(r.key, c.k, land);
+        return c.bins[land].map((n, i) => [r.sido, r.sgg, land, c.name, c.unit, n, CLS[STD[land][c.k][1][i]][0], b?.[i] ?? null]); })) },
+  ] };
 })();
