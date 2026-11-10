@@ -194,7 +194,6 @@
 .mk-text { width: 820px; }
 .mk-text .hl { font-size: 72px; }
 .mk-cred { margin: 14px 0 0; font-size: 34px; font-weight: 650; color: #ffd98a; letter-spacing: -0.01em; }
-.mk-career { margin: 10px 0 0; font-size: 24px; color: #c4cad3; }
 .mk-field { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
 .mk-field span { padding: 5px 14px; font-size: 21px; font-weight: 600; color: #ffe2a8; border: 1px solid rgba(255, 207, 122, 0.4); border-radius: 999px; background: rgba(255, 207, 122, 0.08); }
 .mk-phil { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 18px; counter-reset: ph; }
