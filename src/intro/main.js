@@ -579,7 +579,7 @@ volIn.addEventListener("input", async () => {
 document.addEventListener("keydown", (e) => { if (e.key === "m" && !e.target.closest("input, textarea, select")) sndBtn.click(); });
 gsap.ticker.add(() => music.sync(tl.time(), !tl.paused() && tl.progress() < 1));
 
-window.__intro = { tl, S }; // 확인용 (scripts에서 장면을 찍을 때)
+window.__intro = { tl, S, music }; // 확인용 (scripts에서 장면을 찍을 때)
 
 // ── 시작 ─────────────────────────────────────────────────
 (async () => {

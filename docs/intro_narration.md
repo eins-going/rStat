@@ -27,7 +27,11 @@
 
 전체 약 410음절, 말하는 시간 약 80초 / 영상 106초.
 
-## 넣는 방법 (목소리가 정해지면)
+## 녹음
+
+`node scripts/build_narration.mjs` (edge-tts, `.venv`에 설치). 목소리 바꾸기: `VOICE=ko-KR-HyunsuMultilingualNeural PITCH=-6Hz node scripts/build_narration.mjs` 후 `node scripts/build_intro.mjs`. 후보 비교: `--samples` → `voice_samples/`.
+
+## 넣는 방법
 
 1. 장면마다 음성 파일 하나씩(`assets/intro/voice/01.mp3` …)으로 만든다.
 2. 배경음악과 같은 엔진(`src/intro/audio.js`)이 장면 시작에 맞춰 튼다. 감기·멈춤에도 맞고, 중간부터 보면 그 문장 중간부터 나온다.

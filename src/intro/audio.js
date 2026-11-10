@@ -42,7 +42,7 @@ export function createMusic({ T, voice }) {
   let vol = 0.7, on = false, running = false, base = 0, next = 0, voiceOn = true;
   const voices = new Set();
   // 내레이션
-  const VO = { lines: voice?.lines || [], meta: null, buf: new Map(), src: null, id: null, loading: null };
+  const VO = { lines: voice?.lines || [], meta: null, buf: new Map(), cut: new Map(), src: null, id: null, loading: null };
 
   function init() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -134,13 +134,26 @@ export function createMusic({ T, voice }) {
         const m = VO.meta.files?.[l.id];
         if (!m) return;
         const ab = await (await fetch(`${voice.base}${m.file}`)).arrayBuffer();
-        VO.buf.set(l.id, await ctx.decodeAudioData(ab));
+        const buf = await ctx.decodeAudioData(ab);
+        // 앞뒤 무음을 재서, 말이 정확히 at에 시작하고 말이 끝나면 다음 문장에 자리를 내준다
+        const d = buf.getChannelData(0), sr = buf.sampleRate;
+        let s = 0, e = d.length - 1;
+        while (s < d.length && Math.abs(d[s]) < 0.02) s++;
+        while (e > s && Math.abs(d[e]) < 0.02) e--;
+        VO.buf.set(l.id, buf);
+        VO.cut.set(l.id, { lead: Math.max(0, s / sr - 0.04), end: e / sr + 0.15 });
       }));
     })().catch(() => { VO.meta = null; });
     return VO.loading;
   }
-  const dur = (l) => VO.buf.get(l.id)?.duration ?? VO.meta?.files?.[l.id]?.dur ?? 0;
-  const activeLine = (t) => VO.lines.find((l) => VO.buf.has(l.id) && t >= l.at && t < l.at + dur(l));
+  // 문장 l의 파일을 트는 구간: [at - 앞 무음, at - 앞 무음 + 말 끝]
+  const span = (l) => { const c = VO.cut.get(l.id); return c ? [l.at - c.lead, l.at - c.lead + c.end] : null; };
+  // 지금 문장 = 시작이 지난 가장 늦은 문장 (다음 문장이 시작되면 앞 문장의 꼬리는 끊는다)
+  const activeLine = (t) => {
+    let r = null;
+    for (const l of VO.lines) { const sp = span(l); if (sp && t >= sp[0]) r = { l, sp }; }
+    return r && t < r.sp[1] ? r.l : null;
+  };
   function stopVoice() { if (VO.src) { try { VO.src.stop(); } catch { /* 이미 멈춤 */ } VO.src = null; } VO.id = null; }
   function duck(onv) { if (bus) bus.gain.setTargetAtTime(onv ? 0.38 : 0.9, ctx.currentTime, onv ? 0.12 : 0.5); }
 
@@ -175,7 +188,7 @@ export function createMusic({ T, voice }) {
         if (l && VO.id !== l.id) {
           stopVoice();
           const src = ctx.createBufferSource(); src.buffer = VO.buf.get(l.id); src.connect(vbus);
-          const off = Math.max(0, t - l.at), when = base + l.at + off;
+          const st = span(l)[0], off = Math.max(0, t - st), when = base + st + off;
           src.start(Math.max(now, when), off);
           src.onended = () => { if (VO.src === src) { VO.src = null; duck(false); } };
           VO.src = src; VO.id = l.id; duck(true);
