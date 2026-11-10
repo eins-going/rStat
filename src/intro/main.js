@@ -57,7 +57,7 @@ const SPOTS = [
     pts: [[jo(F.agfin.paid), `${F.agfin.year} 농작물재해보험 보험금도 시군별로`]] },
   { id: "power", badge: "⑥", name: "농사용 전기", href: "power", big: count(F.power.months), unit: "개월", line: `한전 ${F.power.regions}개 지역 · 계절 유형 ${F.power.types.length}가지`, pts: [] },
   { id: "rio", badge: "⑥", name: "지역산업연관표(농업)", href: "rio", big: count(Math.round(SP.rio.total / 1e6)), unit: "조 원 농식품 산출", line: `17개 시도 · ${F.rio.sectors}개 산업의 파급효과`, pts: [] },
-  { id: "employ", badge: "⑥", name: "농업고용", href: "employ", big: count(+F.employ.to - +F.employ.from + 1), unit: "년", line: `농림어업 취업자 ${Math.round(F.employ.a0 / 10)}만 명에서 ${Math.round(F.employ.a1 / 10)}만 명으로`, pts: [] },
+  { id: "employ", badge: "⑥", name: "농업고용", href: "employ", big: count(+F.employ.to - +F.employ.from + 1), unit: `년간 · ${F.employ.from}~${F.employ.to}`, line: `농림어업 취업자 ${Math.round(F.employ.a0 / 10)}만 명에서 ${Math.round(F.employ.a1 / 10)}만 명으로`, pts: [] },
   { id: "soil", badge: "⑥", name: "농경지 토양", href: "soil", big: count(Math.round(F.soil.tests / 1e4)), unit: "만 건 토양검정", line: `논으로 1·2급인 땅은 ${soil12.toFixed(1)}%뿐`, pts: [] },
 ];
 const WALL = [["home", "주요통계"], ["rice", "벼 작황"], ["rio", "산업연관표"], ["flow", "물류동향"], ["power", "농사용 전기"],
@@ -66,7 +66,7 @@ const WALL = [["home", "주요통계"], ["rice", "벼 작황"], ["rio", "산업�
 // 여기에만: 여섯 가지
 const ONLY = [
   ["①", `${comma(F.parcels / 1e4)}만 필지 분석`, "주요통계 · 위성지도"], ["②", "쌀 수확량 예측과 검증", "벼 작황"], ["③", "시군별 직불금·농촌개발 예산", "직불금·고향사랑 · 농촌개발"],
-  ["④", "산지에서 도시로 가는 물류", "물류동향"], ["⑤", "마을·조합 단위 자료", "축산 환경 · 농업금융보험"], ["⑥", `${F.power.months}개월·${+F.employ.to - +F.employ.from + 1}년 시계열`, "전기 · 산업연관 · 고용 · 토양"],
+  ["④", "산지에서 도시로 가는 물류", "물류동향"], ["⑤", "마을·조합 단위 자료", "축산 환경 · 농업금융보험"], ["⑥", `${F.power.months}개월·${+F.employ.to - +F.employ.from + 1}년간 시계열`, "전기 · 산업연관 · 고용 · 토양"],
 ];
 // 흩어진 기관 이름표: 오른쪽 넓은 칸에 격자 + 흔들림 (시드 고정)
 let seed = 20261110;
@@ -101,8 +101,8 @@ stage.insertAdjacentHTML("beforeend", `
        <div class="big b2">${count(F.riceAcc.m0915, { dec: 1, from: F.riceAcc.norm })}<small>kg 평균 오차</small><em class="early">3주 먼저</em></div>
        <p class="big-cap b2">9월 15일 예측 · 국가데이터처 10월 예상은 ${F.riceAcc.stat}kg</p>`)}
     ${scene("jik", "③", "직불금·고향사랑", ["직불금, 우리 군에", "얼마나 오나"], `지방재정365 세부사업에서 골라낸 공익직불 ${jo(I.jikbul.pubNat)}`)}
-    ${scene("flow", "④", "물류동향", ["산지에서 도시로,", "수박이 가는 길"], `물류기기 공동이용 ${F.od.years}년 · ${F.od.crops}개 품목`,
-      `<ol class="pairs">${I.flows.top.slice(0, 3).map(([o, d, v]) => `<li><span class="o">${unitName(o)}</span><i></i><span class="d">${unitName(d)}</span><b>${comma(v)}개</b></li>`).join("")}</ol>`)}
+    ${scene("flow", "④", "물류동향", ["산지에서 도시로,", "수박이 가는 길"], `${I.flows.year}년 수박 파렛트 ${comma(I.flows.total)}개<br><small>물류기기 공동이용 ${F.od.from}~${F.od.to}년 자료 · ${F.od.crops}개 품목</small>`,
+      `<ol class="pairs">${I.flows.top.slice(0, 2).map(([o, d, v]) => `<li><span class="o">${unitName(o)}</span><i></i><span class="d">${unitName(d)}</span><b>${comma(v)}개</b></li>`).join("")}</ol>`)}
     ${SPOTS.map((s) => `
       <section class="sc spot ${s.cls || ""}" id="sc-${s.id}">
         ${kick(s.badge, s.name)}
@@ -121,7 +121,7 @@ stage.insertAdjacentHTML("beforeend", `
     <div class="it-lg" id="lg-stats"><span>경지면적 ${I.land.year}</span><i class="bar" style="background:${gradient(LAND_RAMP)}"></i><span>높을수록 넓다</span></div>
     <div class="it-lg" id="lg-rice"><span>평년보다 낮음</span><i class="bar" style="background:${gradient([RICE_DIV.lo, RICE_DIV.mid, RICE_DIV.hi])}"></i><span>높음 · ${I.rice.year} 시군 예측</span></div>
     <div class="it-lg" id="lg-jik"><span>적음</span><i class="bar" style="background:${gradient(JIK_RAMP)}"></i><span>많음 · 농가당 공익직불(기본형) ${I.jikbul.year}</span></div>
-    <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.melonO}"></i><span>보낸 산지</span><i class="it-dot" style="background:${C.melonD}"></i><span>받은 곳 · 수박 파렛트 ${I.flows.year}년 ${comma(I.flows.total)}개</span></div>
+    <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.melonO}"></i><span>보낸 산지</span><i class="it-dot" style="background:${C.melonD}"></i><span>받은 곳 · ${I.flows.year}년 ${I.flows.months}</span></div>
     <div class="it-lg" id="lg-coop"><i class="it-dot" style="background:#f5a524"></i><span>지역농협 ${SP.coopKinds.L}</span><i class="it-dot" style="background:#ff7a59"></i><span>축협 ${SP.coopKinds.X}</span><i class="it-dot" style="background:#7cc98f"></i><span>품목농협 ${SP.coopKinds.I} · 점 크기 = 자산</span></div>
     <div class="it-lg left" id="lg-dev"><span>적음</span><i class="bar" style="background:${gradient(DEV_RAMP)}"></i><span>많음 · 기둥 높이 = 시군 사업 지구 수</span></div>
     <div class="it-lg" id="lg-lv"><span>마을당 분뇨 적음</span><i class="bar" style="background:${gradient(LV_RAMP)}"></i><span>많음 · ${F.livestock.from}~${F.livestock.to}</span></div>
@@ -416,7 +416,7 @@ to({ camDist: 14.6, camY: 1.6 }, T.flow + 1.2, LEN.flow - 1.8, "sine.inOut");
 to({ flowAlpha: 1 }, T.flow + 0.6, 0.3, "none");
 to({ flows: 1 }, T.flow + 0.6, 3.2, "power1.out");
 copyIn("#sc-flow", T.flow + 0.2);
-ptsIn("#sc-flow", T.flow + 5.2, 1.3); // "음성 수박은 서울로, 논산 수박은 용인으로"에 맞춰
+ptsIn("#sc-flow", T.flow + 6.3, 1.9); // "2025년, 음성 수박은 서울로, 논산 수박은 용인으로"에 맞춰 (말하는 두 길만)
 lgIn("flow", T.flow + 1.0, T.vill - 0.6);
 to({ flowAlpha: 0 }, T.vill - 0.5, 0.5);
 copyOut("#sc-flow", T.vill - 0.5);
