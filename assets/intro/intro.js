@@ -4380,7 +4380,7 @@ void main(){
       <div class="nd-tag"><b>${Ms.where||"\uAE40\uC81C\uC2DC"} \uB17C NDVI</b><span>Sentinel-2 \xB7 ${Ms.date?Ms.date.replace(/-/g,"."):""} \xB7 \uAD6C\uB984 ${Ms.cloud??"\u2013"}%</span></div>
       <div class="nd-lg"><span>\uB0AE\uC74C</span><i></i><span>\uB192\uC74C \xB7 \uBCBC\uAC00 \uD478\uB97C\uC218\uB85D \uCD08\uB85D</span></div>
     </div>
-  </div>`);var z0=(s,t,e,n,i)=>(oi.insertAdjacentHTML("beforeend",`<div class="mini" id="mini-${s}" style="left:${e}px;top:${n}px;width:${i}px"><div class="scr-bar"><i></i><i></i><i></i><span class="scr-url">ag-rstat.vercel.app/${t}</span></div><div class="mini-view" style="height:${Math.round(i*9/16)}px"><img src="assets/intro/shots/${t}.webp" alt="" decoding="async"></div></div>`),xe(`#mini-${s}`));z0("rio","rio",150,560,600);z0("employ","employ",1250,96,560);oi.insertAdjacentHTML("beforeend",`
+  </div>`);var z0=(s,t,e,n,i)=>(oi.insertAdjacentHTML("beforeend",`<div class="mini" id="mini-${s}" style="left:${e}px;top:${n}px;width:${i}px"><div class="scr-bar"><i></i><i></i><i></i><span class="scr-url">ag-rstat.vercel.app/${t}</span></div><div class="mini-view" style="height:${Math.round(i*9/16)}px"><img src="assets/intro/shots/${t}.webp" alt="" decoding="async"></div></div>`),xe(`#mini-${s}`));z0("rio","rio",150,600,600);z0("employ","employ",1250,96,560);oi.insertAdjacentHTML("beforeend",`
   <div class="wall-copy" id="sc-wall">
     <p class="kicker"><b>14</b>\uC790\uB8CC \uC218\uC9D1 \uD604\uD669</p>
     <h2 class="hl">${mo([`\uC790\uB8CC ${ae.status.items}\uC885, ${ae.status.auto}\uC885\uC740 \uC2A4\uC2A4\uB85C \uAC31\uC2E0`])}</h2>

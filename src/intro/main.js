@@ -134,7 +134,7 @@ const mini = (id, shot, x, y, w) => {
   stage.insertAdjacentHTML("beforeend", `<div class="mini" id="mini-${id}" style="left:${x}px;top:${y}px;width:${w}px"><div class="scr-bar"><i></i><i></i><i></i><span class="scr-url">ag-rstat.vercel.app/${shot}</span></div><div class="mini-view" style="height:${Math.round((w * 9) / 16)}px"><img src="assets/intro/shots/${shot}.webp" alt="" decoding="async"></div></div>`);
   return $(`#mini-${id}`);
 };
-mini("rio", "rio", 150, 560, 600);
+mini("rio", "rio", 150, 600, 600);
 mini("employ", "employ", 1250, 96, 560);
 stage.insertAdjacentHTML("beforeend", `
   <div class="wall-copy" id="sc-wall">
