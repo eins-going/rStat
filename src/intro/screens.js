@@ -2,7 +2,7 @@
 // 캡처는 scripts/intro_shots.mjs가 배포 사이트에서 찍는다 (1920×1080 좌표, shots.json에 요소 위치).
 
 const SHOT_W = 1920, SHOT_H = 1080;
-export const VIEW_W = 1040, VIEW_H = 585; // 창 안 화면 크기(무대 px)
+export const VIEW_W = 1100, VIEW_H = 619; // 창 안 화면 크기(무대 px)
 const K = VIEW_W / SHOT_W;
 const BASE = "assets/intro/shots/";
 

@@ -4,7 +4,7 @@
 //  10 금융보험    농·축협이 지도 위에 하나씩 켜진다                                    (Canvas, 지도 투영)
 //  11 농촌개발    사업 지구 수만큼 솟는 시군 기둥 (map3d.js가 그림)
 //  12 토양        적성등급 1~5급 흙 단면                                               (SVG)
-//  13 축산        마을 14,939곳 점 지도 + 축종별 분뇨 도넛                             (Canvas + SVG)
+//  13 축산        마을 14,939곳 점 지도                                                (Canvas)
 import { STAGE_W } from "./map3d.js";
 import { LV_RAMP, ramp, rgb } from "./palette.js";
 
@@ -43,7 +43,7 @@ export function createSpots(canvas, svg, I, map) {
   function drawRio(S, t) {
     const A = S.rioA;
     if (A <= 0.002) return;
-    const CX = 1290, CY = 560, R0 = 74, RL = 300, n = RG.length, w = ((Math.PI * 2) / n) * 0.36;
+    const CX = 1310, CY = 520, R0 = 78, RL = 290, n = RG.length, w = ((Math.PI * 2) / n) * 0.36;
     ctx.save();
     ctx.globalAlpha = A;
     // 파급 물결
@@ -72,15 +72,15 @@ export function createSpots(canvas, svg, I, map) {
       // 이름표
       const la = smooth((p - 0.7) / 0.3);
       if (la > 0) {
-        const lr = L + 26, lx = CX + lr * Math.cos(a), ly = CY + lr * Math.sin(a);
+        const lr = L + 34, lx = CX + lr * Math.cos(a), ly = CY + lr * Math.sin(a);
         ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = A * la;
         ctx.textAlign = Math.cos(a) > 0.25 ? "left" : Math.cos(a) < -0.25 ? "right" : "center";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = "#eef0f3"; ctx.font = `700 19px ${FONT}`;
-        ctx.fillText(r.name, lx, ly - 9);
-        ctx.fillStyle = rgb(c, 1); ctx.font = `600 15px ${FONT}`;
-        ctx.fillText(`${(r.x / 1e6).toFixed(1)}조 · ${r.lq}`, lx, ly + 11);
+        ctx.fillStyle = "#eef0f3"; ctx.font = `700 23px ${FONT}`;
+        ctx.fillText(r.name, lx, ly - 11);
+        ctx.fillStyle = rgb(c, 1); ctx.font = `600 18px ${FONT}`;
+        ctx.fillText(`${(r.x / 1e6).toFixed(1)}조`, lx, ly + 13);
         ctx.globalAlpha = A;
         ctx.globalCompositeOperation = "lighter";
       }
@@ -94,11 +94,11 @@ export function createSpots(canvas, svg, I, map) {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffd98a"; ctx.font = `800 30px ${FONT}`;
     ctx.fillText(`${Math.round(P.rio.total / 1e6)}조`, CX, CY - 6);
-    ctx.fillStyle = "#aab2bf"; ctx.font = `500 14px ${FONT}`;
+    ctx.fillStyle = "#aab2bf"; ctx.font = `500 16px ${FONT}`;
     ctx.fillText(`농식품 산출 ${P.rio.year}`, CX, CY + 20);
     // 읽는 법
-    ctx.textAlign = "right"; ctx.fillStyle = "rgba(200,208,220,0.75)"; ctx.font = `500 16px ${FONT}`;
-    ctx.fillText("꽃잎 길이 = 시도 농식품 산출액 · 숫자 = 특화도(전국 평균 1, 주황일수록 농식품에 기댄다)", 1844, 1018);
+    ctx.textAlign = "right"; ctx.fillStyle = "rgba(200,208,220,0.8)"; ctx.font = `500 22px ${FONT}`;
+    ctx.fillText("꽃잎 길이 = 시도 농식품 산출액 · 주황일수록 농식품에 특화", 1844, 985);
     ctx.restore();
   }
 
@@ -253,36 +253,8 @@ export function createSpots(canvas, svg, I, map) {
     });
   }
 
-  // ── 13 축종 도넛 (SVG) ──────────────────────────────────
-  const dg = el("g", { opacity: 0 }, svg);
-  const KD = P.lv.kinds.filter(([, v]) => v > 1000);
-  const kTot = P.lv.kinds.reduce((a, [, v]) => a + v, 0);
-  const DCX = 290, DCY = 720, DR = 112, DCOL = ["#ff9a5a", "#f5c14f", "#9fd1ff"];
-  el("circle", { cx: DCX, cy: DCY, r: DR, fill: "none", stroke: "rgba(255,255,255,0.07)", "stroke-width": 34 }, dg);
-  const C2 = 2 * Math.PI * DR;
-  let acc = 0;
-  const arcs = KD.map(([n, v], i) => {
-    const f = v / kTot;
-    const c = el("circle", { cx: DCX, cy: DCY, r: DR, fill: "none", stroke: DCOL[i], "stroke-width": 34, transform: `rotate(${-90 + acc * 360} ${DCX} ${DCY})`, "stroke-dasharray": `0 ${C2}` }, dg);
-    const t = el("text", { x: DCX + DR + 60, y: DCY - 40 + i * 40, class: "sp-dl" }, dg);
-    t.innerHTML = `<tspan fill="${DCOL[i]}" class="b">${n}</tspan><tspan dx="10">${Math.round(f * 100)}%</tspan>`;
-    acc += f;
-    return { c, f, t };
-  });
-  el("text", { x: DCX, y: DCY + 6, "text-anchor": "middle", class: "sp-dc" }, dg).textContent = "분뇨는";
-  el("text", { x: DCX, y: DCY + 32, "text-anchor": "middle", class: "sp-dc2" }, dg).textContent = "어느 가축에서";
-  function renderDonut(S) {
-    dg.setAttribute("opacity", S.lvA);
-    if (S.lvA <= 0.002) return;
-    arcs.forEach((a, i) => {
-      const p = easeOut((S.lvP - i * 0.15) / 0.5);
-      a.c.setAttribute("stroke-dasharray", `${Math.max(0, a.f * C2 * p - 3)} ${C2}`);
-      a.t.setAttribute("opacity", smooth((p - 0.5) / 0.5));
-    });
-  }
-
   function render(S, t) {
-    renderEmp(S); renderSoil(S); renderDonut(S);
+    renderEmp(S); renderSoil(S);
     const on = S.rioA > 0.002 || S.coopA > 0.002 || S.lvA > 0.002;
     if (on !== shown) { shown = on; canvas.style.visibility = on ? "visible" : "hidden"; }
     if (!on) return;

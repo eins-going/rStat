@@ -1,5 +1,7 @@
 // 소개 영상: GSAP 한 줄 타임라인이 상태값(S)과 DOM을 움직이고, 매 프레임 그 값으로 배경·지도·캔버스·SVG를 그린다.
 // 그래서 어느 시점으로 감아도 같은 그림이 나온다.
+// 줄거리(2판): 흩어진 통계 → 한 화면 → 다른 곳에서 구하기 어려운 자료 여섯 가지 → 스스로 갱신·공개 → 만든 이.
+// 장면은 음악 마디(2.5초)에 맞춰 바뀌고(timing.js), 한 장면에는 주장 하나·숫자 하나만 둔다.
 import { gsap } from "gsap";
 import { createBackground } from "./bg.js";
 import { createMap, STAGE_W, STAGE_H } from "./map3d.js";
@@ -10,6 +12,7 @@ import { createScreen, createWall, VIEW_W, VIEW_H } from "./screens.js";
 import { createSpots } from "./spots.js";
 import { createMusic } from "./audio.js";
 import { LINES } from "./narration.js";
+import { T, LEN, TOTAL, SCENES } from "./timing.js";
 import { SCENE_GLOW, LAND_RAMP, RICE_DIV, JIK_RAMP, DEV_RAMP, LV_RAMP, C, hex } from "./palette.js";
 
 const I = window.INTRO;
@@ -23,21 +26,21 @@ const unitName = (key) => key.split("|")[1].replace(/시부$/, "");
 const comma = (v) => Math.round(v).toLocaleString("ko-KR");
 const man = (v, d = 1) => `${(v / 1e4).toFixed(v >= 1e6 ? 0 : d)}만`;
 const jo = (v) => { const e = Math.round(v / 100); return e >= 1e4 ? `${Math.floor(e / 1e4)}조 ${comma(e % 1e4)}억` : `${comma(e)}억`; };
-const pct = (v) => `${Math.round(v * 100)}%`;
 const topLand = Object.entries(I.land.v).filter(([, v]) => v).sort((a, b) => b[1] - a[1]).slice(0, 3);
 const fcNow = I.rice.fc.at(-1);
-const PK = I.power.k, PM = I.power.months;
-const yearSum = (y) => PM.reduce((s, m, i) => (m.startsWith(y) ? s + PK[i] : s), 0);
-const lastFull = String(+PM.at(-1).slice(0, 4) - (PM.at(-1).endsWith("12") ? 0 : 1));
-const growth = yearSum(lastFull) / yearSum(PM[0].slice(0, 4));
-const GH = I.gohyang, ghFirst = GH.years[0], ghLast = GH.years.at(-1);
+const PM = I.power.months;
+const SP = I.spots;
+const soilTot = SP.soil.pg.reduce((a, b) => a + b, 0), soil12 = ((SP.soil.pg[0] + SP.soil.pg[1]) / soilTot) * 100;
+const devTop = Object.entries(SP.dev).sort((a, b) => b[1] - a[1])[0];
+const smallPct = Math.round(F.parcelSmall * 100);
 
 // ── 글 조각 ───────────────────────────────────────────────
 const split = (lines) => lines.map((l) => `<span class="ln">${[...l].map((ch) => `<span class="ch${ch === " " ? " sp" : ""}">${ch === " " ? "&nbsp;" : ch}</span>`).join("")}</span>`).join("");
 const pts = (rows) => `<ul class="pts">${rows.map(([b, t]) => `<li><b>${b}</b><span>${t}</span></li>`).join("")}</ul>`;
-const scene = (id, no, kicker, lines, sub, extra = "", cls = "") => `
+const kick = (badge, name) => `<p class="kicker">${badge ? `<b>${"①②③④⑤⑥".indexOf(badge) + 1}</b>` : ""}${name}</p>`; // 여기에만 1~6
+const scene = (id, badge, name, lines, sub, extra = "", cls = "") => `
   <section class="sc ${cls}" id="sc-${id}">
-    <p class="kicker"><b>${no}</b>${kicker}</p>
+    ${kick(badge, name)}
     <h2 class="hl">${split(lines)}</h2>
     ${sub ? `<p class="it-sub">${sub}</p>` : ""}
     ${extra}
@@ -45,78 +48,87 @@ const scene = (id, no, kicker, lines, sub, extra = "", cls = "") => `
 const gradient = (stops) => `linear-gradient(90deg, ${stops.join(", ")})`;
 const count = (n, { dec = 0, suf = "", from } = {}) => `<b class="cnt" data-n="${n}" data-dec="${dec}" data-suf="${suf}"${from != null ? ` data-from="${from}"` : ""}>${(+n).toFixed(dec)}${suf}</b>`;
 
-// 나머지 여섯 화면: 특장점 한 줄 + 숫자
-const SP = I.spots;
-const rioTop = [...SP.rio.regions].sort((a, b) => b.lq - a.lq)[0];
-const soilTot = SP.soil.pg.reduce((a, b) => a + b, 0), soil12 = ((SP.soil.pg[0] + SP.soil.pg[1]) / soilTot) * 100;
-const lvKinds = [...SP.lv.kinds].sort((a, b) => b[1] - a[1]), lvSum = SP.lv.kinds.reduce((a, [, v]) => a + v, 0);
-const devTop = Object.entries(SP.dev).sort((a, b) => b[1] - a[1])[0];
+// 큰 숫자 하나로 말하는 장면 (여기에만 ③⑤⑥)
 const SPOTS = [
-  { id: "rio", no: "08", name: "지역산업연관표(농업)", href: "rio", big: count(Math.round(SP.rio.total / 1e6)), unit: "조원 농식품 산출", line: "17개 시도마다 농식품이 만드는 생산·부가가치·일자리 파급효과",
-    pts: [[`${rioTop.name} ${rioTop.lq}`, "농식품 특화도 1위 — 전국 평균의 3.6배"], [`${F.rio.sectors}개 산업`, "무엇이 들어가고 어디에 쓰이는지까지"]] },
-  { id: "employ", no: "09", name: "농업고용", href: "employ", big: count(+F.employ.to - +F.employ.from + 1), unit: "년의 농업 일자리", line: `농림어업 취업자 ${Math.round(F.employ.a0 / 10)}만 명이 ${Math.round(F.employ.a1 / 10)}만 명이 되기까지`,
-    pts: [[`${comma(F.employ.months)}개월`, "월별 · 계절 · 시군별 · 연령·종사상지위·노동시간"]] },
-  { id: "agfin", no: "10", name: "농업금융보험", href: "agfin", big: count(F.agfin.coops), unit: "개 농·축협", line: "조합마다 공시 재무를 지도 위에",
-    pts: [[jo(F.agfin.paid), `${F.agfin.year} 농작물재해보험 보험금 · 가입 ${man(F.agfin.cnt)}건`], [`${F.agfin.cats}개 분야`, "과수·식량·채소·시설 재해보험을 시군 단위로"]] },
-  { id: "ruraldev", no: "11", name: "농촌개발", href: "ruraldev", big: count(F.ruraldev.sites), unit: "개 사업 지구", line: "농어촌공사 지구의 유형·위치·준공 예정, 예산현액까지", cls: "right",
-    pts: [[`${unitName(devTop[0])} ${devTop[1]}곳`, "지구가 가장 많은 시군"], [`${F.ruraldev.cats}개 갈래`, "지방재정365 세부사업 예산을 농가당으로"]] },
-  { id: "soil", no: "12", name: "농경지 토양", href: "soil", big: count(Math.round(F.soil.tests / 1e4)), unit: "만 건 토양검정", line: `흙의 양분 ${F.soil.chem}가지와 땅의 적성등급`,
-    pts: [[`${soil12.toFixed(1)}%`, "논으로 1·2급인 땅 — 국토에서 좋은 땅은 이만큼"], [`${F.soil.obst}가지`, "등급을 낮추는 저해요인까지"]] },
-  { id: "livestock", no: "13", name: "축산 환경", href: "livestock", big: count(F.livestock.villages), unit: "개 마을", line: `점 하나가 마을 하나 — ${F.livestock.from}~${F.livestock.to} 가축분뇨 발생`, pts: [] },
+  { id: "dev", badge: "③", name: "농촌개발", href: "ruraldev", big: count(F.ruraldev.sites), unit: "개 사업 지구", line: "세부사업 예산과 지구의 위치·준공 예정까지", cls: "right",
+    pts: [[`${unitName(devTop[0])} ${devTop[1]}곳`, "지구가 가장 많은 시군"], [`${I.gohyang.govs}곳`, "고향사랑기금 회계도 같은 방법으로"]] },
+  { id: "vill", badge: "⑤", name: "축산 환경", href: "livestock", big: count(F.livestock.villages), unit: "개 마을", line: "점 하나가 마을 하나 — 가축분뇨 발생량", pts: [] },
+  { id: "coop", badge: "⑤", name: "농업금융보험", href: "agfin", big: count(F.agfin.coops), unit: "개 농·축협", line: "조합 하나하나의 공시 재무를 지도 위에",
+    pts: [[jo(F.agfin.paid), `${F.agfin.year} 농작물재해보험 보험금도 시군별로`]] },
+  { id: "power", badge: "⑥", name: "농사용 전기", href: "power", big: count(F.power.months), unit: "개월", line: `한전 ${F.power.regions}개 지역 · 계절 유형 ${F.power.types.length}가지`, pts: [] },
+  { id: "rio", badge: "⑥", name: "지역산업연관표(농업)", href: "rio", big: count(Math.round(SP.rio.total / 1e6)), unit: "조 원 농식품 산출", line: `17개 시도 · ${F.rio.sectors}개 산업의 파급효과`, pts: [] },
+  { id: "employ", badge: "⑥", name: "농업고용", href: "employ", big: count(+F.employ.to - +F.employ.from + 1), unit: "년", line: `농림어업 취업자 ${Math.round(F.employ.a0 / 10)}만 명에서 ${Math.round(F.employ.a1 / 10)}만 명으로`, pts: [] },
+  { id: "soil", badge: "⑥", name: "농경지 토양", href: "soil", big: count(Math.round(F.soil.tests / 1e4)), unit: "만 건 토양검정", line: `논으로 1·2급인 땅은 ${soil12.toFixed(1)}%뿐`, pts: [] },
 ];
 const WALL = [["home", "주요통계"], ["rice", "벼 작황"], ["rio", "산업연관표"], ["flow", "물류동향"], ["power", "농사용 전기"],
   ["employ", "농업고용"], ["agfin", "금융보험"], ["jikbul", "직불금·고향사랑"], ["ruraldev", "농촌개발"], ["soil", "농경지 토양"],
   ["livestock", "축산 환경"], ["home_sat", "위성지도"], ["rice_sat", "위성 영상"], ["home_hn", "시군 현황판"], ["status", "자료 수집 현황"]];
+// 여기에만: 여섯 가지
+const ONLY = [
+  ["①", `${comma(F.parcels / 1e4)}만 필지 분석`, "주요통계 · 위성지도"], ["②", "쌀 수확량 예측과 검증", "벼 작황"], ["③", "시군별 직불금·농촌개발 예산", "직불금·고향사랑 · 농촌개발"],
+  ["④", "산지에서 도시로 가는 물류", "물류동향"], ["⑤", "마을·조합 단위 자료", "축산 환경 · 농업금융보험"], ["⑥", `${F.power.months}개월·${+F.employ.to - +F.employ.from + 1}년 시계열`, "전기 · 산업연관 · 고용 · 토양"],
+];
+// 흩어진 기관 이름표: 오른쪽 넓은 칸에 격자 + 흔들림 (시드 고정)
+let seed = 20261110;
+const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+const ORGS = F.status.orgList.map((n, i) => {
+  const col = i % 4, row = Math.floor(i / 4);
+  return { n, x: 800 + col * 262 + (row % 2) * 70 + rnd() * 70, y: 96 + row * 176 + rnd() * 80, r: rnd() };
+});
 
 stage.insertAdjacentHTML("beforeend", `
+  <div class="orgs">${ORGS.map((o) => `<span class="org" style="left:${o.x.toFixed(0)}px;top:${o.y.toFixed(0)}px">${o.n}</span>`).join("")}</div>
   <div class="copy">
+    <section class="sc sc-open" id="sc-hook">
+      <h2 class="hl">${split(["농업 통계는", "흩어져 있다"])}</h2>
+      <p class="it-sub">기관마다 따로, 대부분 시도 단위까지</p>
+    </section>
     <section class="sc sc-open" id="sc-open">
       <p class="kicker"><span class="mark"></span>ag-rstat.vercel.app</p>
       <h1 class="hl hl-xl">${split(["지역농업", "현황판"])}</h1>
-      <p class="it-sub">지역 농업의 모든 숫자를, 시군 단위로 한 화면에</p>
+      <div class="nums"><div>${count(F.status.orgs)}<span>개 기관</span></div><div>${count(F.status.items)}<span>종 자료</span></div><div>${count(I.map.sigun.length)}<span>개 시군, 한 화면</span></div></div>
     </section>
-    ${scene("stats", "01", "주요통계", [`${I.map.sigun.length}개 시군,`, `${F.metrics}개 지표`], "전국·시도·시군을 같은 눈금으로",
-      pts([[`${comma(F.parcels / 1e4)}만`, "필지 — 팜맵 농경지를 전부 받아 직접 분석"], [`${F.parcelMed}㎡`, `전국 농경지 중앙값 · 0.1ha 미만이 ${pct(F.parcelSmall)}`], [pct(F.paddyArmt), "논 경지정리율을 시군마다 견준다"]]))}
-    ${scene("real", "02", "실제 화면", ["고르면, 그 시군의", "현황판이 된다"], "시도·시군을 고르거나 지도를 누르면<br>모든 칸이 그 지역 숫자로 바뀝니다",
-      pts([["전년 대비", "증감이 위쪽 띠로 흐른다"], ["시도 안 순위", "지도 아래에서 바로 비교"], ["주소 공유", "보던 화면을 그대로 보낸다"]]), "narrow")}
-    ${scene("sat", "03", "위성지도", ["통계 뒤의", "실제 땅을 본다"], "",
-      pts([["항공영상", `팜맵 필지 · 유통시설 ${comma(F.facilities)}곳 · 주제도`], ["논 NDVI", "Sentinel-2 10m — 논마다 벼가 얼마나 푸른지"], ["5일마다", "구름 낀 날은 레이더로, 2017년부터 날짜별로"]]), "narrow")}
-    ${scene("rice", "04", "벼 작황", ["쌀 수확량을", "7월부터 미리"], "기상·위성·병해충 예찰로<br>시군별 단수를 7번 예측",
+    ${scene("stats", "", "주요통계", [`${I.map.sigun.length}개 시군,`, `${F.metrics}개 지표`], "전국·시도·시군을 같은 눈금으로")}
+    ${scene("real", "", "주요통계", ["고르면, 그 시군의", "현황판"], "해남군을 고른 실제 화면", "", "narrow")}
+    ${scene("parcel", "①", "필지", [`${comma(F.parcels / 1e4)}만 필지를`, "전부 계산했다"], "",
+      `<div class="waffle-row"><div class="waffle">${Array.from({ length: 100 }, (_, i) => `<i class="${i < smallPct ? "on" : ""}"></i>`).join("")}</div>
+         <p class="waffle-cap">필지 100개 중<br><b>${smallPct}개</b>가 0.1ha 미만</p></div>
+       ${pts([[`${F.parcelMed}㎡`, "필지 크기 중앙값"], [`${Math.round(F.paddyArmt * 100)}%`, "논 경지정리율 — 시군마다 견준다"]])}`, "narrow")}
+    ${scene("ndvi", "①", "위성 영상", ["논 하나하나의", "생육을 본다"], "", pts([["10m", "Sentinel-2 위성 · 논 필지만"], ["5일마다", "2017년부터 날짜별로"]]), "narrow")}
+    ${scene("rice", "②", "벼 작황", ["쌀 수확량을", "7월 말부터 예측"], "",
       `<div class="big b1">${count(fcNow.y, { dec: 1 })}<small>kg/10a</small></div>
-       <p class="big-cap b1">${I.rice.year} 전국 단수 예측 · ${fcNow.lab}</p>
-       <div class="big b2">${count(F.riceAcc.m0915, { dec: 1, from: F.riceAcc.norm })}<small>kg 평균 오차</small></div>
-       <p class="big-cap b2">9월 15일 예측 · 국가데이터처 10월 예상 ${F.riceAcc.stat}kg과 같은 수준을 3주 먼저</p>`)}
-    ${scene("jik", "05", "직불금·고향사랑", ["직불금, 우리 지역에", "얼마나 오나"], "지방재정365 세부사업 예산현액을<br>자동으로 모아 시군·농가당으로",
-      `<ul class="chips"><li><b>${jo(I.jikbul.pubNat)}</b>공익직불 ${I.jikbul.year}</li><li><b>${I.jikbul.bizCount}개</b>시군 세부사업</li><li><b>고향사랑기금</b>${GH.govs}곳도</li></ul>`)}
-    ${scene("flow", "06", "물류동향", ["수박 파렛트가", "움직이는 길"], `물류기기 공동이용 ${F.od.years}년 · ${F.od.crops}개 품목 중<br>${I.flows.year}년 수박 파렛트 ${comma(I.flows.total)}개의 이동`,
+       <p class="big-cap b1">${I.rice.year} 전국 단수 예측 · 국가데이터처 예상 ${I.rice.stat}</p>
+       <div class="big b2">${count(F.riceAcc.m0915, { dec: 1, from: F.riceAcc.norm })}<small>kg 평균 오차</small><em class="early">3주 먼저</em></div>
+       <p class="big-cap b2">9월 15일 예측 · 국가데이터처 10월 예상은 ${F.riceAcc.stat}kg</p>`)}
+    ${scene("jik", "③", "직불금·고향사랑", ["직불금, 우리 군에", "얼마나 오나"], `지방재정365 세부사업에서 골라낸 공익직불 ${jo(I.jikbul.pubNat)}`)}
+    ${scene("flow", "④", "물류동향", ["산지에서 도시로,", "수박이 가는 길"], `물류기기 공동이용 ${F.od.years}년 · ${F.od.crops}개 품목`,
       `<ol class="pairs">${I.flows.top.slice(0, 3).map(([o, d, v]) => `<li><span class="o">${unitName(o)}</span><i></i><span class="d">${unitName(d)}</span><b>${comma(v)}개</b></li>`).join("")}</ol>`)}
-    ${scene("power", "07", "농사용 전기", ["계절을 따라 도는", "농업 전력"], `한전 ${F.power.regions}개 지역 · ${F.power.months}개월`,
-      `<ul class="it-facts">
-        <li><b>4가지</b><span>${F.power.types.join("·")} 계절 유형 자동 분류</span></li>
-        <li><b>평년 범위</b><span>벗어난 지역을 달마다 짚는다</span></li>
-        <li><b>${growth.toFixed(1)}배</b><span>${PM[0].slice(0, 4)}년보다 늘어난 ${lastFull}년 사용량</span></li>
-      </ul>`)}
     ${SPOTS.map((s) => `
       <section class="sc spot ${s.cls || ""}" id="sc-${s.id}">
-        <p class="kicker"><b>${s.no}</b>${s.name}</p>
+        ${kick(s.badge, s.name)}
         <div class="spot-big">${s.big}<small>${s.unit}</small></div>
         <p class="spot-line">${s.line}</p>
         ${s.pts.length ? pts(s.pts) : ""}
       </section>`).join("")}
   </div>
+  <div class="only" id="sc-only">
+    <p class="only-eye">여기에만</p>
+    <h2 class="hl">${split(["다른 곳에서 구하기 어려운 자료"])}</h2>
+    <ol class="only-list">${ONLY.map(([b, t, w]) => `<li><b>${b}</b><span>${t}</span><small>${w}</small></li>`).join("")}</ol>
+  </div>
   <div class="labels">${topLand.map(([k, v]) => `<div class="lab" data-k="${k}"><b>${unitName(k)}</b><span>${man(v)} ha</span></div>`).join("")}</div>
   <div class="lgs">
-    <div class="it-lg" id="lg-stats"><span>경지면적 ${I.land.year}</span><i class="bar" style="background:${gradient(LAND_RAMP)}"></i><span>높이·색이 클수록 넓다</span></div>
+    <div class="it-lg" id="lg-stats"><span>경지면적 ${I.land.year}</span><i class="bar" style="background:${gradient(LAND_RAMP)}"></i><span>높을수록 넓다</span></div>
     <div class="it-lg" id="lg-rice"><span>평년보다 낮음</span><i class="bar" style="background:${gradient([RICE_DIV.lo, RICE_DIV.mid, RICE_DIV.hi])}"></i><span>높음 · ${I.rice.year} 시군 예측</span></div>
-    <div class="it-lg" id="lg-jik"><span>적음</span><i class="bar" style="background:${gradient(JIK_RAMP)}"></i><span>많음 · 농가당 공익직불(기본형) 예산 ${I.jikbul.year}</span></div>
-    <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.melonO}"></i><span>보낸 산지</span><i class="it-dot" style="background:${C.melonD}"></i><span>받은 곳 · 수박 파렛트 ${I.flows.year}년 ${I.flows.months} · 상위 50</span></div>
+    <div class="it-lg" id="lg-jik"><span>적음</span><i class="bar" style="background:${gradient(JIK_RAMP)}"></i><span>많음 · 농가당 공익직불(기본형) ${I.jikbul.year}</span></div>
+    <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.melonO}"></i><span>보낸 산지</span><i class="it-dot" style="background:${C.melonD}"></i><span>받은 곳 · 수박 파렛트 ${I.flows.year}년 ${comma(I.flows.total)}개</span></div>
     <div class="it-lg" id="lg-coop"><i class="it-dot" style="background:#f5a524"></i><span>지역농협 ${SP.coopKinds.L}</span><i class="it-dot" style="background:#ff7a59"></i><span>축협 ${SP.coopKinds.X}</span><i class="it-dot" style="background:#7cc98f"></i><span>품목농협 ${SP.coopKinds.I} · 점 크기 = 자산</span></div>
-    <div class="it-lg" id="lg-dev"><span>적음</span><i class="bar" style="background:${gradient(DEV_RAMP)}"></i><span>많음 · 기둥 높이 = 시군 사업 지구 수 (한국농어촌공사)</span></div>
-    <div class="it-lg" id="lg-lv"><span>마을당 분뇨 적음</span><i class="bar" style="background:${gradient(LV_RAMP)}"></i><span>많음 · 국립환경과학원 전국오염원조사</span></div>
+    <div class="it-lg left" id="lg-dev"><span>적음</span><i class="bar" style="background:${gradient(DEV_RAMP)}"></i><span>많음 · 기둥 높이 = 시군 사업 지구 수</span></div>
+    <div class="it-lg" id="lg-lv"><span>마을당 분뇨 적음</span><i class="bar" style="background:${gradient(LV_RAMP)}"></i><span>많음 · ${F.livestock.from}~${F.livestock.to}</span></div>
     <div class="it-lg" id="lg-power"><span>전국 농사용 전력 월 사용량 · ${PM[0].replace("-", ".")}~${PM.at(-1).replace("-", ".")}</span></div>
   </div>`);
 
-const scr = createScreen(stage, I, ["home", "home_jn", "home_hn", "home_sat", "rice_sat"]);
+const scr = createScreen(stage, I, ["home", "home_jn", "home_hn", "home_sat"]);
 createWall(stage, WALL);
 const ND = I.shots.ndvi || {};
 stage.insertAdjacentHTML("beforeend", `
@@ -126,7 +138,7 @@ stage.insertAdjacentHTML("beforeend", `
       <img class="nd-z" src="assets/intro/shots/ndvi_zoom.webp" alt="" decoding="async" style="transform-origin:40% 63%">
       <img class="nd-c" src="assets/intro/shots/ndvi_close.webp" alt="" decoding="async">
       <span class="nd-ring" style="left:${(ND.fx ?? 0.3) * 100}%;top:${(ND.fy ?? 0.42) * 100}%"></span>
-      <div class="nd-tag"><b>${ND.where || "김제시"} 논 NDVI</b><span>Sentinel-2 · ${ND.date ? ND.date.replace(/-/g, ".") : ""} · 구름 ${ND.cloud ?? "–"}%</span></div>
+      <div class="nd-tag"><b>${ND.where || "김제시"} 논 NDVI</b><span>Sentinel-2 · ${ND.date ? ND.date.replace(/-/g, ".") : ""}</span></div>
       <div class="nd-lg"><span>낮음</span><i></i><span>높음 · 벼가 푸를수록 초록</span></div>
     </div>
   </div>`);
@@ -134,18 +146,18 @@ const mini = (id, shot, x, y, w) => {
   stage.insertAdjacentHTML("beforeend", `<div class="mini" id="mini-${id}" style="left:${x}px;top:${y}px;width:${w}px"><div class="scr-bar"><i></i><i></i><i></i><span class="scr-url">ag-rstat.vercel.app/${shot}</span></div><div class="mini-view" style="height:${Math.round((w * 9) / 16)}px"><img src="assets/intro/shots/${shot}.webp" alt="" decoding="async"></div></div>`);
   return $(`#mini-${id}`);
 };
-mini("rio", "rio", 150, 600, 600);
-mini("employ", "employ", 1250, 96, 560);
+mini("rio", "rio", 150, 590, 620);
+mini("employ", "employ", 1230, 96, 580);
 stage.insertAdjacentHTML("beforeend", `
   <div class="wall-copy" id="sc-wall">
-    <p class="kicker"><b>14</b>자료 수집 현황</p>
-    <h2 class="hl">${split([`자료 ${F.status.items}종, ${F.status.auto}종은 스스로 갱신`])}</h2>
+    <p class="kicker">자료 수집 현황</p>
+    <h2 class="hl">${split([`${F.status.items}종 가운데 ${F.status.auto}종은 스스로 갱신`])}</h2>
     <p class="it-sub">${F.status.orgs}개 기관의 공개 자료 · 무엇을 언제 받았는지까지 공개</p>
   </div>
   <div class="maker" id="sc-maker">
     <figure class="mk-photo"><img src="assets/maker.webp" alt="" width="360" height="540"></figure>
     <div class="mk-text">
-      <p class="kicker"><b>15</b>만든 이</p>
+      <p class="kicker">만든 이</p>
       <h2 class="hl">${split(["만든 이의 생각"])}</h2>
       <ol class="mk-phil">
         <li><b>그대로</b><span>공개된 자료를 출처와 함께, 고치지 않고</span></li>
@@ -194,31 +206,31 @@ function fit() {
 }
 new ResizeObserver(fit).observe(player);
 
-// ── 시간표 ────────────────────────────────────────────────
-const T = { open: 0, stats: 5, real: 12, sat: 21, rice: 29, jik: 40, flow: 48, power: 54, spot: 59, SPOT: 5, wall: 89.4, maker: 94.4, end: 102, total: 106 };
+// ── 시간표 (timing.js) ─────────────────────────────────────
 const CH = [
-  { t: T.open, name: "열기" }, { t: T.stats, name: "주요통계", href: "./" }, { t: T.real, name: "실제 화면", href: "./" },
-  { t: T.sat, name: "위성지도", href: "./" }, { t: T.rice, name: "벼 작황", href: "rice" }, { t: T.jik, name: "직불금·고향사랑", href: "jikbul" },
-  { t: T.flow, name: "물류동향", href: "flow" }, { t: T.power, name: "농사용 전기", href: "power" },
-  ...SPOTS.map((s, i) => ({ t: T.spot + i * T.SPOT, name: s.name, href: s.href })),
+  { t: T.hook, name: "열기" }, { t: T.stats, name: "주요통계", href: "./" }, { t: T.real, name: "실제 화면", href: "./" }, { t: T.only, name: "여기에만" },
+  { t: T.parcel, name: "필지·위성", href: "./" }, { t: T.rice, name: "벼 작황", href: "rice" }, { t: T.jik, name: "직불금·고향사랑", href: "jikbul" },
+  { t: T.dev, name: "농촌개발", href: "ruraldev" }, { t: T.flow, name: "물류동향", href: "flow" }, { t: T.vill, name: "축산 환경", href: "livestock" },
+  { t: T.coop, name: "농업금융보험", href: "agfin" }, { t: T.power, name: "농사용 전기", href: "power" }, { t: T.rio, name: "지역산업연관표(농업)", href: "rio" },
+  { t: T.employ, name: "농업고용", href: "employ" }, { t: T.soil, name: "농경지 토양", href: "soil" },
   { t: T.wall, name: "자료 수집 현황", href: "status" }, { t: T.maker, name: "만든이", href: "about" }, { t: T.end, name: "닫기" },
 ];
-const TOTAL = T.total;
 const tl = gsap.timeline({ paused: true, defaults: { ease: "power2.inOut" } });
 const to = (vars, at, duration, ease = "power2.inOut") => tl.to(S, { ...vars, duration, ease }, at);
-const sceneNo = (n, at, d = 1.2) => to({ scene: n }, at, d);
+const sceneNo = (key, d = 1.2) => to({ scene: SCENES.indexOf(key) }, T[key] - 0.4, d);
 
 function copyIn(sel, at) {
   const r = typeof sel === "string" ? $(sel) : sel;
-  tl.set(r, { autoAlpha: 1, y: 0 }, at)
-    .fromTo(r.querySelector(".kicker"), { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "power3.out" }, at);
+  tl.set(r, { autoAlpha: 1, y: 0 }, at);
+  const k = r.querySelector(".kicker");
+  if (k) tl.fromTo(k, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "power3.out" }, at);
   const ch = r.querySelectorAll(".hl .ch");
   if (ch.length) tl.fromTo(ch, { yPercent: 118, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.85, stagger: Math.min(0.028, 0.5 / ch.length), ease: "expo.out" }, at + 0.1);
   const sub = r.querySelector(".it-sub");
   if (sub) tl.fromTo(sub, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power2.out" }, at + 0.5);
 }
 const copyOut = (sel, at) => tl.to(typeof sel === "string" ? $(sel) : sel, { autoAlpha: 0, y: -24, duration: 0.45, ease: "power2.in" }, at);
-const ptsIn = (sel, at, gap = 0.16) => { const e = $$(`${sel} .pts li, ${sel} .it-facts li, ${sel} .pairs li, ${sel} .chips li`); if (e.length) tl.fromTo(e, { autoAlpha: 0, x: -16 }, { autoAlpha: 1, x: 0, stagger: gap, duration: 0.55, ease: "power2.out" }, at); };
+const ptsIn = (sel, at, gap = 0.16) => { const e = $$(`${sel} .pts li, ${sel} .pairs li`); if (e.length) tl.fromTo(e, { autoAlpha: 0, x: -16 }, { autoAlpha: 1, x: 0, stagger: gap, duration: 0.55, ease: "power2.out" }, at); };
 
 // 세는 숫자: 값만 타임라인으로 움직이고 글자는 frame()이 쓴다 (감기·되감기에도 맞게)
 const counters = [];
@@ -244,206 +256,231 @@ function clickAt(rect, at, move = 0.8) {
     .fromTo(scr.cursor.querySelector("svg"), { scale: 1 }, { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1, ease: "power1.inOut" }, at);
 }
 
-gsap.set(".sc, .it-lg, .outro, .maker, .wall-copy, #scr-wrap, #wall-wrap, .mk, #nd, .nd-z, .nd-c, .mini", { autoAlpha: 0 });
+gsap.set(".sc, .it-lg, .outro, .maker, .wall-copy, .only, #scr-wrap, #wall-wrap, #nd, .nd-z, .nd-c, .mini, .org", { autoAlpha: 0 });
 gsap.set(Z, { scale: 1, x: 0, y: 0, transformOrigin: "0 0" });
 gsap.set(scr.cursor, { x: VIEW_W + 60, y: VIEW_H + 60, autoAlpha: 0 });
 gsap.set(scr.cursor.querySelector(".ripple"), { autoAlpha: 0 });
 gsap.set(Object.values(scr.imgs), { autoAlpha: 0 });
 
-// 0 열기 (0–5초): 빛 입자가 모여 지도가 된다
+// ── 0 흩어진 통계: 기관 이름표가 따로따로 떠 있다 ────────────────
 to({ bgI: 1 }, 0, 1.6, "power1.out");
-to({ morph: 1 }, 0.15, 3.6, "none");
-to({ glow: 0.5 }, 1.2, 2.2);
-copyIn("#sc-open", 0.45);
-tl.fromTo("#sc-open .mark", { scale: 0.4, rotate: -90 }, { scale: 1, rotate: 0, duration: 1.2, ease: "back.out(2)" }, 0.45);
-copyOut("#sc-open", 4.4);
-to({ mapAlpha: 1 }, 3.3, 1.2);
-to({ pAlpha: 0.32 }, 3.8, 1.0);
-
-// 1 주요통계 (5–12초): 기울며 경지면적만큼 솟는다
-sceneNo(1, 4.6, 1.4);
-to({ tilt: 1 }, 5.0, 2.3);
-to({ rise: 1 }, 5.5, 2.5, "power2.out");
-to({ orbit: 0.36, camDist: 21.2 }, 5.0, 6.8, "sine.inOut");
-to({ pAlpha: 0 }, 6.2, 1.2);
-copyIn("#sc-stats", 5.1);
-ptsIn("#sc-stats", 6.4, 0.22);
-lgIn("stats", 6.0, 11.2);
-to({ labels: 1 }, 8.0, 0.6, "power2.out");
-to({ labels: 0 }, 11.0, 0.4);
-copyOut("#sc-stats", 11.3);
-
-// 2 실제 화면 (12–21초): 창이 날아들고, 커서가 전라남도 → 해남군을 고른다
-sceneNo(2, 11.6);
-to({ glAlpha: 0 }, 11.5, 0.8);
-const W0 = T.real;
-tl.set(scr.imgs.home, { autoAlpha: 1 }, W0)
-  .fromTo("#scr-wrap", { autoAlpha: 0, rotateY: -30, rotateX: 10, x: 220, z: -320 }, { autoAlpha: 1, rotateY: -8, rotateX: 3, x: 0, z: 0, duration: 1.4, ease: "expo.out" }, W0);
-copyIn("#sc-real", W0 + 0.3);
-ptsIn("#sc-real", W0 + 1.6, 0.2);
-tl.set(scr.cursor, { autoAlpha: 1 }, W0 + 1.2);
-clickAt(scr.box("home", "#sido"), W0 + 2.6, 1.2);
-showImg("home_jn", W0 + 2.75);
-clickAt(scr.box("home_jn", "#sgg"), W0 + 4.2, 0.9);
-showImg("home_hn", W0 + 4.35);
-tl.to(scr.cursor, { autoAlpha: 0, duration: 0.3 }, W0 + 5.0);
-[[".ticker", "전년 대비 증감이 흐른다", "bottom"], ["#map-card", "지도를 누르면 그 시군으로", "top"], [".col-right", "작물·소득·예산·농가경제", "top"]].forEach(([sel, label, side], i) => {
-  const m = scr.mark(`r${i}`, scr.box("home", sel), label, side);
-  if (m) tl.fromTo(m, { autoAlpha: 0, scale: 1.04 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: "power2.out" }, W0 + 5.2 + i * 0.55).to(m, { autoAlpha: 0, duration: 0.3 }, W0 + 8.3);
+to({ glow: 0.22 }, 0.4, 2);
+const orgEls = $$(".org", stage);
+orgEls.forEach((e, i) => {
+  const o = ORGS[i];
+  tl.fromTo(e, { autoAlpha: 0, scale: 0.86 }, { autoAlpha: 0.9, scale: 1, duration: 0.7, ease: "power2.out" }, 0.25 + o.r * 2.2)
+    .fromTo(e, { x: 0, y: 0 }, { x: (o.r - 0.5) * 70, y: (0.5 - ((o.r * 7) % 1)) * 50, duration: T.title + 0.6, ease: "sine.inOut" }, 0)
+    // 한곳으로 모인다 → 지도
+    .to(e, { x: 1260 - o.x - 60, y: 540 - o.y, scale: 0.25, autoAlpha: 0, duration: 1.5, ease: "power3.in" }, T.title + 0.1 + o.r * 0.5);
 });
-tl.to("#scr-wrap", { rotateY: -4, rotateX: 1.5, duration: 7, ease: "sine.inOut" }, W0 + 1.4);
+copyIn("#sc-hook", 0.4);
+copyOut("#sc-hook", T.title - 0.35);
 
-// 3 위성지도 (21–29초): 위성지도 보기 → 항공영상·필지 → Sentinel-2 생육
-sceneNo(3, T.sat - 0.4);
-copyOut("#sc-real", T.sat - 0.3);
-tl.set(scr.cursor, { autoAlpha: 1 }, T.sat - 1.0);
-clickAt(scr.box("home_hn", "#view-btn"), T.sat + 0.1, 0.9);
-showImg("home_sat", T.sat + 0.25, 0.5);
-tl.to(scr.cursor, { autoAlpha: 0, duration: 0.3 }, T.sat + 0.7);
-copyIn("#sc-sat", T.sat + 0.3);
-ptsIn("#sc-sat", T.sat + 1.4, 0.5);
-zoomTo([300, 120, 960, 600], T.sat + 0.8, 3.4, "sine.inOut", 1);
-// 항공영상 창이 물러나고 논 NDVI가 크게: 시군 전체 → 확대 → 더 가까이
-tl.to("#scr-wrap", { autoAlpha: 0, scale: 0.92, rotateY: -16, x: -80, duration: 0.7, ease: "power2.in" }, T.sat + 2.6);
-tl.set("#nd", { autoAlpha: 1 }, T.sat + 2.8)
-  .fromTo("#nd .nd-frame", { autoAlpha: 0, scale: 0.9, rotateY: 14 }, { autoAlpha: 1, scale: 1, rotateY: 0, duration: 1.0, ease: "expo.out" }, T.sat + 2.8)
-  .fromTo("#nd .nd-w", { scale: 1, autoAlpha: 1 }, { scale: 2.1, duration: 1.8, ease: "power2.in" }, T.sat + 3.6)
-  .fromTo("#nd .nd-ring", { autoAlpha: 0, scale: 2 }, { autoAlpha: 1, scale: 1, duration: 0.5, ease: "power2.out" }, T.sat + 3.2)
-  .to("#nd .nd-ring", { autoAlpha: 0, scale: 0.4, duration: 0.4 }, T.sat + 4.4)
-  .fromTo("#nd .nd-z", { autoAlpha: 0, scale: 1.06 }, { autoAlpha: 1, scale: 1, duration: 0.5, ease: "power1.out" }, T.sat + 5.1)
-  .to("#nd .nd-z", { scale: 2.07, duration: 1.3, ease: "power2.in" }, T.sat + 5.8)
-  .fromTo("#nd .nd-c", { autoAlpha: 0, scale: 1.04 }, { autoAlpha: 1, scale: 1.12, duration: 1.4, ease: "sine.out" }, T.sat + 6.9)
-  .fromTo("#nd .nd-tag, #nd .nd-lg", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.1 }, T.sat + 3.4)
+// ── 1 지역농업 현황판: 빛 입자가 모여 지도가 된다 ────────────────
+sceneNo("title");
+to({ morph: 1 }, T.title + 0.2, 3.4, "none");
+to({ glow: 0.5 }, T.title + 0.6, 2.2);
+copyIn("#sc-open", T.title + 0.25);
+tl.fromTo("#sc-open .mark", { scale: 0.4, rotate: -90 }, { scale: 1, rotate: 0, duration: 1.2, ease: "back.out(2)" }, T.title + 0.25);
+tl.fromTo("#sc-open .nums > div", { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, stagger: 0.9, duration: 0.6, ease: "power2.out" }, T.title + 2.3);
+$$("#sc-open .cnt").forEach((c, i) => countUp(c, T.title + 2.3 + i * 0.9, 1.1));
+copyOut("#sc-open", T.stats - 0.5);
+to({ mapAlpha: 1 }, T.title + 3.0, 1.2);
+to({ pAlpha: 0.32 }, T.title + 3.6, 1.0);
+
+// ── 2 주요통계: 기울며 경지면적만큼 솟는다 ─────────────────────
+sceneNo("stats", 1.4);
+to({ tilt: 1 }, T.stats - 0.2, 2.0);
+to({ rise: 1 }, T.stats + 0.2, 2.2, "power2.out");
+to({ orbit: 0.34, camDist: 21.2 }, T.stats - 0.2, LEN.stats + 0.4, "sine.inOut");
+to({ pAlpha: 0 }, T.stats + 0.4, 1.0);
+copyIn("#sc-stats", T.stats + 0.1);
+lgIn("stats", T.stats + 0.8, T.real - 0.6);
+to({ labels: 1 }, T.stats + 2.2, 0.6, "power2.out");
+to({ labels: 0 }, T.real - 0.7, 0.4);
+copyOut("#sc-stats", T.real - 0.5);
+
+// ── 3 실제 화면: 창이 날아들고, 커서가 전라남도 → 해남군을 고른 뒤 화면을 당겨 본다 ──
+sceneNo("real");
+to({ glAlpha: 0 }, T.real - 0.5, 0.8);
+const W0 = T.real;
+tl.set(scr.imgs.home, { autoAlpha: 1 }, W0).set([scr.imgs.home_jn, scr.imgs.home_hn, scr.imgs.home_sat], { autoAlpha: 0 }, W0).set(Z, { scale: 1, x: 0, y: 0 }, W0)
+  .fromTo("#scr-wrap", { autoAlpha: 0, rotateY: -30, rotateX: 10, x: 220, z: -320, scale: 1 }, { autoAlpha: 1, rotateY: -6, rotateX: 2, x: 0, z: 0, duration: 1.3, ease: "expo.out" }, W0);
+copyIn("#sc-real", W0 + 0.2);
+tl.set(scr.cursor, { autoAlpha: 1 }, W0 + 0.9);
+clickAt(scr.box("home", "#sido"), W0 + 2.0, 1.0);
+showImg("home_jn", W0 + 2.15);
+clickAt(scr.box("home_jn", "#sgg"), W0 + 3.3, 0.8);
+showImg("home_hn", W0 + 3.45);
+tl.to(scr.cursor, { autoAlpha: 0, duration: 0.3 }, W0 + 4.0);
+tl.to("#scr-wrap", { rotateY: 0, rotateX: 0, duration: 2.6, ease: "sine.inOut" }, W0 + 3.6);
+zoomTo([98, 50, 1240, 700], W0 + 4.1, LEN.real - 4.5, "sine.inOut", 1); // 왼쪽 농가·경지 칸과 지도를 당겨 본다
+tl.to("#scr-wrap", { autoAlpha: 0, scale: 0.94, duration: 0.45, ease: "power2.in" }, T.only - 0.5);
+copyOut("#sc-real", T.only - 0.5);
+
+// ── 4 여기에만: 여섯 가지를 먼저 보여 준다 ─────────────────────
+sceneNo("only");
+tl.set("#sc-only", { autoAlpha: 1 }, T.only)
+  .fromTo("#sc-only .only-eye", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, T.only)
+  .fromTo("#sc-only .hl .ch", { yPercent: 118, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.8, stagger: 0.018, ease: "expo.out" }, T.only + 0.1)
+  .fromTo("#sc-only li", { autoAlpha: 0, y: 26, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.55, stagger: 0.26, ease: "back.out(1.6)" }, T.only + 0.8)
+  .to("#sc-only", { autoAlpha: 0, y: -20, duration: 0.4, ease: "power2.in" }, T.parcel - 0.45)
+  .set("#sc-only", { y: 0 }, T.only - 0.01);
+
+// ── 5 ① 필지: 위성지도 위 필지 + 100칸 ──────────────────────
+sceneNo("parcel");
+const P0 = T.parcel;
+tl.set(scr.imgs.home_sat, { autoAlpha: 1 }, P0).set([scr.imgs.home, scr.imgs.home_jn, scr.imgs.home_hn], { autoAlpha: 0 }, P0).set(Z, { scale: 1, x: 0, y: 0 }, P0).set(scr.cursor, { autoAlpha: 0 }, P0)
+  .fromTo("#scr-wrap", { autoAlpha: 0, rotateY: 22, rotateX: 4, x: 160, z: -200, scale: 1 }, { autoAlpha: 1, rotateY: -3, rotateX: 1, x: 0, z: 0, duration: 1.2, ease: "expo.out" }, P0);
+zoomTo([330, 150, 900, 560], P0 + 0.9, LEN.parcel - 1.2, "sine.inOut", 1);
+copyIn("#sc-parcel", P0 + 0.15);
+tl.fromTo("#sc-parcel .waffle-row", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, P0 + 1.0)
+  .fromTo("#sc-parcel .waffle i.on", { backgroundColor: "rgba(255,255,255,0.09)", scale: 0.6 }, { backgroundColor: "#f5a524", scale: 1, duration: 0.3, stagger: 0.028, ease: "power2.out" }, P0 + 1.3);
+ptsIn("#sc-parcel", P0 + 3.4, 0.9);
+tl.to("#scr-wrap", { autoAlpha: 0, scale: 0.92, rotateY: -16, x: -80, duration: 0.6, ease: "power2.in" }, T.ndvi - 0.5);
+copyOut("#sc-parcel", T.ndvi - 0.5);
+
+// ── 6 ① 위성 영상: 논 NDVI — 시군 전체 → 확대 → 더 가까이 ──────────
+sceneNo("ndvi");
+const N0 = T.ndvi;
+copyIn("#sc-ndvi", N0 + 0.15);
+ptsIn("#sc-ndvi", N0 + 1.2, 0.5);
+tl.set("#nd", { autoAlpha: 1 }, N0 - 0.1)
+  .fromTo("#nd .nd-frame", { autoAlpha: 0, scale: 0.9, rotateY: 14 }, { autoAlpha: 1, scale: 1, rotateY: 0, duration: 0.9, ease: "expo.out" }, N0 - 0.1)
+  .fromTo("#nd .nd-tag, #nd .nd-lg", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.1 }, N0 + 0.4)
+  .fromTo("#nd .nd-ring", { autoAlpha: 0, scale: 2 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: "power2.out" }, N0 + 0.5)
+  .fromTo("#nd .nd-w", { scale: 1, autoAlpha: 1 }, { scale: 2.1, duration: 1.3, ease: "power2.in" }, N0 + 0.9)
+  .to("#nd .nd-ring", { autoAlpha: 0, scale: 0.4, duration: 0.35 }, N0 + 1.5)
+  .fromTo("#nd .nd-z", { autoAlpha: 0, scale: 1.06 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: "power1.out" }, N0 + 2.0)
+  .to("#nd .nd-z", { scale: 2.07, duration: 1.1, ease: "power2.in" }, N0 + 2.5)
+  .fromTo("#nd .nd-c", { autoAlpha: 0, scale: 1.04 }, { autoAlpha: 1, scale: 1.14, duration: LEN.ndvi - 3.4, ease: "sine.out" }, N0 + 3.4)
   .to("#nd", { autoAlpha: 0, duration: 0.5, ease: "power2.in" }, T.rice - 0.55);
-copyOut("#sc-sat", T.rice - 0.6);
+copyOut("#sc-ndvi", T.rice - 0.55);
 
-// 4 벼 작황 (29–40초): 예측 → 13년 재현 정확도
-sceneNo(4, T.rice - 0.4);
-tl.set(S, { riceColor: 1, jikColor: 0, mapDim: 0, rise: 0, tilt: 0.24, orbit: 0, camDist: 23, camX: 0, camY: 0, labels: 0, pAlpha: 0 }, T.rice - 0.3);
+// ── 7 ② 벼 작황: 올해 예측 → 13년 재현 정확도 ───────────────────
+sceneNo("rice");
+tl.set(S, { riceColor: 1, jikColor: 0, devColor: 0, mapDim: 0, rise: 0, devRise: 0, tilt: 0.24, orbit: 0, camDist: 23, camX: 0, camY: 0, mapShift: 300, labels: 0, pAlpha: 0, mapAlpha: 1 }, T.rice - 0.3);
 to({ glAlpha: 1 }, T.rice - 0.25, 0.9);
-copyIn("#sc-rice", T.rice + 0.2);
+copyIn("#sc-rice", T.rice + 0.15);
 tl.set("#sc-rice .b2", { autoAlpha: 0 }, T.rice);
-to({ riceAlpha: 1 }, T.rice + 0.4, 0.6, "power1.out");
-to({ riceLine: 1 }, T.rice + 0.6, 1.9, "power1.inOut");
-to({ riceFc: 1 }, T.rice + 2.3, 1.9, "power1.out");
-tl.fromTo("#sc-rice .b1", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, stagger: 0.1, duration: 0.6, ease: "power2.out" }, T.rice + 2.2);
-countUp($("#sc-rice .b1 .cnt"), T.rice + 2.2, 2.0);
+to({ riceAlpha: 1 }, T.rice + 0.3, 0.6, "power1.out");
+to({ riceLine: 1 }, T.rice + 0.4, 1.6, "power1.inOut");
+to({ riceFc: 1 }, T.rice + 1.7, 1.7, "power1.out");
+tl.fromTo("#sc-rice .b1", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, stagger: 0.1, duration: 0.6, ease: "power2.out" }, T.rice + 1.4);
+countUp($("#sc-rice .b1 .cnt"), T.rice + 1.4, 1.8);
 lgIn("rice", T.rice + 0.8, T.jik - 0.4);
-to({ riceAlpha: 0 }, T.rice + 5.4, 0.5);
-tl.to("#sc-rice .b1", { autoAlpha: 0, y: -10, duration: 0.4 }, T.rice + 5.4);
-to({ accAlpha: 1 }, T.rice + 5.7, 0.4, "none");
-to({ riceAcc: 1 }, T.rice + 5.8, 2.6, "power1.out");
-tl.fromTo("#sc-rice .b2", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, stagger: 0.12, duration: 0.6, ease: "power2.out" }, T.rice + 5.9);
-countUp($("#sc-rice .b2 .cnt"), T.rice + 5.9, 2.4);
+to({ orbit: 0.1, camDist: 22 }, T.rice, LEN.rice + LEN.acc, "sine.inOut");
+to({ riceAlpha: 0 }, T.acc - 0.3, 0.5);
+tl.to("#sc-rice .b1", { autoAlpha: 0, y: -10, duration: 0.4 }, T.acc - 0.3);
+sceneNo("acc");
+to({ accAlpha: 1 }, T.acc + 0.1, 0.4, "none");
+to({ riceAcc: 1 }, T.acc + 0.2, 3.0, "power1.out");
+tl.fromTo("#sc-rice .b2", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, stagger: 0.12, duration: 0.6, ease: "power2.out" }, T.acc + 0.3);
+countUp($("#sc-rice .b2 .cnt"), T.acc + 0.3, 2.6);
+tl.fromTo("#sc-rice .early", { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.6, ease: "back.out(2.4)" }, T.acc + 7.4);
 to({ accAlpha: 0 }, T.jik - 0.5, 0.4);
 copyOut("#sc-rice", T.jik - 0.5);
 
-// 5 직불금·고향사랑 (40–48초): 시군 색은 농가당 공익직불, 왼쪽은 고향사랑기금
-sceneNo(5, T.jik - 0.3);
+// ── 8 ③ 직불금: 시군 색은 농가당 공익직불, 왼쪽은 시도별 예산현액 ───────
+sceneNo("jik");
 to({ riceColor: 0, jikColor: 1 }, T.jik - 0.2, 1.2);
-to({ orbit: 0.14, tilt: 0.42, camDist: 22 }, T.jik - 0.2, 7.6, "sine.inOut");
-copyIn("#sc-jik", T.jik + 0.2);
-lgIn("jik", T.jik + 0.6, T.flow - 0.4);
-to({ bdAlpha: 1 }, T.jik + 0.8, 0.4, "none");
-to({ bdBars: 1 }, T.jik + 0.9, 1.8, "power1.out");
-to({ bdSplit: 1 }, T.jik + 2.5, 2.2, "power1.out");
-ptsIn("#sc-jik", T.jik + 1.0, 0.18);
-to({ bdAlpha: 0 }, T.flow - 0.5, 0.4);
-copyOut("#sc-jik", T.flow - 0.5);
+to({ orbit: 0.16, tilt: 0.42, camDist: 22 }, T.jik - 0.2, LEN.jik, "sine.inOut");
+copyIn("#sc-jik", T.jik + 0.15);
+lgIn("jik", T.jik + 0.6, T.dev - 0.4);
+to({ bdAlpha: 1 }, T.jik + 0.7, 0.4, "none");
+to({ bdBars: 1 }, T.jik + 0.8, 1.6, "power1.out");
+to({ bdSplit: 1 }, T.jik + 2.0, 1.6, "power1.out");
+to({ bdAlpha: 0 }, T.dev - 0.5, 0.4);
+copyOut("#sc-jik", T.dev - 0.5);
 
-// 6 물류동향 (48–54초): 어두운 지도 위로 흐름
-sceneNo(6, T.flow - 0.3);
-to({ jikColor: 0, mapDim: 1, tilt: 0, orbit: 0, camDist: 15.2, camX: 0.5, camY: 1.5 }, T.flow - 0.3, 1.3);
-to({ flowAlpha: 1 }, T.flow + 0.4, 0.3, "none");
-to({ flows: 1 }, T.flow + 0.4, 2.7, "power1.out");
-copyIn("#sc-flow", T.flow + 0.3);
-ptsIn("#sc-flow", T.flow + 1.6, 0.14);
-lgIn("flow", T.flow + 0.8, T.power - 0.6);
-to({ flowAlpha: 0 }, T.power - 0.5, 0.6);
-copyOut("#sc-flow", T.power - 0.5);
-to({ glAlpha: 0 }, T.power - 0.4, 0.8);
-
-// 7 농사용 전기 (54–59초): 200개월 나선
-sceneNo(7, T.power - 0.4);
-to({ powerAlpha: 1 }, T.power - 0.1, 0.5, "power1.out");
-to({ spiral: 1 }, T.power, 3.3, "power1.inOut");
-to({ glow: 0.32 }, T.power - 0.4, 1.0);
-copyIn("#sc-power", T.power + 0.1);
-ptsIn("#sc-power", T.power + 1.3, 0.2);
-lgIn("power", T.power + 0.4, T.spot - 0.6);
-to({ powerAlpha: 0 }, T.spot - 0.5, 0.5);
-copyOut("#sc-power", T.spot - 0.5);
-
-// 8–13 나머지 여섯 화면 (59–89초): 화면마다 다른 강조 그래픽
-const sp = (n) => T.spot + n * T.SPOT;
-function spotCopy(i) {
-  const s = SPOTS[i], t0 = sp(i), sec = $(`#sc-${s.id}`);
-  sceneNo(8 + i, t0 - 0.4, 1.0);
-  copyIn(sec, t0);
+// ── 9 ③ 농촌개발: 지도가 왼쪽으로 가며 지구 수만큼 솟는다 ───────────
+const spotAt = (id) => {
+  const s = SPOTS.find((x) => x.id === id), t0 = T[id], sec = $(`#sc-${id}`);
+  sceneNo(id, 1.0);
+  copyIn(sec, t0 + 0.05);
   tl.fromTo(sec.querySelectorAll(".spot-big, .spot-line"), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, stagger: 0.12, duration: 0.6, ease: "power3.out" }, t0 + 0.15);
-  countUp(sec.querySelector(".cnt"), t0 + 0.15, 1.6);
-  ptsIn(`#sc-${s.id}`, t0 + 1.3, 0.3);
-  copyOut(sec, t0 + T.SPOT - 0.45);
-}
-SPOTS.forEach((_, i) => spotCopy(i));
-// 08 산업연관표: 꽃잎
-to({ rioA: 1 }, sp(0) - 0.2, 0.5, "power1.out");
-to({ rioP: 1 }, sp(0) + 0.1, 2.6, "power2.out");
-to({ rioA: 0 }, sp(1) - 0.5, 0.45);
-const miniIn = (id, t0, t1, from) => tl.fromTo(`#mini-${id}`, { autoAlpha: 0, ...from }, { autoAlpha: 1, x: 0, y: 0, rotateY: 0, duration: 0.9, ease: "expo.out" }, t0)
+  countUp(sec.querySelector(".cnt"), t0 + 0.15, Math.min(1.6, LEN[id] * 0.4));
+  if (s.pts.length) ptsIn(`#sc-${id}`, t0 + 1.4, 0.7);
+  copyOut(sec, t0 + LEN[id] - 0.45);
+};
+spotAt("dev");
+to({ jikColor: 0, devColor: 1, mapShift: -330, tilt: 0.95, orbit: -0.42, camDist: 20.5 }, T.dev - 0.5, 1.5);
+to({ devRise: 1 }, T.dev + 0.4, 2.2, "power2.out");
+to({ orbit: -0.1 }, T.dev + 1.0, LEN.dev - 1.2, "sine.inOut");
+lgIn("dev", T.dev + 0.8, T.flow - 0.5);
+
+// ── 10 ④ 물류동향: 기둥이 가라앉고 어두운 지도 위로 수박이 흐른다 ────────
+sceneNo("flow");
+to({ devRise: 0, devColor: 0, mapDim: 1, mapShift: 300, tilt: 0, orbit: 0, camDist: 16.4, camX: 0.5, camY: 1.3 }, T.flow - 0.5, 1.5);
+to({ camDist: 14.6, camY: 1.6 }, T.flow + 1.2, LEN.flow - 1.8, "sine.inOut");
+to({ flowAlpha: 1 }, T.flow + 0.6, 0.3, "none");
+to({ flows: 1 }, T.flow + 0.6, 3.2, "power1.out");
+copyIn("#sc-flow", T.flow + 0.2);
+ptsIn("#sc-flow", T.flow + 5.2, 1.3); // "음성 수박은 서울로, 논산 수박은 용인으로"에 맞춰
+lgIn("flow", T.flow + 1.0, T.vill - 0.6);
+to({ flowAlpha: 0 }, T.vill - 0.5, 0.5);
+copyOut("#sc-flow", T.vill - 0.5);
+
+// ── 11 ⑤ 마을 → 조합: 같은 어두운 지도 위에서 점이 바뀐다 ───────────
+spotAt("vill");
+to({ camDist: 22, camX: 0, camY: 0, mapDim: 0.9 }, T.vill - 0.5, 1.2);
+to({ lvA: 1 }, T.vill, 0.3, "none");
+to({ lvP: 1 }, T.vill + 0.1, 2.6, "power1.inOut");
+lgIn("lv", T.vill + 0.6, T.coop - 0.4);
+to({ lvA: 0 }, T.coop - 0.4, 0.5);
+spotAt("coop");
+to({ mapDim: 1, camDist: 21 }, T.coop - 0.3, LEN.coop, "sine.inOut");
+to({ coopA: 1 }, T.coop - 0.1, 0.3, "none");
+to({ coopP: 1 }, T.coop + 0.1, 2.6, "power1.inOut");
+lgIn("coop", T.coop + 0.6, T.power - 0.4);
+to({ coopA: 0 }, T.power - 0.5, 0.45);
+to({ glAlpha: 0 }, T.power - 0.5, 0.6);
+
+// ── 12 ⑥ 긴 시계열 네 가지: 나선 · 꽃잎 · 곡선 · 흙 단면 ────────────
+spotAt("power");
+to({ powerAlpha: 1 }, T.power - 0.1, 0.5, "power1.out");
+to({ spiral: 1 }, T.power, LEN.power - 0.7, "power1.inOut");
+lgIn("power", T.power + 0.5, T.rio - 0.5);
+to({ powerAlpha: 0 }, T.rio - 0.45, 0.45);
+spotAt("rio");
+to({ rioA: 1 }, T.rio - 0.15, 0.45, "power1.out");
+to({ rioP: 1 }, T.rio, 2.2, "power2.out");
+to({ rioA: 0 }, T.employ - 0.45, 0.45);
+const miniIn = (id, t0, t1, from) => tl.fromTo(`#mini-${id}`, { autoAlpha: 0, ...from }, { autoAlpha: 1, x: 0, y: 0, rotateY: 0, duration: 0.8, ease: "expo.out" }, t0)
   .fromTo(`#mini-${id} img`, { scale: 1 }, { scale: 1.14, duration: t1 - t0, ease: "sine.inOut" }, t0)
   .to(`#mini-${id}`, { autoAlpha: 0, duration: 0.4 }, t1 - 0.45);
-miniIn("rio", sp(0) + 0.9, sp(1), { y: 40 });
-miniIn("employ", sp(1) + 0.5, sp(2), { x: 60 });
-// 09 농업고용: 63년 곡선
-to({ empA: 1 }, sp(1) - 0.1, 0.4, "none");
-to({ empP: 1 }, sp(1) + 0.3, 3.2, "power1.inOut");
-to({ empA: 0 }, sp(2) - 0.5, 0.45);
-// 10 금융보험: 어두운 지도 위로 농·축협이 켜진다
-tl.set(S, { mapDim: 1, riceColor: 0, jikColor: 0, devColor: 0, rise: 0, devRise: 0, tilt: 0, orbit: 0, camDist: 23, camX: 0, camY: 0, mapShift: 300, labels: 0 }, sp(2) - 0.6);
-to({ glAlpha: 1 }, sp(2) - 0.5, 0.7);
-to({ coopA: 1 }, sp(2) - 0.1, 0.3, "none");
-to({ coopP: 1 }, sp(2) + 0.2, 2.8, "power1.inOut");
-lgIn("coop", sp(2) + 0.5, sp(3) - 0.4);
-to({ coopA: 0 }, sp(3) - 0.5, 0.45);
-// 11 농촌개발: 지도가 왼쪽으로 가며 지구 수만큼 솟는다
-to({ mapDim: 0, devColor: 1, mapShift: -330, tilt: 0.95, orbit: -0.42, camDist: 20.5 }, sp(3) - 0.5, 1.5);
-to({ devRise: 1 }, sp(3) + 0.4, 2.4, "power2.out");
-to({ orbit: -0.12 }, sp(3) + 1.0, 3.6, "sine.inOut");
-lgIn("dev", sp(3) + 0.6, sp(4) - 0.4);
-to({ glAlpha: 0 }, sp(4) - 0.5, 0.6);
-// 12 토양: 흙 단면
-to({ soilA: 1 }, sp(4) - 0.1, 0.4, "none");
-to({ soilP: 1 }, sp(4) + 0.2, 2.8, "power1.out");
-to({ soilA: 0 }, sp(5) - 0.5, 0.45);
-// 13 축산: 마을 점 지도 + 축종 도넛
-tl.set(S, { tilt: 0, orbit: 0, camDist: 22, mapShift: 260, devRise: 0, devColor: 0, mapDim: 0.9 }, sp(5) - 0.5);
-to({ lvA: 1 }, sp(5) - 0.1, 0.3, "none");
-to({ lvP: 1 }, sp(5) + 0.2, 3.0, "power1.inOut");
-lgIn("lv", sp(5) + 0.6, T.wall - 0.4);
-to({ lvA: 0 }, T.wall - 0.5, 0.45);
+miniIn("rio", T.rio + 0.7, T.employ, { y: 40 });
+spotAt("employ");
+miniIn("employ", T.employ + 0.4, T.soil, { x: 60 });
+to({ empA: 1 }, T.employ - 0.1, 0.4, "none");
+to({ empP: 1 }, T.employ + 0.1, LEN.employ - 1.5, "power1.inOut");
+to({ empA: 0 }, T.soil - 0.45, 0.45);
+spotAt("soil");
+to({ soilA: 1 }, T.soil - 0.1, 0.4, "none");
+to({ soilP: 1 }, T.soil + 0.1, 2.4, "power1.out");
+to({ soilA: 0 }, T.wall - 0.5, 0.45);
 
-// 14 자료 수집 현황 (85–90초): 모든 화면의 벽
-sceneNo(14, T.wall - 0.4);
+// ── 13 자료 수집 현황: 모든 화면의 벽 ─────────────────────────
+sceneNo("wall");
 tl.set("#wall-wrap", { autoAlpha: 1 }, T.wall)
   .fromTo("#wall .wt", { autoAlpha: 0, z: -600, rotateX: -40 }, { autoAlpha: 1, z: 0, rotateX: 0, duration: 1.1, stagger: { each: 0.05, from: "center" }, ease: "power3.out" }, T.wall)
-  .fromTo("#wall", { rotateZ: -7, rotateX: 26, y: 40 }, { rotateZ: -3, rotateX: 18, y: 0, duration: 5, ease: "sine.inOut" }, T.wall)
+  .fromTo("#wall", { rotateZ: -7, rotateX: 26, y: 40 }, { rotateZ: -3, rotateX: 18, y: 0, duration: LEN.wall, ease: "sine.inOut" }, T.wall)
   .to("#wall-wrap", { autoAlpha: 0, duration: 0.5 }, T.maker - 0.5);
-copyIn("#sc-wall", T.wall + 0.6);
+copyIn("#sc-wall", T.wall + 0.3);
 copyOut("#sc-wall", T.maker - 0.5);
 
-// 15 만든 이 (90–98초)
-sceneNo(15, T.maker - 0.4);
+// ── 14 만든 이 ─────────────────────────────────────────
+sceneNo("maker");
 tl.set("#sc-maker", { autoAlpha: 1, y: 0 }, T.maker)
   .fromTo("#sc-maker .mk-photo", { autoAlpha: 0, y: 40, scale: 0.94 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1.2, ease: "power3.out" }, T.maker + 0.1)
-  .fromTo("#sc-maker .kicker", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.5 }, T.maker + 0.4)
-  .fromTo("#sc-maker .hl .ch", { yPercent: 118, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.8, stagger: 0.04, ease: "expo.out" }, T.maker + 0.5)
-  .fromTo("#sc-maker .mk-phil li", { autoAlpha: 0, x: -18 }, { autoAlpha: 1, x: 0, duration: 0.6, stagger: 0.55, ease: "power2.out" }, T.maker + 1.4)
-  .fromTo("#sc-maker .mk-quote, #sc-maker .mk-mail", { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.4, ease: "power2.out" }, T.maker + 4.0)
+  .fromTo("#sc-maker .kicker", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.5 }, T.maker + 0.3)
+  .fromTo("#sc-maker .hl .ch", { yPercent: 118, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.8, stagger: 0.04, ease: "expo.out" }, T.maker + 0.4)
+  .fromTo("#sc-maker .mk-phil li", { autoAlpha: 0, x: -18 }, { autoAlpha: 1, x: 0, duration: 0.6, stagger: 0.6, ease: "power2.out" }, T.maker + 1.1)
+  .fromTo("#sc-maker .mk-quote, #sc-maker .mk-mail", { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.4, ease: "power2.out" }, T.maker + 5.6)
   .to("#sc-maker", { autoAlpha: 0, y: -20, duration: 0.5, ease: "power2.in" }, T.end - 0.5);
 
-// 16 닫기 (98–102초)
-sceneNo(16, T.end - 0.3);
+// ── 15 닫기 ───────────────────────────────────────────
+sceneNo("end");
 to({ glow: 0.55 }, T.end - 0.3, 1.2);
 tl.set("#sc-end", { autoAlpha: 1 }, T.end)
   .fromTo("#sc-end .mark", { scale: 0.3, rotate: -120, autoAlpha: 0 }, { scale: 1, rotate: 0, autoAlpha: 1, duration: 1.1, ease: "back.out(1.8)" }, T.end)
@@ -547,7 +584,7 @@ let wasHidden = false;
 document.addEventListener("visibilitychange", () => { if (document.hidden && !tl.paused()) { tl.pause(); wasHidden = true; } else if (!document.hidden && wasHidden) { wasHidden = false; tl.play(); } });
 
 // ── 배경음악 (소리는 사용자가 켤 때만) ─────────────────────
-const music = createMusic({ T, voice: { lines: LINES, base: "assets/intro/voice/" } });
+const music = createMusic({ T, TOTAL, voice: { lines: LINES, base: "assets/intro/voice/" } });
 const sndBtn = $("#snd"), volIn = $("#vol"), sndHint = $("#sndhint"), voBtn = $("#vo");
 stage.insertAdjacentHTML("beforeend", `<div class="cap" id="cap" aria-live="off"><span></span></div>`);
 const cap = $("#cap"), capT = cap.firstElementChild;
@@ -579,7 +616,7 @@ volIn.addEventListener("input", async () => {
 document.addEventListener("keydown", (e) => { if (e.key === "m" && !e.target.closest("input, textarea, select")) sndBtn.click(); });
 gsap.ticker.add(() => music.sync(tl.time(), !tl.paused() && tl.progress() < 1));
 
-window.__intro = { tl, S, music }; // 확인용 (scripts에서 장면을 찍을 때)
+window.__intro = { tl, S, music, render: (o) => createMusic({ T, TOTAL, voice: { lines: LINES, base: "assets/intro/voice/" }, offline: true }).render(o) }; // 확인용 (scripts에서 장면을 찍을 때)
 
 // ── 시작 ─────────────────────────────────────────────────
 (async () => {

@@ -210,7 +210,7 @@ const facts = {
   ruraldev: { sites: Object.values(RD.krc.sites).reduce((s, a) => s + a.length, 0), cats: RD.cats.length },
   soil: { tests: soilN, chem: SO.chem.length, obst: SO.obst.length },
   livestock: { villages: LV.r["00"].nv, from: LV.years[0], to: LV.years.at(-1), fac: LV.r["00"].fac.length },
-  status: { items: ST.items.length, auto: ST.items.filter((i) => i.method === "자동" || i.method === "실시간").length, orgs: new Set(ST.items.map((i) => i.origin.split(/[ ·]/)[0])).size },
+  status: { items: ST.items.length, auto: ST.items.filter((i) => i.method === "자동" || i.method === "실시간").length, orgs: new Set(ST.items.map((i) => i.origin.split(/[ ·]/)[0])).size, orgList: [...new Set(ST.items.map((i) => i.origin.split(/[ ·]/)[0]))].map((n) => ({ "물류기기": "물류기기 공동이용", "농림수산식품교육문화정보원": "농정원 팜맵", "NASA": "NASA 위성" }[n] || n)) },
   riceAcc: Object.fromEntries(["stat", "krei", "norm", "m0731", "m0815", "m0901", "m0915", "m1001"].map((k) => [k, R.acc[k]?.mae])), riceFrom: R.acc.from,
 };
 

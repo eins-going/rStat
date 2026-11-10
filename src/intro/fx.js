@@ -112,12 +112,12 @@ export function createFx(canvas, I, map) {
     [1e6, 2e6].forEach((v) => {
       ctx.strokeStyle = "rgba(220,228,240,0.16)";
       ctx.beginPath(); ctx.arc(CX, CY, rad(v), 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "rgba(220,228,240,0.45)"; ctx.font = `500 15px ${FONT}`; ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(220,228,240,0.55)"; ctx.font = `500 20px ${FONT}`; ctx.textAlign = "left";
       ctx.fillText(`${v / 1e4}만 MWh`, CX + 8, CY - rad(v) - 6);
     });
     ctx.setLineDash([]);
     // 달 이름
-    ctx.font = `600 17px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `600 22px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (let m = 0; m < 12; m++) {
       const a = -Math.PI / 2 + (m / 12) * Math.PI * 2, r = R1 + 34;
       ctx.fillStyle = m === 0 || m === 7 ? "rgba(255,220,160,0.85)" : "rgba(200,208,220,0.45)";
@@ -155,8 +155,8 @@ export function createFx(canvas, I, map) {
     ctx.fillStyle = rgb(yearCol(n), 1);
     ctx.font = `800 64px ${FONT}`;
     ctx.fillText(PM[yi].slice(0, 4), CX, CY - 6);
-    ctx.fillStyle = "rgba(220,228,240,0.6)"; ctx.font = `500 16px ${FONT}`;
-    ctx.fillText(`${+PM[yi].slice(5, 7)}월 · ${Math.round(PK[yi] / 1e4)}만 MWh`, CX, CY + 36);
+    ctx.fillStyle = "rgba(220,228,240,0.7)"; ctx.font = `500 22px ${FONT}`;
+    ctx.fillText(`${+PM[yi].slice(5, 7)}월 · ${Math.round(PK[yi] / 1e4)}만 MWh`, CX, CY + 40);
     ctx.restore();
   }
 

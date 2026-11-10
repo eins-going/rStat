@@ -13,7 +13,7 @@ import { LINES } from "../src/intro/narration.js";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const EDGE = path.join(ROOT, ".venv/bin/edge-tts");
 const VOICE = process.env.VOICE || "ko-KR-InJoonNeural";
-const RATE = process.env.RATE || "+0%", PITCH = process.env.PITCH || "-6Hz";
+const RATE = process.env.RATE || "+6%", PITCH = process.env.PITCH || "-6Hz";
 
 function tts(text, file, voice = VOICE, rate = RATE, pitch = PITCH) {
   execFileSync(EDGE, ["--voice", voice, `--rate=${rate}`, `--pitch=${pitch}`, "--text", text, "--write-media", file], { stdio: ["ignore", "ignore", "pipe"] });
@@ -34,7 +34,7 @@ function mp3Dur(file) {
 if (process.argv.includes("--samples")) {
   const dir = path.join(ROOT, "voice_samples");
   fs.mkdirSync(dir, { recursive: true });
-  const text = LINES.find((l) => l.id === "05").read;
+  const text = LINES.find((l) => l.id === "09").read;
   for (const v of ["ko-KR-InJoonNeural", "ko-KR-HyunsuMultilingualNeural"]) for (const p of ["+0Hz", "-6Hz", "-12Hz"]) {
     const f = path.join(dir, `${v.split("-")[2].replace("Neural", "")}_${p.replace("+", "").replace("Hz", "")}.mp3`);
     tts(text, f, v, "-4%", p);
@@ -46,13 +46,22 @@ if (process.argv.includes("--samples")) {
 
 const OUT = path.join(ROOT, "assets/intro/voice");
 fs.mkdirSync(OUT, { recursive: true });
-const files = {};
+const { TOTAL } = await import("../src/intro/timing.js");
+const only = process.env.ONLY ? new Set(process.env.ONLY.split(",")) : null; // 고친 문장만 다시 녹음: ONLY=06,12
+const metaPath = path.join(OUT, "index.json");
+const files = only && fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, "utf8")).files : {};
+const SILENCE = 1.5; // 파일 앞뒤 무음(약 1.5초)은 재생할 때 잘라 낸다
+let over = 0;
 for (const [i, l] of LINES.entries()) {
   const f = path.join(OUT, `${l.id}.mp3`);
-  tts(l.read, f);
-  const d = mp3Dur(f), room = (LINES[i + 1]?.at ?? 106) - l.at - 0.2 + 1.5; // 파일 앞뒤 무음(약 1.6초)은 재생할 때 잘라 낸다
+  if (!only || only.has(l.id)) tts(l.read, f);
+  const d = mp3Dur(f), speech = d - SILENCE, room = (LINES[i + 1]?.at ?? TOTAL) - l.at - 0.25;
   files[l.id] = { file: `${l.id}.mp3`, dur: d };
-  console.log(l.id, `${d}초 / 여유 ${room.toFixed(1)}초`, d > room ? "← 넘침" : "");
+  if (speech > room) over++;
+  console.log(l.id, l.sc.padEnd(7), `${l.at.toFixed(1)}초부터 · 말 ${speech.toFixed(1)}초 / 자리 ${room.toFixed(1)}초`, speech > room ? "← 넘침 (timing.js에서 마디를 늘리거나 문장을 줄인다)" : "");
 }
-fs.writeFileSync(path.join(OUT, "index.json"), JSON.stringify({ engine: "edge-tts", voice: VOICE, rate: RATE, pitch: PITCH, made: new Date().toISOString().slice(0, 10), files }, null, 1));
-console.log("완료: assets/intro/voice/ · 이어서 node scripts/build_intro.mjs 후 배포");
+// 대본에 없는 옛 파일은 지운다
+for (const f of fs.readdirSync(OUT)) if (f.endsWith(".mp3") && !files[f.slice(0, -4)]) fs.rmSync(path.join(OUT, f));
+for (const k of Object.keys(files)) if (!LINES.some((l) => l.id === k)) delete files[k];
+fs.writeFileSync(metaPath, JSON.stringify({ engine: "edge-tts", voice: VOICE, rate: RATE, pitch: PITCH, made: new Date().toISOString().slice(0, 10), files }, null, 1));
+console.log(`완료: assets/intro/voice/ (${LINES.length}문장, 넘침 ${over}) · 이어서 node scripts/build_intro.mjs 후 배포`);
