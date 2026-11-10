@@ -7,7 +7,8 @@ import { createFx } from "./fx.js";
 import { createRice } from "./rice.js";
 import { createBudget } from "./budget.js";
 import { createScreen, createWall, VIEW_W, VIEW_H } from "./screens.js";
-import { SCENE_GLOW, LAND_RAMP, RICE_DIV, JIK_RAMP, C, hex } from "./palette.js";
+import { createSpots } from "./spots.js";
+import { SCENE_GLOW, LAND_RAMP, RICE_DIV, JIK_RAMP, DEV_RAMP, LV_RAMP, C, hex } from "./palette.js";
 
 const I = window.INTRO;
 const F = I.facts;
@@ -44,19 +45,23 @@ const gradient = (stops) => `linear-gradient(90deg, ${stops.join(", ")})`;
 const count = (n, { dec = 0, suf = "", from } = {}) => `<b class="cnt" data-n="${n}" data-dec="${dec}" data-suf="${suf}"${from != null ? ` data-from="${from}"` : ""}>${(+n).toFixed(dec)}${suf}</b>`;
 
 // 나머지 여섯 화면: 특장점 한 줄 + 숫자
+const SP = I.spots;
+const rioTop = [...SP.rio.regions].sort((a, b) => b.lq - a.lq)[0];
+const soilTot = SP.soil.pg.reduce((a, b) => a + b, 0), soil12 = ((SP.soil.pg[0] + SP.soil.pg[1]) / soilTot) * 100;
+const lvKinds = [...SP.lv.kinds].sort((a, b) => b[1] - a[1]), lvSum = SP.lv.kinds.reduce((a, [, v]) => a + v, 0);
+const devTop = Object.entries(SP.dev).sort((a, b) => b[1] - a[1])[0];
 const SPOTS = [
-  { id: "rio", shot: "rio", no: "08", name: "지역산업연관표(농업)", href: "rio", big: count(F.rio.sectors), unit: "개 산업", line: "농식품이 지역에 만드는 생산·부가가치·일자리 파급효과",
-    pts: [[`${F.rio.regions}개 시도`, `한국은행 ${F.rio.year} 지역산업연관표를 시도마다`], ["투입·판로", "무엇이 들어가고 어디에 쓰이는지, 지역 사이 교역까지"]], focus: [60, 80, 1240, 700] },
-  { id: "employ", shot: "employ", no: "09", name: "농업고용", href: "employ", big: count(+F.employ.to - +F.employ.from + 1), unit: "년", line: `농림어업 취업자 ${F.employ.from}년 ${comma(F.employ.a0 / 10)}만 → ${F.employ.to}년 ${comma(F.employ.a1 / 10)}만 명`,
-    pts: [[`${comma(F.employ.months)}개월`, "월별 흐름과 계절, 시도별 동향"], ["시군별", "지역별고용조사로 연령·종사상지위·노동시간까지"]], focus: [60, 80, 1000, 560] },
-  { id: "agfin", shot: "agfin", no: "10", name: "농업금융보험", href: "agfin", big: count(F.agfin.coops), unit: "개 농·축협", line: "조합별 공시 재무를 금감원 공시값 그대로",
-    pts: [[jo(F.agfin.paid), `${F.agfin.year} 농작물재해보험 보험금 · 가입 ${man(F.agfin.cnt)}건`], [`${F.agfin.cats}개 분야`, "과수·식량·채소·시설까지 시군 단위로"]], focus: [700, 80, 1200, 680] },
-  { id: "ruraldev", shot: "ruraldev", no: "11", name: "농촌개발", href: "ruraldev", big: count(F.ruraldev.sites), unit: "개 사업 지구", line: "농어촌공사 사업 지구의 유형·위치·준공 예정",
-    pts: [[`${F.ruraldev.cats}개 갈래`, "지방재정365 세부사업 예산현액을 시군마다"], ["농가당", "예산을 농가 수로 나눠 시군끼리 견준다"]], focus: [600, 90, 1300, 720] },
-  { id: "soil", shot: "soil", no: "12", name: "농경지 토양", href: "soil", big: count(Math.round(F.soil.tests / 1e4)), unit: "만 건 토양검정", line: `흙의 양분 ${F.soil.chem}가지를 시군별 분포로`,
-    pts: [["적성등급", `정밀토양도 1~5급과 등급을 낮춘 저해요인 ${F.soil.obst}가지`], ["논·밭·시설·과수", "쓰임마다 따로 본다"]], focus: [560, 90, 1340, 760] },
-  { id: "livestock", shot: "livestock", no: "13", name: "축산 환경", href: "livestock", big: count(F.livestock.villages), unit: "개 마을", line: "마을 단위로 본 가축분뇨 발생량",
-    pts: [[`${F.livestock.to - F.livestock.from + 1}년`, `${F.livestock.from}~${F.livestock.to} 흐름 · 축종·농장 규모·처리 방식`], [`${F.livestock.fac}곳`, "가축분뇨 공공처리시설 위치와 용량"]], focus: [60, 80, 1240, 700] },
+  { id: "rio", no: "08", name: "지역산업연관표(농업)", href: "rio", big: count(Math.round(SP.rio.total / 1e6)), unit: "조원 농식품 산출", line: "17개 시도마다 농식품이 만드는 생산·부가가치·일자리 파급효과",
+    pts: [[`${rioTop.name} ${rioTop.lq}`, "농식품 특화도 1위 — 전국 평균의 3.6배"], [`${F.rio.sectors}개 산업`, "무엇이 들어가고 어디에 쓰이는지까지"]] },
+  { id: "employ", no: "09", name: "농업고용", href: "employ", big: count(+F.employ.to - +F.employ.from + 1), unit: "년의 농업 일자리", line: `농림어업 취업자 ${Math.round(F.employ.a0 / 10)}만 명이 ${Math.round(F.employ.a1 / 10)}만 명이 되기까지`,
+    pts: [[`${comma(F.employ.months)}개월`, "월별 · 계절 · 시군별 · 연령·종사상지위·노동시간"]] },
+  { id: "agfin", no: "10", name: "농업금융보험", href: "agfin", big: count(F.agfin.coops), unit: "개 농·축협", line: "조합마다 공시 재무를 지도 위에",
+    pts: [[jo(F.agfin.paid), `${F.agfin.year} 농작물재해보험 보험금 · 가입 ${man(F.agfin.cnt)}건`], [`${F.agfin.cats}개 분야`, "과수·식량·채소·시설 재해보험을 시군 단위로"]] },
+  { id: "ruraldev", no: "11", name: "농촌개발", href: "ruraldev", big: count(F.ruraldev.sites), unit: "개 사업 지구", line: "농어촌공사 지구의 유형·위치·준공 예정, 예산현액까지", cls: "right",
+    pts: [[`${unitName(devTop[0])} ${devTop[1]}곳`, "지구가 가장 많은 시군"], [`${F.ruraldev.cats}개 갈래`, "지방재정365 세부사업 예산을 농가당으로"]] },
+  { id: "soil", no: "12", name: "농경지 토양", href: "soil", big: count(Math.round(F.soil.tests / 1e4)), unit: "만 건 토양검정", line: `흙의 양분 ${F.soil.chem}가지와 땅의 적성등급`,
+    pts: [[`${soil12.toFixed(1)}%`, "논으로 1·2급인 땅 — 국토에서 좋은 땅은 이만큼"], [`${F.soil.obst}가지`, "등급을 낮추는 저해요인까지"]] },
+  { id: "livestock", no: "13", name: "축산 환경", href: "livestock", big: count(F.livestock.villages), unit: "개 마을", line: `점 하나가 마을 하나 — ${F.livestock.from}~${F.livestock.to} 가축분뇨 발생`, pts: [] },
 ];
 const WALL = [["home", "주요통계"], ["rice", "벼 작황"], ["rio", "산업연관표"], ["flow", "물류동향"], ["power", "농사용 전기"],
   ["employ", "농업고용"], ["agfin", "금융보험"], ["jikbul", "직불금·고향사랑"], ["ruraldev", "농촌개발"], ["soil", "농경지 토양"],
@@ -91,11 +96,11 @@ stage.insertAdjacentHTML("beforeend", `
         <li><b>${growth.toFixed(1)}배</b><span>${PM[0].slice(0, 4)}년보다 늘어난 ${lastFull}년 사용량</span></li>
       </ul>`)}
     ${SPOTS.map((s) => `
-      <section class="sc spot narrow" id="sc-${s.id}">
+      <section class="sc spot ${s.cls || ""}" id="sc-${s.id}">
         <p class="kicker"><b>${s.no}</b>${s.name}</p>
         <div class="spot-big">${s.big}<small>${s.unit}</small></div>
         <p class="spot-line">${s.line}</p>
-        ${pts(s.pts)}
+        ${s.pts.length ? pts(s.pts) : ""}
       </section>`).join("")}
   </div>
   <div class="labels">${topLand.map(([k, v]) => `<div class="lab" data-k="${k}"><b>${unitName(k)}</b><span>${man(v)} ha</span></div>`).join("")}</div>
@@ -104,10 +109,13 @@ stage.insertAdjacentHTML("beforeend", `
     <div class="it-lg" id="lg-rice"><span>평년보다 낮음</span><i class="bar" style="background:${gradient([RICE_DIV.lo, RICE_DIV.mid, RICE_DIV.hi])}"></i><span>높음 · ${I.rice.year} 시군 예측</span></div>
     <div class="it-lg" id="lg-jik"><span>적음</span><i class="bar" style="background:${gradient(JIK_RAMP)}"></i><span>많음 · 농가당 공익직불(기본형) 예산 ${I.jikbul.year}</span></div>
     <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.origin}"></i><span>보낸 곳</span><i class="it-dot" style="background:${C.dest}"></i><span>받은 곳 · 컨테이너 ${I.flows.year}년 ${I.flows.months} · 상위 50</span></div>
+    <div class="it-lg" id="lg-coop"><i class="it-dot" style="background:#f5a524"></i><span>지역농협 ${SP.coopKinds.L}</span><i class="it-dot" style="background:#ff7a59"></i><span>축협 ${SP.coopKinds.X}</span><i class="it-dot" style="background:#7cc98f"></i><span>품목농협 ${SP.coopKinds.I} · 점 크기 = 자산</span></div>
+    <div class="it-lg" id="lg-dev"><span>적음</span><i class="bar" style="background:${gradient(DEV_RAMP)}"></i><span>많음 · 기둥 높이 = 시군 사업 지구 수 (한국농어촌공사)</span></div>
+    <div class="it-lg" id="lg-lv"><span>마을당 분뇨 적음</span><i class="bar" style="background:${gradient(LV_RAMP)}"></i><span>많음 · 국립환경과학원 전국오염원조사</span></div>
     <div class="it-lg" id="lg-power"><span>전국 농사용 전력 월 사용량 · ${PM[0].replace("-", ".")}~${PM.at(-1).replace("-", ".")}</span></div>
   </div>`);
 
-const scr = createScreen(stage, I, ["home", "home_jn", "home_hn", "home_sat", "rice_sat", ...SPOTS.map((s) => s.shot)]);
+const scr = createScreen(stage, I, ["home", "home_jn", "home_hn", "home_sat", "rice_sat"]);
 createWall(stage, WALL);
 stage.insertAdjacentHTML("beforeend", `
   <div class="wall-copy" id="sc-wall">
@@ -144,11 +152,13 @@ const S = {
   mapShift: 300, mapLift: 0, riceColor: 0, jikColor: 0, mapDim: 0, glAlpha: 1, labels: 0,
   riceAlpha: 0, riceLine: 0, riceFc: 0, accAlpha: 0, riceAcc: 0, bdAlpha: 0, bdBars: 0, bdSplit: 0,
   flows: 0, flowAlpha: 0, spiral: 0, powerAlpha: 0,
+  rioA: 0, rioP: 0, empA: 0, empP: 0, coopA: 0, coopP: 0, devRise: 0, devColor: 0, soilA: 0, soilP: 0, lvA: 0, lvP: 0,
 };
 const map = createMap($("#gl"), I);
 const fx = createFx($("#fx"), I, map);
 const rice = createRice($("#rice"), I);
 const budget = createBudget($("#rice"), I);
+const spots = createSpots($("#sp"), $("#spsvg"), I, map);
 let bg = { draw() {}, canvas: $("#bg"), kind: "…" };
 const labs = $$(".lab", stage);
 
@@ -159,14 +169,14 @@ function fit() {
   stage.style.transform = `scale(${s})`;
   const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
   const w = Math.min(2880, Math.max(640, Math.round(STAGE_W * s * dpr))), h = Math.round((w * STAGE_H) / STAGE_W);
-  map.resize(w, h); fx.resize(w, h);
+  map.resize(w, h); fx.resize(w, h); spots.resize(w, h);
   bgW = Math.max(480, Math.round(w / 2)); bgH = Math.round((bgW * STAGE_H) / STAGE_W);
   bg.canvas.width = bgW; bg.canvas.height = bgH;
 }
 new ResizeObserver(fit).observe(player);
 
 // ── 시간표 ────────────────────────────────────────────────
-const T = { open: 0, stats: 5, real: 12, sat: 21, rice: 29, jik: 40, flow: 48, power: 54, spot: 59, SPOT: 4.4, wall: 85.4, maker: 90.4, end: 98, total: 102 };
+const T = { open: 0, stats: 5, real: 12, sat: 21, rice: 29, jik: 40, flow: 48, power: 54, spot: 59, SPOT: 5, wall: 89.4, maker: 94.4, end: 102, total: 106 };
 const CH = [
   { t: T.open, name: "열기" }, { t: T.stats, name: "주요통계", href: "./" }, { t: T.real, name: "실제 화면", href: "./" },
   { t: T.sat, name: "위성지도", href: "./" }, { t: T.rice, name: "벼 작황", href: "rice" }, { t: T.jik, name: "직불금·고향사랑", href: "jikbul" },
@@ -189,7 +199,7 @@ function copyIn(sel, at) {
   if (sub) tl.fromTo(sub, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power2.out" }, at + 0.5);
 }
 const copyOut = (sel, at) => tl.to(typeof sel === "string" ? $(sel) : sel, { autoAlpha: 0, y: -24, duration: 0.45, ease: "power2.in" }, at);
-const ptsIn = (sel, at, gap = 0.16) => tl.fromTo($$(`${sel} .pts li, ${sel} .it-facts li, ${sel} .pairs li, ${sel} .chips li`), { autoAlpha: 0, x: -16 }, { autoAlpha: 1, x: 0, stagger: gap, duration: 0.55, ease: "power2.out" }, at);
+const ptsIn = (sel, at, gap = 0.16) => { const e = $$(`${sel} .pts li, ${sel} .it-facts li, ${sel} .pairs li, ${sel} .chips li`); if (e.length) tl.fromTo(e, { autoAlpha: 0, x: -16 }, { autoAlpha: 1, x: 0, stagger: gap, duration: 0.55, ease: "power2.out" }, at); };
 
 // 세는 숫자: 값만 타임라인으로 움직이고 글자는 frame()이 쓴다 (감기·되감기에도 맞게)
 const counters = [];
@@ -339,27 +349,49 @@ lgIn("power", T.power + 0.4, T.spot - 0.6);
 to({ powerAlpha: 0 }, T.spot - 0.5, 0.5);
 copyOut("#sc-power", T.spot - 0.5);
 
-// 8–13 나머지 여섯 화면 (59–85초): 실제 화면 + 특장점
-SPOTS.forEach((s, i) => {
-  const t0 = T.spot + i * T.SPOT;
+// 8–13 나머지 여섯 화면 (59–89초): 화면마다 다른 강조 그래픽
+const sp = (n) => T.spot + n * T.SPOT;
+function spotCopy(i) {
+  const s = SPOTS[i], t0 = sp(i), sec = $(`#sc-${s.id}`);
   sceneNo(8 + i, t0 - 0.4, 1.0);
-  if (i === 0) {
-    tl.set(Z, { scale: 1, x: 0, y: 0 }, t0 - 0.5);
-    Object.entries(scr.imgs).forEach(([n, e]) => tl.set(e, { autoAlpha: n === s.shot ? 1 : 0 }, t0 - 0.5));
-    tl.fromTo("#scr-wrap", { autoAlpha: 0, rotateY: -26, rotateX: 8, x: 220, y: 0, z: -300 }, { autoAlpha: 1, rotateY: -7, rotateX: 2.5, x: 0, y: 0, z: 0, duration: 1.2, ease: "expo.out" }, t0 - 0.4);
-  } else {
-    showImg(s.shot, t0 - 0.25, 0.45);
-    zoomTo(null, t0 - 0.25, 0.45, "power2.out");
-  }
-  zoomTo(s.focus, t0 + 0.3, T.SPOT - 0.6, "sine.inOut", 0.9);
-  const sec = $(`#sc-${s.id}`);
   copyIn(sec, t0);
   tl.fromTo(sec.querySelectorAll(".spot-big, .spot-line"), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, stagger: 0.12, duration: 0.6, ease: "power3.out" }, t0 + 0.15);
-  countUp(sec.querySelector(".cnt"), t0 + 0.15, 1.5);
-  ptsIn(`#sc-${s.id}`, t0 + 1.1, 0.25);
+  countUp(sec.querySelector(".cnt"), t0 + 0.15, 1.6);
+  ptsIn(`#sc-${s.id}`, t0 + 1.3, 0.3);
   copyOut(sec, t0 + T.SPOT - 0.45);
-});
-tl.to("#scr-wrap", { autoAlpha: 0, rotateX: -10, y: 40, z: -260, duration: 0.6, ease: "power2.in" }, T.wall - 0.5);
+}
+SPOTS.forEach((_, i) => spotCopy(i));
+// 08 산업연관표: 꽃잎
+to({ rioA: 1 }, sp(0) - 0.2, 0.5, "power1.out");
+to({ rioP: 1 }, sp(0) + 0.1, 2.6, "power2.out");
+to({ rioA: 0 }, sp(1) - 0.5, 0.45);
+// 09 농업고용: 63년 곡선
+to({ empA: 1 }, sp(1) - 0.1, 0.4, "none");
+to({ empP: 1 }, sp(1) + 0.3, 3.2, "power1.inOut");
+to({ empA: 0 }, sp(2) - 0.5, 0.45);
+// 10 금융보험: 어두운 지도 위로 농·축협이 켜진다
+tl.set(S, { mapDim: 1, riceColor: 0, jikColor: 0, devColor: 0, rise: 0, devRise: 0, tilt: 0, orbit: 0, camDist: 23, camX: 0, camY: 0, mapShift: 300, labels: 0 }, sp(2) - 0.6);
+to({ glAlpha: 1 }, sp(2) - 0.5, 0.7);
+to({ coopA: 1 }, sp(2) - 0.1, 0.3, "none");
+to({ coopP: 1 }, sp(2) + 0.2, 2.8, "power1.inOut");
+lgIn("coop", sp(2) + 0.5, sp(3) - 0.4);
+to({ coopA: 0 }, sp(3) - 0.5, 0.45);
+// 11 농촌개발: 지도가 왼쪽으로 가며 지구 수만큼 솟는다
+to({ mapDim: 0, devColor: 1, mapShift: -330, tilt: 0.95, orbit: -0.42, camDist: 20.5 }, sp(3) - 0.5, 1.5);
+to({ devRise: 1 }, sp(3) + 0.4, 2.4, "power2.out");
+to({ orbit: -0.12 }, sp(3) + 1.0, 3.6, "sine.inOut");
+lgIn("dev", sp(3) + 0.6, sp(4) - 0.4);
+to({ glAlpha: 0 }, sp(4) - 0.5, 0.6);
+// 12 토양: 흙 단면
+to({ soilA: 1 }, sp(4) - 0.1, 0.4, "none");
+to({ soilP: 1 }, sp(4) + 0.2, 2.8, "power1.out");
+to({ soilA: 0 }, sp(5) - 0.5, 0.45);
+// 13 축산: 마을 점 지도 + 축종 도넛
+tl.set(S, { tilt: 0, orbit: 0, camDist: 22, mapShift: 260, devRise: 0, devColor: 0, mapDim: 0.9 }, sp(5) - 0.5);
+to({ lvA: 1 }, sp(5) - 0.1, 0.3, "none");
+to({ lvP: 1 }, sp(5) + 0.2, 3.0, "power1.inOut");
+lgIn("lv", sp(5) + 0.6, T.wall - 0.4);
+to({ lvA: 0 }, T.wall - 0.5, 0.45);
 
 // 14 자료 수집 현황 (85–90초): 모든 화면의 벽
 sceneNo(14, T.wall - 0.4);
@@ -407,6 +439,7 @@ function frame() {
   fx.render(S, t);
   rice.render(S);
   budget.render(S);
+  spots.render(S, t);
   labs.forEach((l, n) => {
     const p = map.top(l.dataset.k);
     if (!p || S.labels <= 0.01) { l.style.opacity = 0; return; }

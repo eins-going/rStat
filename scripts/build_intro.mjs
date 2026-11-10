@@ -199,11 +199,36 @@ const facts = {
   riceAcc: Object.fromEntries(["stat", "krei", "norm", "m0731", "m0815", "m0901", "m0915", "m1001"].map((k) => [k, R.acc[k]?.mae])), riceFrom: R.acc.from,
 };
 
+// ── 08~13 강조 그래픽 자료 ─────────────────────────────────────────
+const SHORT = { 11: "서울", 21: "부산", 22: "대구", 23: "인천", 24: "광주", 25: "대전", 26: "울산", 29: "세종", 31: "경기", 32: "강원", 33: "충북", 34: "충남", 35: "전북", 36: "전남", 37: "경북", 38: "경남", 39: "제주" };
+const agriX = (r) => RIO.order.reduce((a, c) => a + (RIO.items[c]?.regions?.[r]?.x || 0), 0);
+const natAgri = RIO.regions.reduce((a, r) => a + agriX(r), 0), natAll = RIO.regions.reduce((a, r) => a + RIO.regionInfo[r].x, 0);
+const rioSp = { year: RIO.year, total: natAgri, regions: RIO.regions.map((r) => ({ k: r, name: SHORT[r], x: agriX(r), lq: +((agriX(r) / RIO.regionInfo[r].x) / (natAgri / natAll)).toFixed(2) })) };
+// 농·축협: 경위도 → 지도 좌표(Q 정수)
+const toQ = (lon, lat) => norm([drawLon(lon) * K, lat]).map((v) => Math.round(v * Q));
+const NK = { L: 0, X: 1, I: 2 };
+const lastNum = (a) => [...(a || [])].reverse().find((v) => v != null) ?? 0;
+const coops = NH.coops.filter((c) => c.xy).map((c) => [...toQ(c.xy[0], c.xy[1]), NK[c.k] ?? 0, Math.round(lastNum(c.v?.[1]))]);
+const coopKinds = NH.coops.reduce((a, c) => ((a[c.k] = (a[c.k] || 0) + 1), a), {});
+// 농촌개발 사업 지구 수 (시군)
+const dev = Object.fromEntries(Object.entries(RD.krc.sites).map(([k, v]) => [k, v.length]));
+// 토양 적성등급 면적 (1~5급 + 기타)
+const soilSp = { pg: SO.r["00"].pg, fg: SO.r["00"].fg, po: SO.r["00"].o.po, fo: SO.r["00"].o.fo };
+// 축산: 축종별 분뇨, 시군별 마을 수·분뇨
+const lvSp = {
+  kinds: LV.kinds.map((n, i) => [n, LV.r["00"].k[i][2]]),
+  nv: Object.fromEntries(sigun.map((s) => [s.key, LV.r[s.key]?.nv || 0])),
+  man: Object.fromEntries(sigun.map((s) => [s.key, LV.r[s.key]?.t?.man?.at(-1) || 0])),
+  top: LV.r["00"].v?.[0] || null,
+};
+const empSp = { years: EMP.years.map(Number), a: EMP.y["00"].a };
+const spots = { rio: rioSp, coops, coopKinds, dev, soil: soilSp, lv: lvSp, employ: empSp };
+
 const INTRO = {
   built: new Date().toISOString().slice(0, 10), Q,
   map: { sigun: sigun.map(({ key, sido, rings, c }) => ({ key, sido, rings, c })), lineSido, lineSigun },
   land: { year: landYear, v: land, nat: natLand },
-  rice, flows: { year: odYear, top: flows, months: "1~11월" }, power, jikbul, gohyang, facts,
+  rice, flows: { year: odYear, top: flows, months: "1~11월" }, power, jikbul, gohyang, facts, spots,
   shots: fs.existsSync(path.join(OUT, "shots/shots.json")) ? JSON.parse(fs.readFileSync(path.join(OUT, "shots/shots.json"), "utf8")) : {},
 };
 const js = `// 소개 영상 자료 (scripts/build_intro.mjs가 data/*.js에서 뽑음 — 손으로 고치지 않는다)\nwindow.INTRO = ${JSON.stringify(INTRO)};\n`;

@@ -41,6 +41,10 @@ export const LAND_RAMP = ["#3b2a12", "#8a5a17", "#d98e1f", "#f5a524", "#ffd98a"]
 export const RICE_DIV = { lo: "#4ea1ff", mid: "#3a404c", hi: "#f5a524", na: "#2f343e" };
 // 농가당 공익직불 예산 (적음 → 많음): 짙은 숲 → 들판 초록 → 연두
 export const JIK_RAMP = ["#14301f", "#1f5a3a", "#3f9b6a", "#7cc98f", "#d4f2a8"];
+// 농촌개발 사업 지구 수: 짙은 남색 → 하늘 → 연한 청록
+export const DEV_RAMP = ["#1a2c52", "#24539a", "#2f7fd6", "#3fb0e6", "#7fe0f0"];
+// 축산 마을: 마을당 분뇨 (적음 → 많음)
+export const LV_RAMP = ["#6b4a2e", "#a8582a", "#e07a3a", "#ff9a5a", "#ffd9b0"];
 // 전기 나선: 연도 2010 → 2026
 export const POWER_RAMP = ["#2b4a8f", "#2f86c9", "#2fb3a8", "#9cc56a", "#f5a524"];
 
