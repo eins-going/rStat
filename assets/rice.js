@@ -1499,4 +1499,28 @@
   });
   Object.keys(redraw).forEach((id) => $(`#${id}`) && ro.observe($(`#${id}`)));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = (o) => window.RSTAT_REGIONS(o);
+  const N7 = [0, 1, 2, 3, 4, 5, 6];
+  window.RSTAT_EXPORT = { sets: [
+    { id: "rice", name: "쌀 생산량·단수·재배면적", src: "국가데이터처 농작물생산조사(논벼)", years: YEARS.filter((y) => y <= LASTY).map(String),
+      note: `논벼 정곡 · 시군은 ${UFROM}년부터 · 평년 = 직전 5년 중 최고·최저 뺀 3년 평균 · 모델 재현 = 그해 이전 자료로만 맞춘 모델 값`,
+      cols: ["재배면적(ha)", "단수(kg/10a)", "생산량(톤)", "평년 단수(kg/10a)", "평년 대비 단수(%)", "모델 재현 단수(kg/10a)"],
+      rows: (y) => { const i = YI[+y]; return REG().map((r) => [r.sido, r.sgg, ...["a", "y", "p", "n", "d"].map((f) => V[r.key]?.[f]?.[i] ?? null), FC?.bt[r.key]?.[i] ?? null]); } },
+    ...(FC ? [
+      { id: "forecast", name: `${FCY} 쌀 예측(시점별)`, src: "모델 예측(기상청 종관기상 일자료·국가데이터처 쌀 예상생산량)",
+        years: FC.order.filter((t) => FC.v[t]).map((t) => FC.lab[t]),
+        note: `80% 범위 = 재현 오차의 10~90% · 시군 면적 = 작년 면적×올해 시도 증감 · ${Object.entries(FC.tag).map(([t, s]) => `${FC.lab[t]} ${s}`).join(", ")}`,
+        cols: ["단수(kg/10a)", "재배면적(ha)", "생산량(톤)", "단수 80% 하한(kg/10a)", "단수 80% 상한(kg/10a)", "생산량 80% 하한(톤)", "생산량 80% 상한(톤)"],
+        rows: (lab) => { const t = FC.order.find((x) => FC.lab[x] === lab); return REG().map((r) => [r.sido, r.sgg, ...N7.map((n) => FC.v[t][r.key]?.[n] ?? null)]); } },
+      { id: "stat", name: `${FCY} 쌀 예상생산량(시도)`, src: "국가데이터처 쌀 예상생산량", years: null, note: `${FC.statDate} 발표`,
+        cols: ["예상 단수(kg/10a)", "예상 생산량(톤)"], rows: () => REG({ sgg: false }).map((r) => [r.sido, r.sgg, FC.stat[r.key]?.[0] ?? null, FC.stat[r.key]?.[1] ?? null]) },
+    ] : []),
+    { id: "outlook", name: "전국 예상·전망과 확정", src: "국가데이터처 쌀 예상생산량, 한국농촌경제연구원 농업관측(쌀)", years: null,
+      note: "KREI = 국가데이터처 예상 발표 전 마지막 쌀 관측 전망",
+      cols: ["연도", "예상 발표일", "예상 단수(kg/10a)", "예상 생산량(톤)", "예상 재배면적(ha)", "KREI 관측", "KREI 전망 단수(kg/10a)", "KREI 하한(kg/10a)", "KREI 상한(kg/10a)", "확정 단수(kg/10a)", "확정 생산량(톤)"],
+      rows: () => OYEARS.map((y) => { const o = O[y], s = o.stat || {}, k = o.krei || {};
+        return ["전국", "", y, s.date ?? null, s.y ?? null, s.p ?? null, s.a ?? null, k.rel ?? null, k.y ?? null, k.lo ?? null, k.hi ?? null, o.final ?? null, atv(NATION, "p", y)]; }) },
+  ] };
 })();

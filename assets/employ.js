@@ -967,4 +967,36 @@
   });
   Object.keys(redraw).forEach((id) => ro.observe($(`#${id}`)));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = (o) => window.RSTAT_REGIONS(o);
+  const r1 = (v) => (ok(v) ? Math.round(v * 10) / 10 : null), r2 = (v) => (ok(v) ? Math.round(v * 100) / 100 : null);
+  const IND = BUNDLES.flatMap((b) => b.inds);
+  const SUBK = ["0", "A", "01", "011", "012", "013", "014", "02", "03"], AGES = ["15~29세", "30대", "40대", "50대", "60세 이상"];
+  const HR = Object.fromEntries(E.hours.months.map((m, i) => [m, i])), NW = Object.fromEntries(E.nonwage.years.map((y, i) => [y, i]));
+  const hasV = (r, from) => r.slice(from).some(ok);
+  window.RSTAT_EXPORT = { sets: [
+    { id: "unit", name: "시군 농림어업 취업자(반기)", src: "국가데이터처 지역별고용조사(시군구/산업별·연령별 취업자)", years: H,
+      note: "천 명 · 광역시 구는 시부 · 표본이 작은 시군은 오차가 크다 · 시도·전국은 '시도 산업별 취업자'",
+      cols: ["취업자(천 명)", "농림어업 취업자(천 명)", "농림어업 비중(%)", "근무지 기준 취업자(천 명)", "근무지 기준 농림어업 취업자(천 명)", "근무지 기준 농림어업 비중(%)", "65세 이상 취업자(천 명)", ...BUNDLES.map((b) => `${b.name}(천 명)`)],
+      rows: (y) => { const h = H.indexOf(y); return REG({ nation: false, sido: false }).map(({ key: k, sido, sgg }) => { const S = (f) => r1(uAt(k, f, h));
+        return [sido, sgg, S("t"), S("a"), r2(share(uAt(k, "a", h), uAt(k, "t", h))), S("wt"), S("wa"), r2(share(uAt(k, "wa", h), uAt(k, "wt", h))), S("yo"), ...BUNDLES.map((b) => S(b.f))]; }); } },
+    { id: "sido", name: "시도 산업별 취업자(반기)", src: "국가데이터처 지역별고용조사(시도/산업별 취업자)", years: H.filter((_, h) => ok(sAt(NATION, "t", h))), note: "천 명 · 시도 공표값",
+      cols: ["취업자(천 명)", "농림어업 취업자(천 명)", "농림어업 비중(%)", "농업(천 명)", "임업(천 명)", "어업(천 명)", ...IND.map(([, n]) => `${n}(천 명)`)],
+      rows: (y) => { const h = H.indexOf(y); return REG({ sgg: false }).map(({ key: k, sido }) => [sido, "", sAt(k, "t", h), sAt(k, "a", h), r2(share(sAt(k, "a", h), sAt(k, "t", h))), ...["n1", "n2", "n3", ...IND.map(([f]) => f)].map((f) => sAt(k, f, h))]); } },
+    { id: "nation", name: "전국 농림어업 세부·연령(반기)", src: "국가데이터처 지역별고용조사(산업/성별·연령별 취업자)", years: null, note: "천 명",
+      cols: ["반기", "취업자(천 명)", "농림어업(천 명)", "농업(천 명)", "작물재배업(천 명)", "축산업(천 명)", "작물재배·축산 복합농업(천 명)", "작물재배·축산 관련 서비스업(천 명)", "임업(천 명)", "어업(천 명)",
+        ...AGES.map((a) => `취업자 ${a}(천 명)`), ...AGES.map((a) => `농업 ${a}(천 명)`)],
+      rows: () => H.map((_, i) => ["전국", "", halfShort(i), ...SUBK.map((c) => E.mix.sub[c]?.[i] ?? null), ...["0", "01"].flatMap((g) => AGES.map((_, j) => E.mix.age[g]?.[i]?.[j] ?? null))]).filter((r) => hasV(r, 3)) },
+    { id: "year", name: "농림어업 취업자(연, 1963~)", src: "국가데이터처 경제활동인구조사(비임금은 8월 부가조사)", years: null,
+      note: "천 명 · 산업분류가 바뀐 표를 이어 붙임 · 시도는 1989년부터 · 비임금근로자는 전국 농림어업만",
+      cols: ["연도", "취업자(천 명)", "농림어업 취업자(천 명)", "농림어업 비중(%)", "농림어업 비임금근로자(천 명)", "자영업자(천 명)", "고용원 있는 자영업자(천 명)", "고용원 없는 자영업자(천 명)", "무급가족종사자(천 명)"],
+      rows: () => REG({ sgg: false }).flatMap(({ key: k, sido }) => E.years.map((y, i) => { const n = k === NATION && NW[y] != null ? E.nonwage["01"][NW[y]] : [];
+        return [sido, "", +y, yAt(k, "t", i), yAt(k, "a", i), r2(share(yAt(k, "a", i), yAt(k, "t", i))), ...[0, 1, 2, 3, 4].map((j) => n[j] ?? null)]; })).filter((r) => hasV(r, 3)) },
+    { id: "month", name: "농림어업 취업자·취업시간(월)", src: "국가데이터처 경제활동인구조사", years: null,
+      note: "천 명 · 전국은 1982년 7월, 시도는 1998년부터 · 취업시간은 전국 2013년부터",
+      cols: ["월", "취업자(천 명)", "농림어업 취업자(천 명)", "농림어업 비중(%)", "농림어업 36시간 미만 비중(%)", "농림어업 일시휴직 비중(%)", "농림어업 주당 평균 취업시간(시간)", "전산업 36시간 미만 비중(%)", "전산업 일시휴직 비중(%)", "전산업 주당 평균 취업시간(시간)"],
+      rows: () => REG({ sgg: false }).flatMap(({ key: k, sido }) => M.map((m, i) => { const j = k === NATION ? HR[m] : undefined;
+        return [sido, "", m, mAt(k, "t", i), mAt(k, "a", i), r2(share(mAt(k, "a", i), mAt(k, "t", i))), ...["01", "00"].flatMap((g) => ["short", "absent", "avg"].map((f) => (j == null ? null : E.hours[g][f][j] ?? null)))]; })).filter((r) => hasV(r, 3)) },
+  ] };
 })();

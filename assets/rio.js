@@ -822,4 +822,27 @@
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => { drawMap(); render(); });
   }).observe($("#map-wrap"));
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const SRC = "한국은행 2020년 지역산업연관표·지역 고용표";
+  const pc = (v) => (ok(v) ? Math.round(v * 1e4) / 100 : null); // 비율 → %
+  const r4 = (v) => (ok(v) ? Math.round(v * 1e4) / 1e4 : null);
+  const ms = (o) => (o ? r4(sum(o)) : null);
+  const INAME = ITEM_KEYS.map((k) => D.items[k].name), IKEY = Object.fromEntries(ITEM_KEYS.map((k) => [D.items[k].name, k]));
+  const mat = (f, cols, note, id, nm) => ({ id, name: nm, src: SRC, years: INAME, note: `${note} · 시트(시점 열) = 품목`, cols: SIDOS.map((b) => `${short(b)}${cols}`),
+    rows: (n) => SIDOS.map((s) => [name(s), "", ...SIDOS.map((b, j) => f(R(s, IKEY[n]), b, j))]) });
+  window.RSTAT_EXPORT = { sets: [
+    { id: "indicators", name: "품목별 시도 지표", src: SRC, years: null, note: `${D.year}년 · 취업자는 고용표가 중분류까지라 소분류 품목은 그 중분류 값 · 유발계수는 최종수요 1원(취업은 10억 원)당`,
+      cols: ["품목", "산출액(백만원)", "부가가치(백만원)", "부가가치율(%)", "도내 산출 중 비중(%)", "특화계수", "도내 사용(백만원)", "이출(백만원)", "수출(백만원)", "이입(백만원)", "수입(백만원)",
+        "자급률(%)", "이출률(%)", "취업자(명)", "생산유발계수", "부가가치유발계수", "수입유발계수", "역외 누출(%)", "취업유발계수(명/10억원)"],
+      rows: () => ITEM_KEYS.flatMap((it) => [NATION, ...SIDOS].map((k) => { const r = R(k, it) || {}, t = r.mult ? sum(r.mult.prod) : 0;
+        return [name(k), "", D.items[it].name, r.x ?? null, r.va ?? null, pc(r.vaRate), pc(r.share), r.lq ?? null, r.own ?? null, r.out ?? null, r.exp ?? null, r.inflow ?? null, r.imp ?? null,
+          pc(r.self), pc(r.outRate), r.jobs ?? null, ms(r.mult?.prod), ms(r.mult?.va), ms(r.mult?.imp), t ? pc(1 - (r.mult.prod[k] || 0) / t) : null, r.multJobs ? Math.round(sum(r.multJobs) * 100) / 100 : null]; })) },
+    mat((r, b, j) => r?.flowOut?.[REG.indexOf(b)] ?? null, "로(백만원)", "행 = 만든 시도, 열 = 쓴 시도(중간재·소비·투자, 수출 제외)", "trade", "시도 간 교역"),
+    mat((r, b) => r4(r?.mult?.prod?.[b]), " 생산유발", "행 = 최종수요 시도, 열 = 생산이 늘어나는 시도 · 최종수요 1원당", "multprod", "지역별 생산유발계수"),
+    mat((r, b) => r?.multJobs?.[b] ?? null, " 취업유발(명/10억원)", "행 = 최종수요 시도, 열 = 취업이 늘어나는 시도 · 최종수요 10억 원당", "multjobs", "지역별 취업유발계수"),
+    { id: "linkage", name: "산업별 영향력·감응도계수", src: SRC, years: null, note: "통합소분류 165부문 · 전 지역 평균 = 1 · 생산유발계수표로 계산",
+      cols: ["부문 코드", "부문", "영향력계수", "감응도계수", "산출액(백만원)"],
+      rows: () => SIDOS.flatMap((s) => D.sectors.map((c, n) => [name(s), "", c, sname(c), D.linkage[s][n]?.[0] ?? null, D.linkage[s][n]?.[1] ?? null, D.regionX[s][n] ?? null])) },
+  ] };
 })();
