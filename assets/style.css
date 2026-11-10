@@ -1018,6 +1018,7 @@ body {
 .ab-card b { font-size: 22px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 .ab-name { margin: 0 0 4px; font-size: 22px; font-weight: 750; color: var(--text); letter-spacing: -0.01em; }
 .ab-name span { margin-left: 8px; font-size: 14.5px; font-weight: 600; color: var(--accent); }
+.ab-career { margin: 0 0 6px; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
 .ab-msg { max-width: 30em; margin: 4px 0 6px; font-size: 14.5px; line-height: 1.75; color: #c4c9d1; text-wrap: balance; word-break: keep-all; }
 .ab-card a { font-size: 14px; color: var(--accent); text-decoration: none; }
 .ab-card a:hover { text-decoration: underline; }
