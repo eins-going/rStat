@@ -18,7 +18,7 @@ import common  # noqa: E402
 import model as M  # noqa: E402
 
 pd.set_option("display.width", 250)
-SUF = "" if os.environ.get("PHENO", "adaptive") == "adaptive" else "_fixed"
+SUF = ("" if os.environ.get("PHENO", "adaptive") == "adaptive" else "_fixed") + os.environ.get("WX_VARIANT_SUFFIX", "")
 comp = M.prep(pd.read_csv(os.path.join(HERE, f"components_sido{SUF}.csv"), dtype={"sc": str, "asof": str}))
 cs = M.prep(pd.read_csv(os.path.join(HERE, f"components_sigun{SUF}.csv.gz"), dtype={"sc": str, "asof": str}))
 ASOFS = sorted(comp["asof"].unique())  # components.py RICE_ASOF

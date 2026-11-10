@@ -47,13 +47,13 @@ H_TARGET = {"31": DOY(8, 10), "32": DOY(8, 8), "33": DOY(8, 11), "34": DOY(8, 13
 ASOF = {t: DOY(int(t[:2]), int(t[2:])) for t in sorted(set(os.environ.get("RICE_ASOF", "0731,0815,0901,0915,1001").split(",")) | {"1001"})}
 CLIM_YEARS = 10
 PHENO = os.environ.get("PHENO", "adaptive")  # adaptive: 직전 10년 기후로 G 갱신 / fixed: 2001~2012 보정 G 고정
-SUFFIX = "" if PHENO == "adaptive" else "_fixed"
+SUFFIX = ("" if PHENO == "adaptive" else "_fixed") + os.environ.get("WX_VARIANT_SUFFIX", "")  # 입력 변형 시험(solar/)
 COMP = ["cold_mei", "cold_q", "heat_ant", "rs_pre", "rs_fill", "ptq_fill", "tfill", "sunless", "wind", "rain_hv",
         "wet_head", "simriw", "gamma_cold", "biomass", "heading", "wind_max", "wind20", "wind_early", "tmin_fill", "hot_fill", "sunless_pre", "sunless_post", "wind15", "rs_pre25"]
 
 
 def load():
-    wx = pd.read_pickle(os.path.join(HERE, "wx_sigun.pkl"))
+    wx = pd.read_pickle(os.path.join(HERE, os.environ.get("WX_FILE", "wx_sigun.pkl")))
     wx = wx[wx.doy <= 365]
     wx["gust"] = wx.gust.fillna(wx.wavg * 2.2)
     return wx
