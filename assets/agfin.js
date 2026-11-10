@@ -783,4 +783,33 @@
   });
   ro.observe($("#chart-years"));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  // 보험: 광역시는 '시부' 칸 대신 구별 공시 줄을 그대로 싣는다. 농협: 한 줄에 한 조합
+  const INS_COLS = { cnt: "가입건수(건)", amt: "가입금액(백만원)", area: "가입면적(ha)", rate: "가입률(%)", prem: "순보험료(백만원)", paid: "지급보험금(백만원)" };
+  const AY = AP.map((_, i) => apShort(i));
+  const insUnits = (i) => window.RSTAT_REGIONS().flatMap((r) => (isSibu(r.key)
+    ? Object.entries(A.gu[sidoOf(r.key)] || {}).map(([gu, arr]) => [r.sido, gu, arr[i]])
+    : [[r.sido, r.sgg, A.regions[r.key]?.[i]]]));
+  const insVals = (v) => A.cols.map((_, j) => v?.[j] ?? null);
+  const FLAB = { members: "조합원(명)", assets: "자산총계(억원)", deposits: "예수부채(억원)", loans: "총대출(억원)", loanM: "조합원 대출(억원)", loanA: "준조합원 대출(억원)",
+    loanN: "비조합원 대출(억원)", policy: "정책자금대출금(억원)", income: "당기순이익(억원)", npl: "고정이하여신비율(%)", roa: "ROA(%)", ldr: "예대율(%)" };
+  const NY = NP.map((h) => `${h.slice(0, 4)}.${h.slice(4)}`);
+  const insSrc = "농업정책보험금융원 농작물재해보험 실적";
+  window.RSTAT_EXPORT = { sets: [
+    { id: "crop-ins", name: "농작물재해보험 실적", src: insSrc, years: AY, note: `광역시는 구별 공시. 가입률은 전국·시도만${AP.at(-1).m === 12 ? "" : `. ${AP.at(-1).y}년은 ${AP.at(-1).m}월까지 누계`}`,
+      cols: A.cols.map((c) => INS_COLS[c]),
+      rows: (y) => insUnits(AY.indexOf(y)).map(([s, g, row]) => [s, g, ...insVals(row?.t)]) },
+    { id: "crop-ins-item", name: "농작물재해보험 품목별", src: insSrc, years: AY, note: "공시 있는 품목만",
+      cols: ["품목 대분류", "품목", ...A.cols.map((c) => INS_COLS[c])],
+      rows: (y) => insUnits(AY.indexOf(y)).flatMap(([s, g, row]) => (row?.c || []).filter(([, ...v]) => v.some(ok)).map(([ci, ...v]) => [s, g, ...catName(ci), ...insVals(v)])) },
+    { id: "nhcoop", name: "농·축협 공시 재무", src: "금융감독원 금융통계정보시스템(농협 조합별 공시, 반기)", years: NY,
+      note: "지역농협은 본점 시군, 축협·품목농협은 시도. 당기순이익은 반기 누계, ROA는 12월만",
+      cols: ["조합명", "구분", ...N.fields.map((f) => FLAB[f] || f), "본점 경도", "본점 위도"],
+      rows: (y) => {
+        const h = NY.indexOf(y), idx = new Map(window.RSTAT_REGIONS().map((r, j) => [r.key, j]));
+        return COOPS.filter((c) => alive(c, h)).sort((a, b) => (idx.get(a.r) ?? 1e9) - (idx.get(b.r) ?? 1e9) || a.n.localeCompare(b.n, "ko"))
+          .map((c) => [T.sidos[coopSido(c)]?.name ?? "", c.r.includes("|") ? c.r.split("|")[1] : "", c.n, KIND[c.k], ...N.fields.map((f) => val(c, f, h)), c.xy?.[0] ?? null, c.xy?.[1] ?? null]);
+      } },
+  ] };
 })();

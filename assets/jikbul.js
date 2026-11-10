@@ -692,4 +692,33 @@
   chartRO.observe($("#chart-years"));
   chartRO.observe($("#chart-gyears"));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = () => window.RSTAT_REGIONS();
+  const PY = P.map((p, i) => (isFull(i) ? `${p.y}` : `${p.y}.${p.d.slice(4, 6)}`));
+  const GYL = GY.map((g) => (g.full ? `${g.y}` : `${g.y}.${g.ymd.slice(4, 6)}`));
+  const byP = (fn) => (y) => { const i = PY.indexOf(y); return REG().map((r) => [r.sido, r.sgg, ...fn(r.key, i)]); };
+  const FUND = [["예산현액", "amt"], ["국비", "nat"], ["시도비", "sido"], ["시군비", "sigun"], ["지출", "ep"]];
+  const jsrc = "지방재정365 세부사업별 세출현황";
+  const part = isFull(P.length - 1) ? "" : ` ${PY.at(-1)}는 ${+P.at(-1).d.slice(4, 6)}월 말 기준.`;
+  const ridx = () => new Map(REG().map((r, j) => [r.key, j]));
+  const place = (k) => [T.sidos[sidoOf(k)]?.name ?? "", level(k) === 2 ? label(k) : ""];
+  window.RSTAT_EXPORT = { sets: [
+    { id: "jikbul", name: "직불금 예산 분류별", src: jsrc, years: PY, note: `예산현액. 임업·수산 제외, 시도·전국 = 시군 합(세종·제주는 본청).${part}`,
+      cols: ["직불금 합계(백만원)", ...FARM.map((c) => `${CAT_SHORT[c] || c}(백만원)`)],
+      rows: byP((k, i) => (noUnitBudget(k) ? [null, ...FARM.map(() => null)] : [tot(k, i), ...FARM.map((c) => cell(k, i, c)?.[FI.amt] ?? null)])) },
+    { id: "jikbul-fund", name: "직불금 재원·지출", src: jsrc, years: PY, note: `직불금 = 공익직불 + 자체·FTA 등.${part}`,
+      cols: [...FUND.map(([t]) => `직불금 ${t}(백만원)`), "공익직불 예산현액(백만원)", "공익직불 지출(백만원)", "농업·농촌 예산(백만원)"],
+      rows: byP((k, i) => (noUnitBudget(k) ? FUND.map(() => null).concat([null, null, null]) : [...FUND.map(([, f]) => tot(k, i, f)), pub(k, i), pub(k, i, "ep"), agri(k, i)])) },
+    { id: "gohyang", name: "고향사랑기금", src: `${jsrc}(고향사랑기금 회계)`, years: GYL, note: "모금액 아님. 시도·전국 = 본청 + 시군, 제주시·서귀포시는 도 본청(시도 줄)",
+      cols: ["기금 예산현액(백만원)", "기금 지출(백만원)", "적립·미집행(백만원)", "일반회계 고향사랑 예산현액(백만원)", "일반회계 고향사랑 지출(백만원)", "기금 회계(곳)"],
+      rows: (y) => { const j = GYL.indexOf(y); return REG().map((r) => { const sz = gget(r.key, j, "size"), sp = gSpent(r.key, j);
+        return [r.sido, r.sgg, sz, sp, ok(sz) && ok(sp) ? sz - sp : null, gget(r.key, j, "gen"), gget(r.key, j, "genEp"), G.counts[r.key]?.[j] ?? null]; }); } },
+    { id: "gohyang-biz", name: "고향사랑 세부사업", src: jsrc, years: GYL, note: "세부사업명 그대로, 적립·예치 제외",
+      cols: ["지자체", "세부사업명", "회계", "예산현액(백만원)", "지출(백만원)"],
+      rows: (y) => { const j = GYL.indexOf(y), idx = ridx();
+        return G.items.filter((r) => r[1] === j).map(([gi, , n, cash, ep, t]) => [G.govs[gi], n, cash, ep, t])
+          .sort((a, b) => (idx.get(a[0][1]) ?? 1e9) - (idx.get(b[0][1]) ?? 1e9) || a[0][0].localeCompare(b[0][0], "ko") || b[2] - a[2])
+          .map(([[gov, key], n, cash, ep, t]) => [...place(key), gov, n, GTAG[t] || "", cash, ep]); } },
+  ] };
 })();

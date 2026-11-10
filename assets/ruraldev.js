@@ -727,4 +727,29 @@
   chartRO.observe($("#chart-years"));
   chartRO.observe($("#chart-kyears"));
   window.addEventListener("hashchange", () => { fromURL(); render(true); });
+
+  // ---------- 자료 내려받기 (assets/export.js) ----------
+  const REG = () => window.RSTAT_REGIONS();
+  const PY = P.map((p, i) => (isFull(i) ? `${p.y}` : `${p.y}.${p.d.slice(4, 6)}`));
+  const byP = (fn) => (y) => { const i = PY.indexOf(y); return REG().map((r) => [r.sido, r.sgg, ...(noUnitBudget(r.key) ? fn(r.key, i).map(() => null) : fn(r.key, i))]); };
+  const FUND = [["예산현액", "amt"], ["국비", "nat"], ["시도비", "sido"], ["시군비", "sigun"], ["지출", "ep"]];
+  const rsrc = "지방재정365 세부사업별 세출현황";
+  const part = isFull(P.length - 1) ? "" : ` ${PY.at(-1)}는 ${+P.at(-1).d.slice(4, 6)}월 말 기준.`;
+  const ksrc = "한국농어촌공사 농산어촌지역개발사업 OpenAPI";
+  const dt = (v) => (ok(v) ? `${String(v).slice(0, 4)}-${String(v).slice(4, 6)}-${String(v).slice(6, 8)}` : null);
+  const villSum = (k) => unitsIn(k).reduce((a, u) => { const x = R.krc.vill[u]; if (x) x.forEach((n, j) => { a[j] = (a[j] ?? 0) + n; }); return a; }, Array(7).fill(null));
+  window.RSTAT_EXPORT = { sets: [
+    { id: "ruraldev", name: "농촌개발 예산 유형별", src: rsrc, years: PY, note: `예산현액. 시도·전국 = 시군 합(시군 행이 없는 곳은 본청), 제주는 도만.${part}`,
+      cols: ["농촌개발 합계(백만원)", ...GROUPS.flatMap((g) => g.cats).map((c) => `${c}(백만원)`)],
+      rows: byP((k, i) => [tot(k, i), ...GROUPS.flatMap((g) => g.cats).map((c) => sumC(k, i, [c]))]) },
+    { id: "ruraldev-fund", name: "농촌개발 재원·지출", src: rsrc, years: PY, note: `농촌개발 세부사업 합.${part}`,
+      cols: [...FUND.map(([t]) => `${t}(백만원)`), "농업·농촌 예산(백만원)"],
+      rows: byP((k, i) => [...FUND.map(([, f]) => tot(k, i, f)), agri(k, i)]) },
+    { id: "krc-sites", name: "농어촌공사 사업 지구", src: ksrc, years: null, note: `${R.krc.got} 받음. 사업비 없음, 위치는 일부만`,
+      cols: ["지구명", "사업", "유형", "착수 연도", "준공예정", "사업내용", "경도", "위도"],
+      rows: () => REG().filter((r) => r.sgg).flatMap((r) => (SITES[r.key] || []).map((s) => [r.sido, r.sgg, s[2] || "", ktype(s), R.cats[s[1]] ?? "", s[0] ?? null, dt(s[4]), s[5] || "", s[6] ?? null, s[7] ?? null])) },
+    { id: "krc-vill", name: "농촌마을 조사", src: "한국농어촌공사 농촌마을현황 OpenAPI", years: null, note: "조사한 마을만, 시군마다 조사 범위가 달라 비교용 아님. 조사 시점 미상",
+      cols: ["조사 마을(곳)", "인구 적힌 마을(곳)", "인구(명)", "65세 이상(명)", "총가구(가구)", "빈집(호)", "슬레이트(호)"],
+      rows: () => REG().map((r) => [r.sido, r.sgg, ...villSum(r.key)]) },
+  ] };
 })();
