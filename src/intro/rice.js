@@ -68,10 +68,48 @@ export function createRice(svg, I) {
   el("text", { x: xf(0), y: YT - 42, "text-anchor": "middle", class: "rc-fcd" }, fz).textContent = md(R.fc[0].lab);
   el("text", { x: xf(R.fc.length - 1), y: YT - 42, "text-anchor": "middle", class: "rc-fcd" }, fz).textContent = md(R.fc.at(-1).lab);
 
+  // 정확도: 시점별 평균 오차 막대 + 국가데이터처·KREI 기준선
+  const F = I.facts, A = F.riceAcc;
+  const ag = el("g", { class: "ra", opacity: 0 }, svg);
+  const rowsDef = [["평년 그대로", A.norm, "norm"], ...I.rice.fc.slice(0, 5).map((p) => [p.lab, A[`m${p.t}`], p.t])].filter(([, v]) => v != null);
+  const AX0 = 330, AX1 = 900, AY = 742, RH = 37;
+  const ax = (v) => AX0 + (v / Math.max(...rowsDef.map((r) => r[1]))) * (AX1 - AX0);
+  el("text", { x: 150, y: AY - 44, class: "ra-h" }, ag).textContent = `전국 단수 평균 오차 · ${F.riceFrom}~${I.rice.year - 1} 그해 이전 자료로만 재현`;
+  const best = rowsDef.slice(1).reduce((m, r) => (r[1] < m[1] ? r : m))[2];
+  const accRows = rowsDef.map(([lab, v, t], i) => {
+    const y = AY + i * RH, gg = el("g", { opacity: 0 }, ag);
+    el("text", { x: AX0 - 16, y: y + 19, "text-anchor": "end", class: "ra-l" }, gg).textContent = i ? `${lab} 예측` : lab;
+    const r = el("rect", { x: AX0, y: y + 4, width: 0, height: 22, rx: 5, class: t === "norm" ? "ra-b norm" : t === "0915" ? "ra-b best" : "ra-b" }, gg);
+    const tx = el("text", { x: AX0, y: y + 21, class: "ra-v" }, gg);
+    tx.textContent = `${v}kg`;
+    return { gg, r, tx, w: ax(v) - AX0 };
+  });
+  void best;
+  const refs2 = [[A.stat, "국가데이터처 10월 예상", "#5fb3ff"], [A.krei, "KREI 9월 전망", "#5fb37c"]].map(([v, lab, c], i) => {
+    const gg = el("g", { opacity: 0 }, ag);
+    const x = ax(v), y0 = AY - 6, y1 = AY + rowsDef.length * RH;
+    el("line", { x1: x, x2: x, y1: y0, y2: y1, stroke: c, "stroke-width": 2, "stroke-dasharray": "4 4" }, gg);
+    el("text", { x: x + (i ? 8 : -8), y: y1 + 24, "text-anchor": i ? "start" : "end", fill: c, class: "ra-ref" }, gg).textContent = `${lab} ${v}kg`;
+    return gg;
+  });
+
   let L = 0, LC = 0;
   function measure() { L = line.getTotalLength(); LC = conn.getTotalLength(); line.style.strokeDasharray = `${L} ${L}`; conn.style.strokeDasharray = `${LC} ${LC}`; }
 
+  function renderAcc(S) {
+    ag.setAttribute("opacity", S.accAlpha);
+    if (S.accAlpha <= 0.002) return;
+    accRows.forEach((r, i) => {
+      const p = smooth((S.riceAcc - i * 0.1) / 0.45);
+      r.gg.setAttribute("opacity", smooth(p * 3));
+      r.r.setAttribute("width", r.w * p);
+      r.tx.setAttribute("x", AX0 + r.w * p + 10);
+    });
+    refs2.forEach((r, i) => r.setAttribute("opacity", smooth((S.riceAcc - 0.7 - i * 0.1) / 0.2)));
+  }
+
   function render(S) {
+    renderAcc(S);
     if (!L) measure();
     g.setAttribute("opacity", S.riceAlpha);
     if (S.riceAlpha <= 0.002) return;

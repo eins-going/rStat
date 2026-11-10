@@ -5,7 +5,7 @@ import {
   Float32BufferAttribute, Points, ShaderMaterial, AdditiveBlending, LineSegments, LineBasicMaterial,
   PlaneGeometry, ShadowMaterial, NeutralToneMapping, SRGBColorSpace, PCFShadowMap, Group,
 } from "three";
-import { LAND_RAMP, RICE_DIV, ramp, C } from "./palette.js";
+import { LAND_RAMP, RICE_DIV, JIK_RAMP, ramp } from "./palette.js";
 
 export const STAGE_W = 1920, STAGE_H = 1080;
 const MAP_H = 10; // 지도 높이(월드 단위)
@@ -89,6 +89,8 @@ export function createMap(canvas, I) {
   // ── 시군 기둥 ─────────────────────────────────────────────
   const maxLand = Math.max(...Object.values(I.land.v).filter(Boolean));
   const dims = { cap: col("#1f242d"), side: col("#14171d") };
+  const jSorted = Object.values(I.jikbul.v).sort((a, b) => a - b);
+  const jikRank = (v) => { let lo = 0, hi = jSorted.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (jSorted[m] < v) lo = m + 1; else hi = m; } return 0.08 + 0.92 * (lo / (jSorted.length - 1)); };
   const map = new Group();
   scene.add(map);
   const units = I.map.sigun.map((s) => {
@@ -105,6 +107,8 @@ export function createMap(canvas, I) {
     const dv = I.rice.dev[s.key];
     const riceCol = dv == null ? col(RICE_DIV.na)
       : col(RICE_DIV.mid).lerp(col(dv < 0 ? RICE_DIV.lo : RICE_DIV.hi), Math.min(1, Math.abs(dv) / 0.05) ** 0.8);
+    const jv = I.jikbul.v[s.key];
+    const jikCol = col(jv == null ? "#262c28" : ramp(JIK_RAMP, jikRank(jv)));
     const cap = new MeshStandardMaterial({ roughness: 0.58, metalness: 0.04, transparent: true });
     const side = new MeshStandardMaterial({ roughness: 0.75, metalness: 0.0, transparent: true });
     const mesh = new Mesh(geo, [cap, side]);
@@ -114,7 +118,7 @@ export function createMap(canvas, I) {
     const [cx, cy] = P(...s.c);
     // 솟는 차례: 남서 → 북동으로 물결
     const delay = Math.min(1, Math.max(0, ((cx + 4) / 9) * 0.45 + ((cy + 5) / 10) * 0.55));
-    return { key: s.key, mesh, cap, side, h: FLAT + (H_MAX - FLAT) * lt, landCol, riceCol, cx, cy, delay, land, rings: s.rings };
+    return { key: s.key, mesh, cap, side, h: FLAT + (H_MAX - FLAT) * lt, landCol, riceCol, jikCol, cx, cy, delay, land, rings: s.rings };
   });
   const byKey = new Map(units.map((u) => [u.key, u]));
 
@@ -219,7 +223,7 @@ export function createMap(canvas, I) {
     units.forEach((u) => {
       const r = smooth((S.rise - u.delay * 0.5) / 0.5);
       u.mesh.scale.z = FLAT + (u.h - FLAT) * r;
-      tmp.lerpColors(u.landCol, u.riceCol, S.riceColor).lerp(dims.cap, S.mapDim);
+      tmp.lerpColors(u.landCol, u.riceCol, S.riceColor).lerp(u.jikCol, S.jikColor).lerp(dims.cap, S.mapDim);
       u.cap.color.copy(tmp);
       u.cap.emissive.copy(tmp).multiplyScalar(0.16 * (1 - S.mapDim));
       tmpS.copy(tmp).multiplyScalar(0.52).lerp(dims.side, S.mapDim);

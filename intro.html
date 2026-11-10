@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>소개</title>
-  <meta name="description" content="지역농업 현황판 30초 소개: 시군 지도, 벼 작황 예측, 물류 흐름, 농사용 전기, 그리고 일곱 가지 화면.">
+  <meta name="description" content="지역농업 현황판 소개 영상: 11개 화면과 위성지도, 벼 작황 예측의 정확도, 직불금·고향사랑기금, 그리고 만든 이의 생각.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/intro/intro.css">
@@ -35,7 +35,7 @@
 
     <main class="it-main">
       <div class="it-player" id="player">
-        <div class="stage" id="stage" role="img" aria-label="지역농업 현황판 30초 소개 영상: 빛 입자가 시군 지도로 모이고, 경지면적 3차원 지도, 2026년 쌀 단수 예측, 시군 사이 물류 흐름, 농사용 전기 200개월 나선, 나머지 일곱 화면 순서로 보여 준다">
+        <div class="stage" id="stage" role="img" aria-label="지역농업 현황판 소개 영상: 시군 3차원 지도, 실제 현황판 화면, 위성지도, 쌀 단수 예측과 정확도, 직불금·고향사랑기금, 물류 흐름, 농사용 전기, 나머지 여섯 화면, 자료 수집 현황, 만든 이의 생각 순서로 보여 준다">
           <canvas id="bg"></canvas>
           <canvas id="gl"></canvas>
           <canvas id="fx"></canvas>
@@ -51,12 +51,13 @@
           <svg class="i-again" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v3.8h3.8"/></svg>
         </button>
         <div class="it-trackwrap">
-          <div class="it-track" id="track" role="slider" tabindex="0" aria-label="재생 위치(초)" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0">
+          <div class="it-track" id="track" role="slider" tabindex="0" aria-label="재생 위치(초)" aria-valuemin="0" aria-valuemax="102" aria-valuenow="0">
             <div class="it-fill" id="fill"></div>
           </div>
           <div class="it-chaps" id="chaps"></div>
         </div>
-        <span class="it-time" id="time">0:00 / 0:30</span>
+        <span class="it-chapname" id="chapname">00 열기</span>
+        <span class="it-time" id="time">0:00 / 1:42</span>
         <a class="it-go" id="go" href="./" hidden>화면 열기 →</a>
       </div>
     </main>

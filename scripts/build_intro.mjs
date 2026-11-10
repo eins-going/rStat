@@ -14,7 +14,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const load = (file, name) => {
   const w = {};
   new Function("window", fs.readFileSync(path.join(ROOT, "data", file), "utf8"))(w);
-  return w[name];
+  return name ? w[name] : Object.values(w)[0];
 };
 
 // ── 지도: TopoJSON 풀기 → 평면 투영(사이트 app.js와 같은 방식) → 단순화 ─────────────
@@ -149,11 +149,62 @@ const flows = [...pair].sort((a, b) => b[1] - a[1]).slice(0, 70).map(([k, v]) =>
 const P = load("power.js", "AGRI_POWER");
 const power = { months: P.months, k: P.v["00"].k };
 
+// ── 직불금·고향사랑기금 ─────────────────────────────────────────────
+const J = load("jikbul.js");
+const jpi = J.periods.findLastIndex((p) => p.d.endsWith("1231"));
+const jYear = J.periods[jpi].y;
+const jikbul = { year: jYear, v: {}, nat: J.regions["00"][jpi][0][0], gov: J.ext["공익직불"][jpi] };
+sigun.forEach((s) => {
+  const r = J.regions[s.key]?.[jpi]?.[0]?.[0], hh = J.den.households[s.key];
+  if (r && hh) jikbul.v[s.key] = Math.round((r * 100) / hh); // 농가당 기본형 공익직불 예산(만원)
+});
+const GH = load("gohyang.js");
+const gi = (n) => GH.fields.indexOf(n);
+const gNat = GH.regions["00"];
+const gLast = GH.years.length - 1;
+const gohyang = {
+  years: GH.years.map((y, i) => ({ y: y.y, full: y.full, ymd: y.ymd, size: gNat[i][gi("size")] })),
+  last: Object.fromEntries(["size", "biz", "bizEp", "run", "runEp", "keep", "move"].map((k) => [k, gNat[gLast][gi(k)]])),
+  govs: GH.counts["00"][gLast], check: GH.check.cum || null,
+};
+
+// ── 화면마다 특장점 숫자 ────────────────────────────────────────────
+const appJs = fs.readFileSync(path.join(ROOT, "assets/app.js"), "utf8");
+const metrics = (appJs.match(/const METRICS = \[([\s\S]*?)\n  \];/)?.[1].match(/label:/g) || []).length;
+const FM = load("farmmap.js").regions["00"];
+const FAC = load("facilities.js");
+const EMP = load("employ.js");
+const NH = load("nhcoop.js");
+const AP = load("apfs.js");
+const RD = load("ruraldev.js");
+const SO = load("soil.js");
+const LV = load("livestock.js");
+const RIO = load("rio.js");
+const ST = load("status.js");
+const soilN = Object.values(SO.r["00"].c.ph).flat().reduce((a, b) => a + b, 0);
+const apLast = AP.periods.findLastIndex((p) => p.m === 12);
+const facts = {
+  metrics, sido: new Set(sigun.map((s) => s.sido)).size,
+  parcels: FM["전체"].n, parcelMed: FM["전체"].med, parcelSmall: FM["전체"].small, paddyArmt: FM["논"].armt, farmYear: load("farmmap.js").year,
+  facilities: FAC.rows.length, facKinds: FAC.kinds.length,
+  rio: { regions: RIO.regions.length, sectors: Object.keys(RIO.sectorNames).length, year: RIO.year },
+  od: { years: OD.years.length, from: OD.years[0], to: OD.years.at(-1), crops: OD.crops.length, regions: OD.regions.length },
+  power: { regions: Object.keys(P.v).length, months: P.months.length, types: P.types },
+  employ: { from: EMP.years[0], to: EMP.years.at(-1), a0: EMP.y["00"].a[0], a1: EMP.y["00"].a.at(-1), months: EMP.months.length },
+  agfin: { coops: NH.coops.length, cats: AP.cats.length, year: AP.periods[apLast].y, cnt: AP.regions["00"][apLast].t[0], paid: AP.regions["00"][apLast].t[5] },
+  ruraldev: { sites: Object.values(RD.krc.sites).reduce((s, a) => s + a.length, 0), cats: RD.cats.length },
+  soil: { tests: soilN, chem: SO.chem.length, obst: SO.obst.length },
+  livestock: { villages: LV.r["00"].nv, from: LV.years[0], to: LV.years.at(-1), fac: LV.r["00"].fac.length },
+  status: { items: ST.items.length, auto: ST.items.filter((i) => i.method === "자동" || i.method === "실시간").length, orgs: new Set(ST.items.map((i) => i.origin.split(/[ ·]/)[0])).size },
+  riceAcc: Object.fromEntries(["stat", "krei", "norm", "m0731", "m0815", "m0901", "m0915", "m1001"].map((k) => [k, R.acc[k]?.mae])), riceFrom: R.acc.from,
+};
+
 const INTRO = {
   built: new Date().toISOString().slice(0, 10), Q,
   map: { sigun: sigun.map(({ key, sido, rings, c }) => ({ key, sido, rings, c })), lineSido, lineSigun },
   land: { year: landYear, v: land, nat: natLand },
-  rice, flows: { year: odYear, top: flows, months: "1~11월" }, power,
+  rice, flows: { year: odYear, top: flows, months: "1~11월" }, power, jikbul, gohyang, facts,
+  shots: fs.existsSync(path.join(OUT, "shots/shots.json")) ? JSON.parse(fs.readFileSync(path.join(OUT, "shots/shots.json"), "utf8")) : {},
 };
 const js = `// 소개 영상 자료 (scripts/build_intro.mjs가 data/*.js에서 뽑음 — 손으로 고치지 않는다)\nwindow.INTRO = ${JSON.stringify(INTRO)};\n`;
 fs.writeFileSync(path.join(OUT, "intro_data.js"), js);
