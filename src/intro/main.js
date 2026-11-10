@@ -8,6 +8,7 @@ import { createRice } from "./rice.js";
 import { createBudget } from "./budget.js";
 import { createScreen, createWall, VIEW_W, VIEW_H } from "./screens.js";
 import { createSpots } from "./spots.js";
+import { createMusic } from "./audio.js";
 import { SCENE_GLOW, LAND_RAMP, RICE_DIV, JIK_RAMP, DEV_RAMP, LV_RAMP, C, hex } from "./palette.js";
 
 const I = window.INTRO;
@@ -79,16 +80,16 @@ stage.insertAdjacentHTML("beforeend", `
     ${scene("real", "02", "실제 화면", ["고르면, 그 시군의", "현황판이 된다"], "시도·시군을 고르거나 지도를 누르면<br>모든 칸이 그 지역 숫자로 바뀝니다",
       pts([["전년 대비", "증감이 위쪽 띠로 흐른다"], ["시도 안 순위", "지도 아래에서 바로 비교"], ["주소 공유", "보던 화면을 그대로 보낸다"]]), "narrow")}
     ${scene("sat", "03", "위성지도", ["통계 뒤의", "실제 땅을 본다"], "",
-      pts([["항공영상", `팜맵 필지 · 유통시설 ${comma(F.facilities)}곳 · 주제도`], ["Sentinel-2", "10m 해상도 · 5일마다 · 논만 골라 생육(NDVI)"], ["레이더", "구름 낀 날도, 밤에도 물 댄 논을 가른다"]]), "narrow")}
+      pts([["항공영상", `팜맵 필지 · 유통시설 ${comma(F.facilities)}곳 · 주제도`], ["논 NDVI", "Sentinel-2 10m — 논마다 벼가 얼마나 푸른지"], ["5일마다", "구름 낀 날은 레이더로, 2017년부터 날짜별로"]]), "narrow")}
     ${scene("rice", "04", "벼 작황", ["쌀 수확량을", "7월부터 미리"], "기상·위성·병해충 예찰로<br>시군별 단수를 7번 예측",
       `<div class="big b1">${count(fcNow.y, { dec: 1 })}<small>kg/10a</small></div>
        <p class="big-cap b1">${I.rice.year} 전국 단수 예측 · ${fcNow.lab}</p>
        <div class="big b2">${count(F.riceAcc.m0915, { dec: 1, from: F.riceAcc.norm })}<small>kg 평균 오차</small></div>
        <p class="big-cap b2">9월 15일 예측 · 국가데이터처 10월 예상 ${F.riceAcc.stat}kg과 같은 수준을 3주 먼저</p>`)}
-    ${scene("jik", "05", "직불금·고향사랑", ["농업 예산이", "어디로 가는지"], "지방재정365 세부사업 집행 자료를<br>자동으로 읽어 시군별로",
-      `<ul class="chips"><li><b>${GH.govs}곳</b>지자체 기금</li><li><b>${comma(ghLast.size / ghFirst.size)}배</b>${ghFirst.y}년보다 커진 규모</li><li><b>대조 검증</b>행정안전부 발표 모금액</li></ul>`)}
-    ${scene("flow", "06", "물류동향", ["농산물이", "움직이는 길"], `물류기기 공동이용 ${F.od.years}년 · ${F.od.crops}개 품목<br>판로·출하 주체까지 시군 사이 흐름`,
-      `<ol class="pairs">${I.flows.top.slice(0, 3).map(([o, d, v]) => `<li><span class="o">${unitName(o)}</span><i></i><span class="d">${unitName(d)}</span><b>${man(v, 0)}개</b></li>`).join("")}</ol>`)}
+    ${scene("jik", "05", "직불금·고향사랑", ["직불금, 우리 지역에", "얼마나 오나"], "지방재정365 세부사업 예산현액을<br>자동으로 모아 시군·농가당으로",
+      `<ul class="chips"><li><b>${jo(I.jikbul.pubNat)}</b>공익직불 ${I.jikbul.year}</li><li><b>${I.jikbul.bizCount}개</b>시군 세부사업</li><li><b>고향사랑기금</b>${GH.govs}곳도</li></ul>`)}
+    ${scene("flow", "06", "물류동향", ["수박 파렛트가", "움직이는 길"], `물류기기 공동이용 ${F.od.years}년 · ${F.od.crops}개 품목 중<br>${I.flows.year}년 수박 파렛트 ${comma(I.flows.total)}개의 이동`,
+      `<ol class="pairs">${I.flows.top.slice(0, 3).map(([o, d, v]) => `<li><span class="o">${unitName(o)}</span><i></i><span class="d">${unitName(d)}</span><b>${comma(v)}개</b></li>`).join("")}</ol>`)}
     ${scene("power", "07", "농사용 전기", ["계절을 따라 도는", "농업 전력"], `한전 ${F.power.regions}개 지역 · ${F.power.months}개월`,
       `<ul class="it-facts">
         <li><b>4가지</b><span>${F.power.types.join("·")} 계절 유형 자동 분류</span></li>
@@ -108,7 +109,7 @@ stage.insertAdjacentHTML("beforeend", `
     <div class="it-lg" id="lg-stats"><span>경지면적 ${I.land.year}</span><i class="bar" style="background:${gradient(LAND_RAMP)}"></i><span>높이·색이 클수록 넓다</span></div>
     <div class="it-lg" id="lg-rice"><span>평년보다 낮음</span><i class="bar" style="background:${gradient([RICE_DIV.lo, RICE_DIV.mid, RICE_DIV.hi])}"></i><span>높음 · ${I.rice.year} 시군 예측</span></div>
     <div class="it-lg" id="lg-jik"><span>적음</span><i class="bar" style="background:${gradient(JIK_RAMP)}"></i><span>많음 · 농가당 공익직불(기본형) 예산 ${I.jikbul.year}</span></div>
-    <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.origin}"></i><span>보낸 곳</span><i class="it-dot" style="background:${C.dest}"></i><span>받은 곳 · 컨테이너 ${I.flows.year}년 ${I.flows.months} · 상위 50</span></div>
+    <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.melonO}"></i><span>보낸 산지</span><i class="it-dot" style="background:${C.melonD}"></i><span>받은 곳 · 수박 파렛트 ${I.flows.year}년 ${I.flows.months} · 상위 50</span></div>
     <div class="it-lg" id="lg-coop"><i class="it-dot" style="background:#f5a524"></i><span>지역농협 ${SP.coopKinds.L}</span><i class="it-dot" style="background:#ff7a59"></i><span>축협 ${SP.coopKinds.X}</span><i class="it-dot" style="background:#7cc98f"></i><span>품목농협 ${SP.coopKinds.I} · 점 크기 = 자산</span></div>
     <div class="it-lg" id="lg-dev"><span>적음</span><i class="bar" style="background:${gradient(DEV_RAMP)}"></i><span>많음 · 기둥 높이 = 시군 사업 지구 수 (한국농어촌공사)</span></div>
     <div class="it-lg" id="lg-lv"><span>마을당 분뇨 적음</span><i class="bar" style="background:${gradient(LV_RAMP)}"></i><span>많음 · 국립환경과학원 전국오염원조사</span></div>
@@ -117,6 +118,24 @@ stage.insertAdjacentHTML("beforeend", `
 
 const scr = createScreen(stage, I, ["home", "home_jn", "home_hn", "home_sat", "rice_sat"]);
 createWall(stage, WALL);
+const ND = I.shots.ndvi || {};
+stage.insertAdjacentHTML("beforeend", `
+  <div class="nd" id="nd">
+    <div class="nd-frame">
+      <img class="nd-w" src="assets/intro/shots/ndvi_wide.webp" alt="" decoding="async" style="transform-origin:${(ND.fx ?? 0.3) * 100}% ${(ND.fy ?? 0.42) * 100}%">
+      <img class="nd-z" src="assets/intro/shots/ndvi_zoom.webp" alt="" decoding="async" style="transform-origin:40% 63%">
+      <img class="nd-c" src="assets/intro/shots/ndvi_close.webp" alt="" decoding="async">
+      <span class="nd-ring" style="left:${(ND.fx ?? 0.3) * 100}%;top:${(ND.fy ?? 0.42) * 100}%"></span>
+      <div class="nd-tag"><b>${ND.where || "김제시"} 논 NDVI</b><span>Sentinel-2 · ${ND.date ? ND.date.replace(/-/g, ".") : ""} · 구름 ${ND.cloud ?? "–"}%</span></div>
+      <div class="nd-lg"><span>낮음</span><i></i><span>높음 · 벼가 푸를수록 초록</span></div>
+    </div>
+  </div>`);
+const mini = (id, shot, x, y, w) => {
+  stage.insertAdjacentHTML("beforeend", `<div class="mini" id="mini-${id}" style="left:${x}px;top:${y}px;width:${w}px"><div class="scr-bar"><i></i><i></i><i></i><span class="scr-url">ag-rstat.vercel.app/${shot}</span></div><div class="mini-view" style="height:${Math.round((w * 9) / 16)}px"><img src="assets/intro/shots/${shot}.webp" alt="" decoding="async"></div></div>`);
+  return $(`#mini-${id}`);
+};
+mini("rio", "rio", 150, 560, 600);
+mini("employ", "employ", 1250, 96, 560);
 stage.insertAdjacentHTML("beforeend", `
   <div class="wall-copy" id="sc-wall">
     <p class="kicker"><b>14</b>자료 수집 현황</p>
@@ -225,7 +244,7 @@ function clickAt(rect, at, move = 0.8) {
     .fromTo(scr.cursor.querySelector("svg"), { scale: 1 }, { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1, ease: "power1.inOut" }, at);
 }
 
-gsap.set(".sc, .it-lg, .outro, .maker, .wall-copy, #scr-wrap, #wall-wrap, .mk", { autoAlpha: 0 });
+gsap.set(".sc, .it-lg, .outro, .maker, .wall-copy, #scr-wrap, #wall-wrap, .mk, #nd, .nd-z, .nd-c, .mini", { autoAlpha: 0 });
 gsap.set(Z, { scale: 1, x: 0, y: 0, transformOrigin: "0 0" });
 gsap.set(scr.cursor, { x: VIEW_W + 60, y: VIEW_H + 60, autoAlpha: 0 });
 gsap.set(scr.cursor.querySelector(".ripple"), { autoAlpha: 0 });
@@ -284,12 +303,18 @@ tl.to(scr.cursor, { autoAlpha: 0, duration: 0.3 }, T.sat + 0.7);
 copyIn("#sc-sat", T.sat + 0.3);
 ptsIn("#sc-sat", T.sat + 1.4, 0.5);
 zoomTo([300, 120, 960, 600], T.sat + 0.8, 3.4, "sine.inOut", 1);
-showImg("rice_sat", T.sat + 4.3, 0.6);
-zoomTo(null, T.sat + 4.3, 0.6, "power2.out");
-const satMark = scr.mark("sat", scr.box("rice_sat", "#map-wrap"), "Sentinel-2 NDVI · 해남군 논", "top");
-zoomTo(scr.box("rice_sat", "#map-wrap"), T.sat + 4.9, 2.6, "sine.inOut", 0.98);
-if (satMark) tl.fromTo(satMark, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, T.sat + 5.3).to(satMark, { autoAlpha: 0, duration: 0.3 }, T.sat + 7.2);
-tl.to("#scr-wrap", { autoAlpha: 0, rotateY: 14, x: -140, z: -240, duration: 0.7, ease: "power2.in" }, T.rice - 0.6);
+// 항공영상 창이 물러나고 논 NDVI가 크게: 시군 전체 → 확대 → 더 가까이
+tl.to("#scr-wrap", { autoAlpha: 0, scale: 0.92, rotateY: -16, x: -80, duration: 0.7, ease: "power2.in" }, T.sat + 2.6);
+tl.set("#nd", { autoAlpha: 1 }, T.sat + 2.8)
+  .fromTo("#nd .nd-frame", { autoAlpha: 0, scale: 0.9, rotateY: 14 }, { autoAlpha: 1, scale: 1, rotateY: 0, duration: 1.0, ease: "expo.out" }, T.sat + 2.8)
+  .fromTo("#nd .nd-w", { scale: 1, autoAlpha: 1 }, { scale: 2.1, duration: 1.8, ease: "power2.in" }, T.sat + 3.6)
+  .fromTo("#nd .nd-ring", { autoAlpha: 0, scale: 2 }, { autoAlpha: 1, scale: 1, duration: 0.5, ease: "power2.out" }, T.sat + 3.2)
+  .to("#nd .nd-ring", { autoAlpha: 0, scale: 0.4, duration: 0.4 }, T.sat + 4.4)
+  .fromTo("#nd .nd-z", { autoAlpha: 0, scale: 1.06 }, { autoAlpha: 1, scale: 1, duration: 0.5, ease: "power1.out" }, T.sat + 5.1)
+  .to("#nd .nd-z", { scale: 2.07, duration: 1.3, ease: "power2.in" }, T.sat + 5.8)
+  .fromTo("#nd .nd-c", { autoAlpha: 0, scale: 1.04 }, { autoAlpha: 1, scale: 1.12, duration: 1.4, ease: "sine.out" }, T.sat + 6.9)
+  .fromTo("#nd .nd-tag, #nd .nd-lg", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.1 }, T.sat + 3.4)
+  .to("#nd", { autoAlpha: 0, duration: 0.5, ease: "power2.in" }, T.rice - 0.55);
 copyOut("#sc-sat", T.rice - 0.6);
 
 // 4 벼 작황 (29–40초): 예측 → 13년 재현 정확도
@@ -365,6 +390,11 @@ SPOTS.forEach((_, i) => spotCopy(i));
 to({ rioA: 1 }, sp(0) - 0.2, 0.5, "power1.out");
 to({ rioP: 1 }, sp(0) + 0.1, 2.6, "power2.out");
 to({ rioA: 0 }, sp(1) - 0.5, 0.45);
+const miniIn = (id, t0, t1, from) => tl.fromTo(`#mini-${id}`, { autoAlpha: 0, ...from }, { autoAlpha: 1, x: 0, y: 0, rotateY: 0, duration: 0.9, ease: "expo.out" }, t0)
+  .fromTo(`#mini-${id} img`, { scale: 1 }, { scale: 1.14, duration: t1 - t0, ease: "sine.inOut" }, t0)
+  .to(`#mini-${id}`, { autoAlpha: 0, duration: 0.4 }, t1 - 0.45);
+miniIn("rio", sp(0) + 0.9, sp(1), { y: 40 });
+miniIn("employ", sp(1) + 0.5, sp(2), { x: 60 });
 // 09 농업고용: 63년 곡선
 to({ empA: 1 }, sp(1) - 0.1, 0.4, "none");
 to({ empP: 1 }, sp(1) + 0.3, 3.2, "power1.inOut");
@@ -515,6 +545,28 @@ document.addEventListener("keydown", (e) => {
 });
 let wasHidden = false;
 document.addEventListener("visibilitychange", () => { if (document.hidden && !tl.paused()) { tl.pause(); wasHidden = true; } else if (!document.hidden && wasHidden) { wasHidden = false; tl.play(); } });
+
+// ── 배경음악 (소리는 사용자가 켤 때만) ─────────────────────
+const music = createMusic({ T, hits: CH.slice(1).map((c, i) => ({ t: c.t, big: c.t >= T.spot && c.t < T.wall ? 0.55 : c.t >= T.maker && c.t < T.end ? 0.4 : 1 })) });
+const sndBtn = $("#snd"), volIn = $("#vol"), sndHint = $("#sndhint");
+const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* 저장 안 됨 */ } } };
+const v0 = +(store.get("intro-vol") ?? 70);
+volIn.value = v0; music.setVolume(v0 / 100);
+function sndUI() {
+  sndBtn.setAttribute("aria-pressed", music.on);
+  sndBtn.setAttribute("aria-label", music.on ? "소리 끄기" : "소리 켜기");
+  sndBtn.dataset.on = music.on ? "1" : "0";
+  if (music.on) sndHint.hidden = true;
+}
+async function soundOn() { await music.enable(); sndUI(); }
+sndBtn.addEventListener("click", async () => { if (music.on) music.disable(); else await soundOn(); sndUI(); });
+sndHint.addEventListener("click", soundOn);
+volIn.addEventListener("input", async () => {
+  const v = +volIn.value; music.setVolume(v / 100); store.set("intro-vol", v);
+  if (v > 0 && !music.on) await soundOn();
+});
+document.addEventListener("keydown", (e) => { if (e.key === "m" && !e.target.closest("input, textarea, select")) sndBtn.click(); });
+gsap.ticker.add(() => music.sync(tl.time(), !tl.paused() && tl.progress() < 1));
 
 window.__intro = { tl, S }; // 확인용 (scripts에서 장면을 찍을 때)
 

@@ -15,7 +15,7 @@ export function createFx(canvas, I, map) {
   // ── 물류 흐름 ───────────────────────────────────────────
   const flows = I.flows.top.slice(0, 50).map(([o, d, v], i) => ({ o, d, v, i, ph: frac(i * 0.618) }));
   const vmax = flows[0].v;
-  const O = hex(C.origin), Dc = hex(C.dest);
+  const O = hex(C.melonO), Dc = hex(C.melonD);
   const bez = (p0, c, p1, t) => {
     const u = 1 - t;
     return [u * u * p0[0] + 2 * u * t * c[0] + t * t * p1[0], u * u * p0[1] + 2 * u * t * c[1] + t * t * p1[1]];

@@ -68,6 +68,55 @@ im.resize((640, 360), Image.LANCZOS).save(sys.argv[3], "WEBP", quality=80, metho
   meta[name] = { w: W, h: H, boxes };
   console.log(name, Object.keys(boxes).length, "요소", (fs.statSync(path.join(OUT, `${name}.webp`)).size / 1024).toFixed(0) + "KB");
 }
+// 논 NDVI 확대: 벼 작황 위성 영상(Sentinel-2 NDVI, 논만)을 한여름 맑은 날로 골라 시군 전체 → 두 단계 확대해 찍는다
+if (!only || only.has("ndvi")) {
+  const NDVI_AT = process.env.NDVI_AT || "/rice?v=sat#%EC%A0%84%EB%B6%81/%EA%B9%80%EC%A0%9C%EC%8B%9C"; // 전북/김제시 (만경평야)
+  const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
+  await page.goto(BASE + NDVI_AT, { waitUntil: "networkidle", timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(9000);
+  // 7~9월 맑은 날 중 가장 맑은 날을 누른다
+  const pick = await page.evaluate(() => {
+    const rs = [...document.querySelectorAll("#sat-strip rect")].map((r) => {
+      const t = r.querySelector("title")?.textContent || "", m = t.match(/^(\d{4}-(\d{2})-\d{2}).*구름 (\d+)%/);
+      const b = r.getBoundingClientRect();
+      return m ? { d: m[1], mo: +m[2], cloud: +m[3], x: b.x + b.width / 2, y: b.y + b.height / 2 } : null;
+    }).filter((e) => e && e.mo >= 7 && e.mo <= 9);
+    rs.sort((a, b) => a.cloud - b.cloud || b.d.localeCompare(a.d));
+    return rs[0] || null;
+  });
+  console.log("NDVI 날짜", pick);
+  if (pick) { await page.mouse.click(pick.x, pick.y); await page.waitForTimeout(9000); }
+  await page.locator('#sat-bar input[data-ui="labels"]').uncheck().catch(() => {}); // 지명·도로를 끈다
+  await page.addStyleTag({ content: "#sat-hint,.leaflet-control-zoom,.leaflet-control-attribution{display:none!important}" });
+  await page.waitForTimeout(1500);
+  const mapBox = await page.locator("#sat-map").boundingBox();
+  const shot = async (name) => {
+    const png = path.join(TMP, `${name}.png`);
+    await page.locator("#sat-map").screenshot({ path: png });
+    execFileSync("python3", ["-c", `
+import sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert("RGB")
+im.save(sys.argv[2], "WEBP", quality=86, method=6)
+`, png, path.join(OUT, `${name}.webp`)]);
+    console.log(name, (fs.statSync(path.join(OUT, `${name}.webp`)).size / 1024).toFixed(0) + "KB");
+  };
+  await shot("ndvi_wide");
+  const fx = +(process.env.NDVI_FX || 0.5), fy = +(process.env.NDVI_FY || 0.5); // 확대할 곳 (지도 안 비율)
+  const cx = mapBox.x + mapBox.width * fx, cy = mapBox.y + mapBox.height * fy;
+  const nz = +(process.env.NDVI_Z || 2);
+  for (let i = 0; i < nz; i++) { await page.mouse.dblclick(cx, cy); await page.waitForTimeout(2500); }
+  await page.mouse.move(mapBox.x + 5, mapBox.y + 5);
+  await page.waitForTimeout(+(process.env.NDVI_WAIT || 22000));
+  await shot("ndvi_zoom");
+  // 한 단계 더 (논 필지만 남는 13단계 이상) — 타일이 늦게 오므로 오래 기다린다
+  await page.mouse.dblclick(cx, cy);
+  await page.mouse.move(mapBox.x + 5, mapBox.y + 5);
+  await page.waitForTimeout(+(process.env.NDVI_WAIT2 || 45000));
+  await shot("ndvi_zoom2");
+  meta.ndvi = { date: pick?.d || null, cloud: pick?.cloud ?? null, w: Math.round(mapBox.width), h: Math.round(mapBox.height), fx, fy, zoom: nz, where: "김제시" };
+  await page.close();
+}
 await browser.close();
 fs.rmSync(TMP, { recursive: true, force: true });
 fs.writeFileSync(metaPath, JSON.stringify(meta, null, 1));

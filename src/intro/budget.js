@@ -1,4 +1,6 @@
-// SVG: 고향사랑기금 — 연도별 기금 예산현액이 자라는 막대 + 올해 예산현액이 사업·운영·적립으로 갈리는 띠.
+// SVG: 시도별 공익직불 예산현액 막대 (길이 = 예산현액, 색 = 농가당 예산, 지도 색과 같은 눈금)
+import { JIK_RAMP, ramp, rgb } from "./palette.js";
+
 const NS = "http://www.w3.org/2000/svg";
 const el = (tag, attrs = {}, parent) => {
   const e = document.createElementNS(NS, tag);
@@ -11,62 +13,36 @@ const smooth = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
 const eok = (v) => Math.round(v / 100).toLocaleString("ko-KR"); // 백만원 → 억원
 
 export function createBudget(svg, I) {
-  const G = I.gohyang;
+  const J = I.jikbul, rows = J.sido.filter((r) => r.pub > 0);
   const g = el("g", { class: "bd", opacity: 0 }, svg);
-  // 연도별 막대
-  const X0 = 150, YB = 950, HMAX = 210, BW = 58, GAP = 26;
-  const max = Math.max(...G.years.map((y) => y.size));
-  el("text", { x: X0, y: 640, class: "bd-h" }, g).textContent = `고향사랑기금 예산현액 · 전국 ${G.govs}곳`;
-  const bars = G.years.map((y, i) => {
-    const x = X0 + i * (BW + GAP), h = (y.size / max) * HMAX;
+  const X0 = 150, NX = 206, BX = 222, BW = 470, Y0 = 628, RH = 20.5;
+  const max = Math.max(...rows.map((r) => r.pub));
+  const perFarm = (r) => (r.hh ? (r.pub * 100) / r.hh : 0); // 만원
+  const pf = rows.map(perFarm), pfS = [...pf].sort((a, b) => a - b);
+  const rank = (v) => pfS.indexOf(v) / Math.max(1, pfS.length - 1);
+  el("text", { x: X0, y: Y0 - 22, class: "bd-h" }, g).textContent = `시도별 공익직불 예산현액 · ${J.year}`;
+  el("text", { x: 900, y: Y0 - 22, "text-anchor": "end", class: "bd-y" }, g).textContent = "농가당";
+  const bars = rows.map((r, i) => {
+    const y = Y0 + i * RH, w = (r.pub / max) * BW, c = ramp(JIK_RAMP, 0.25 + 0.75 * rank(pf[i]));
     const gg = el("g", {}, g);
-    const r = el("rect", { x, y: YB - h, width: BW, height: h, rx: 8, class: i === G.years.length - 1 ? "bd-bar now" : "bd-bar" }, gg);
-    const v = el("text", { x: x + BW / 2, y: YB - h - 12, "text-anchor": "middle", class: "bd-v" }, gg);
-    v.textContent = `${eok(y.size)}억`;
-    el("text", { x: x + BW / 2, y: YB + 28, "text-anchor": "middle", class: "bd-y" }, gg).textContent = y.full ? y.y : `${y.y}.${y.ymd.slice(4, 6)}`;
-    return { r, v, h, x };
+    el("text", { x: NX, y: y + 14, "text-anchor": "end", class: "bd-n" }, gg).textContent = r.name;
+    const b = el("rect", { x: BX, y: y + 3, width: 0, height: RH - 7, rx: 4, fill: rgb(c) }, gg);
+    const v = el("text", { x: BX, y: y + 14, class: "bd-v2" }, gg);
+    v.textContent = `${eok(r.pub)}억`;
+    const f = el("text", { x: 900, y: y + 14, "text-anchor": "end", class: "bd-f" }, gg);
+    f.textContent = `${Math.round(pf[i]).toLocaleString("ko-KR")}만`;
+    return { gg, b, v, f, w };
   });
-  // 올해 예산현액이 어디로
-  const L = G.last, SX = 520, SW = 380, SY = 752;
-  const yr = G.years.at(-1);
-  el("text", { x: SX, y: 728, class: "bd-h2" }, g).textContent = `${yr.y}년 ${+yr.ymd.slice(4, 6)}월 말 ${eok(L.size)}억원이`;
-  const parts = [["사업", L.biz, L.bizEp, "#5fb37c"], ["운영", L.run, L.runEp, "#ffcf7a"], ["넘김", L.move, null, "#6b7280"], ["적립", L.keep, null, "#5fb3ff"]];
-  let cx = SX;
-  const segs = parts.map(([name, v, ep, c]) => {
-    const w = (v / L.size) * SW;
-    const gg = el("g", {}, g);
-    const r = el("rect", { x: cx, y: SY, width: Math.max(0, w - 3), height: 34, rx: 6, fill: c, opacity: 0.9 }, gg);
-    const e = ep != null ? el("rect", { x: cx, y: SY + 34 - 8, width: Math.max(0, (ep / L.size) * SW - 3), height: 8, rx: 3, fill: "#0b0d12", opacity: 0.45 }, gg) : null;
-    const s = { name, v, ep, c, x: cx, w, r, e, gg };
-    cx += w;
-    return s;
-  });
-  const rows = segs.filter((s) => s.name !== "넘김").map((s, i) => {
-    const gg = el("g", { opacity: 0 }, g);
-    const y = SY + 76 + i * 38;
-    el("rect", { x: SX, y: y - 13, width: 12, height: 12, rx: 3, fill: s.c }, gg);
-    const t = el("text", { x: SX + 22, y, class: "bd-row" }, gg);
-    t.innerHTML = s.ep != null
-      ? `<tspan class="b">${s.name} ${eok(s.v)}억</tspan><tspan dx="10">지출 ${eok(s.ep)}억 · 집행률 ${Math.round((s.ep / s.v) * 100)}%</tspan>`
-      : `<tspan class="b">${s.name} ${eok(s.v)}억</tspan><tspan dx="10">예산현액의 ${Math.round((s.v / L.size) * 100)}%를 남겨 둔다</tspan>`;
-    return gg;
-  });
-
   function render(S) {
     g.setAttribute("opacity", S.bdAlpha);
     if (S.bdAlpha <= 0.002) return;
-    bars.forEach((b, i) => {
-      const p = smooth((S.bdBars - i * 0.18) / 0.46);
-      b.r.setAttribute("height", b.h * p);
-      b.r.setAttribute("y", YB - b.h * p);
-      b.v.setAttribute("opacity", smooth((p - 0.7) / 0.3));
+    bars.forEach((r, i) => {
+      const p = smooth((S.bdBars - (i / bars.length) * 0.5) / 0.5);
+      r.gg.setAttribute("opacity", smooth(p * 3));
+      r.b.setAttribute("width", r.w * p);
+      r.v.setAttribute("x", BX + r.w * p + 8);
+      r.f.setAttribute("opacity", smooth((S.bdSplit - (i / bars.length) * 0.4) / 0.4));
     });
-    segs.forEach((s, i) => {
-      const p = smooth((S.bdSplit - i * 0.12) / 0.5);
-      s.gg.setAttribute("opacity", p);
-      s.r.setAttribute("width", Math.max(0, (s.w - 3) * p));
-    });
-    rows.forEach((r, i) => r.setAttribute("opacity", smooth((S.bdSplit - 0.45 - i * 0.12) / 0.3)));
   }
   return { render };
 }

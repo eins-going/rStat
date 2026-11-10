@@ -133,7 +133,12 @@ const rice = {
 // ── 물류동향: 최근 연도 컨테이너 시군 간 흐름 상위 ─────────────────────────
 const OD = load("od.js", "AGRI_OD");
 const odYear = OD.years.at(-1);
-const [fo, fd, , , , fv] = OD.f.at(-1);
+// 수박(복수박 포함)의 파렛트 이동
+const PAL = load("od_pallet.js", "AGRI_OD_EQ")["파렛트"];
+const melon = new Set(OD.crops.map((c, i) => (c.includes("수박") ? i : -1)).filter((i) => i >= 0));
+const [po, pd, pc, , , pv] = PAL.at(-1);
+const fo = [], fd = [], fv = [];
+for (let i = 0; i < pv.length; i++) if (melon.has(pc[i])) { fo.push(po[i]); fd.push(pd[i]); fv.push(pv[i]); }
 const keySet = new Set(sigun.map((s) => s.key));
 const pair = new Map();
 let odTotal = 0;
@@ -158,6 +163,16 @@ sigun.forEach((s) => {
   const r = J.regions[s.key]?.[jpi]?.[0]?.[0], hh = J.den.households[s.key];
   if (r && hh) jikbul.v[s.key] = Math.round((r * 100) / hh); // 농가당 기본형 공익직불 예산(만원)
 });
+const SIDO_KEYS = [...new Set(sigun.map((s) => s.sido))];
+const SN = { 11: "서울", 21: "부산", 22: "대구", 23: "인천", 24: "광주", 25: "대전", 26: "울산", 29: "세종", 31: "경기", 32: "강원", 33: "충북", 34: "충남", 35: "전북", 36: "전남", 37: "경북", 38: "경남", 39: "제주" };
+jikbul.sido = SIDO_KEYS.map((k) => {
+  const r = J.regions[k]?.[jpi] || [];
+  const pub = [0, 1, 2, 3, 4, 5].reduce((a, c) => a + (r[c]?.[0] || 0), 0); // 공익직불(기본형+선택형)
+  const own = (r[7]?.[0] || 0); // 자체·기타 직불
+  return { k, name: SN[k], pub, own, hh: J.den.households[k] || 0 };
+}).sort((a, b) => b.pub - a.pub);
+jikbul.pubNat = [0, 1, 2, 3, 4, 5].reduce((a, c) => a + (J.regions["00"][jpi][c]?.[0] || 0), 0);
+jikbul.bizCount = J.biz.length;
 const GH = load("gohyang.js");
 const gi = (n) => GH.fields.indexOf(n);
 const gNat = GH.regions["00"];
@@ -228,7 +243,7 @@ const INTRO = {
   built: new Date().toISOString().slice(0, 10), Q,
   map: { sigun: sigun.map(({ key, sido, rings, c }) => ({ key, sido, rings, c })), lineSido, lineSigun },
   land: { year: landYear, v: land, nat: natLand },
-  rice, flows: { year: odYear, top: flows, months: "1~11월" }, power, jikbul, gohyang, facts, spots,
+  rice, flows: { year: odYear, top: flows, months: "1~11월", crop: "수박", equip: "파렛트", total: odTotal }, power, jikbul, gohyang, facts, spots,
   shots: fs.existsSync(path.join(OUT, "shots/shots.json")) ? JSON.parse(fs.readFileSync(path.join(OUT, "shots/shots.json"), "utf8")) : {},
 };
 const js = `// 소개 영상 자료 (scripts/build_intro.mjs가 data/*.js에서 뽑음 — 손으로 고치지 않는다)\nwindow.INTRO = ${JSON.stringify(INTRO)};\n`;

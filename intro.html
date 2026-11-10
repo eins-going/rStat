@@ -43,6 +43,7 @@
           <svg id="rice" viewBox="0 0 1920 1080" aria-hidden="true"></svg>
           <svg id="spsvg" viewBox="0 0 1920 1080" aria-hidden="true"></svg>
         </div>
+        <button type="button" class="it-sndhint" id="sndhint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="w" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>소리 켜기</button>
         <button type="button" class="it-bigplay" id="bigplay" aria-label="재생"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg></button>
       </div>
 
@@ -57,6 +58,12 @@
             <div class="it-fill" id="fill"></div>
           </div>
           <div class="it-chaps" id="chaps"></div>
+        </div>
+        <div class="it-sound">
+          <button type="button" class="it-snd" id="snd" aria-pressed="false" aria-label="소리 켜기" data-on="0">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="w" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/><path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+          </button>
+          <input type="range" id="vol" min="0" max="100" value="70" aria-label="음량">
         </div>
         <span class="it-chapname" id="chapname">00 열기</span>
         <span class="it-time" id="time">0:00 / 1:46</span>

@@ -12,6 +12,8 @@ export const C = {
   coral: "#ff6b5e",
   origin: "#ffd28a", // 물류: 보낸 곳 (flow.css)
   dest: "#9fd1ff", //   받은 곳
+  melonO: "#5fd07a", // 수박: 보낸 산지(껍질 초록)
+  melonD: "#ff5a6e", //       받은 곳(속살 빨강)
 };
 
 // 장면별 배경 빛 두 색 (bg.js가 장면 사이를 섞는다)
