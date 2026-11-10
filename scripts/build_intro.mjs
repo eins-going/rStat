@@ -223,7 +223,12 @@ const rioSp = { year: RIO.year, total: natAgri, regions: RIO.regions.map((r) => 
 const toQ = (lon, lat) => norm([drawLon(lon) * K, lat]).map((v) => Math.round(v * Q));
 const NK = { L: 0, X: 1, I: 2 };
 const lastNum = (a) => [...(a || [])].reverse().find((v) => v != null) ?? 0;
-const coops = NH.coops.filter((c) => c.xy).map((c) => [...toQ(c.xy[0], c.xy[1]), NK[c.k] ?? 0, Math.round(lastNum(c.v?.[1]))]);
+// 점 크기 = 당기순이익(억원): 반기 누계라 6월은 상반기뿐이므로 가장 최근 12월(1년 치)을 쓴다. 적자는 음수
+const nhInc = NH.fields.indexOf("income"), nhDec = NH.periods.findLastIndex((p) => p.endsWith("12"));
+const incOf = (c) => c.v?.[nhInc]?.[nhDec] ?? null;
+const coops = NH.coops.filter((c) => c.xy && incOf(c) != null).map((c) => [...toQ(c.xy[0], c.xy[1]), NK[c.k] ?? 0, incOf(c)]);
+const incAll = NH.coops.map(incOf).filter((v) => v != null);
+const coopIncome = { year: +NH.periods[nhDec].slice(0, 4), pos: incAll.filter((v) => v >= 0).length, neg: incAll.filter((v) => v < 0).length, sum: Math.round(incAll.reduce((x, y) => x + y, 0)) };
 const coopKinds = NH.coops.reduce((a, c) => ((a[c.k] = (a[c.k] || 0) + 1), a), {});
 // 농촌개발 사업 지구 수 (시군)
 const dev = Object.fromEntries(Object.entries(RD.krc.sites).map(([k, v]) => [k, v.length]));
@@ -237,7 +242,7 @@ const lvSp = {
   top: LV.r["00"].v?.[0] || null,
 };
 const empSp = { years: EMP.years.map(Number), a: EMP.y["00"].a };
-const spots = { rio: rioSp, coops, coopKinds, dev, soil: soilSp, lv: lvSp, employ: empSp };
+const spots = { rio: rioSp, coops, coopKinds, coopIncome, dev, soil: soilSp, lv: lvSp, employ: empSp };
 
 const INTRO = {
   built: new Date().toISOString().slice(0, 10), Q,

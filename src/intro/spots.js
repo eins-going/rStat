@@ -1,7 +1,7 @@
 // 08~13 강조 그래픽: 화면 캡처 대신 그 화면의 핵심을 한 장의 그림으로.
 //  08 산업연관표  17개 시도 꽃잎(길이=농식품 산출액, 색=특화도) + 퍼지는 파급 물결   (Canvas)
 //  09 농업고용    63년 취업자 곡선이 화면 폭으로 그려진다                               (SVG)
-//  10 금융보험    농·축협이 지도 위에 하나씩 켜진다                                    (Canvas, 지도 투영)
+//  10 금융보험    농·축협이 지도 위에 하나씩 켜진다 (점 크기 = 당기순이익, 적자는 파랑)   (Canvas, 지도 투영)
 //  11 농촌개발    사업 지구 수만큼 솟는 시군 기둥 (map3d.js가 그림)
 //  12 토양        적성등급 1~5급 흙 단면                                               (SVG)
 //  13 축산        마을 14,939곳 점 지도                                                (Canvas)
@@ -102,11 +102,12 @@ export function createSpots(canvas, svg, I, map) {
     ctx.restore();
   }
 
-  // ── 10 농·축협 점 ───────────────────────────────────────
-  const KC = [[245, 165, 36], [255, 122, 89], [124, 201, 143]];
-  const amax = Math.max(...P.coops.map((c) => c[3]));
+  // ── 10 농·축협 점: 크기 = 당기순이익(억원), 흑자는 호박색·적자는 파랑 (사이트 농업금융보험 화면과 같은 약속) ──
+  const PROFIT = [245, 165, 36], LOSS = [78, 161, 255];
+  const INC_CAP = 150; // 이 값(억원)에서 가장 큰 점 — 몇몇 큰 적자·흑자가 나머지를 작게 만들지 않게
   const R = rng(1110);
-  const coops = P.coops.map((c) => ({ w: map.world(c[0], c[1]), k: c[2], s: Math.sqrt(c[3] / amax), o: R() }));
+  const coops = P.coops.map((c) => ({ w: map.world(c[0], c[1]), neg: c[3] < 0, s: Math.min(1.2, Math.sqrt(Math.abs(c[3]) / INC_CAP)), o: R() }))
+    .sort((a, b) => a.neg - b.neg || b.s - a.s); // 흑자를 먼저, 적자를 위에 그린다
   function drawCoops(S, t) {
     const A = S.coopA;
     if (A <= 0.002) return;
@@ -116,14 +117,15 @@ export function createSpots(canvas, svg, I, map) {
       const p = smooth((S.coopP - c.o * 0.8) / 0.2);
       if (p <= 0) return;
       const [x, y] = map.project(c.w[0], c.w[1], map.flat);
+      const col = c.neg ? LOSS : PROFIT;
       const r = (1.4 + 6.5 * c.s) * (0.6 + 0.4 * p);
       const tw = 0.85 + 0.15 * Math.sin(t * 2 + c.o * 30);
       const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2);
-      g.addColorStop(0, rgb(KC[c.k], 0.5 * A * p * tw)); g.addColorStop(1, rgb(KC[c.k], 0));
+      g.addColorStop(0, rgb(col, (c.neg ? 0.65 : 0.5) * A * p * tw)); g.addColorStop(1, rgb(col, 0));
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(x, y, r * 2, 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = rgb(KC[c.k], 0.92 * A * p);
+      ctx.fillStyle = rgb(col, 0.92 * A * p);
       ctx.beginPath(); ctx.arc(x, y, Math.max(1.5, r * 0.7), 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = "lighter";
     });

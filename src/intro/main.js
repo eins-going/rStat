@@ -53,7 +53,7 @@ const SPOTS = [
   { id: "dev", badge: "③", name: "농촌개발", href: "ruraldev", big: count(F.ruraldev.sites), unit: "개 사업 지구", line: "세부사업 예산과 지구의 위치·준공 예정까지", cls: "right",
     pts: [[`${unitName(devTop[0])} ${devTop[1]}곳`, "지구가 가장 많은 시군"], [`${I.gohyang.govs}곳`, "고향사랑기금 회계도 같은 방법으로"]] },
   { id: "vill", badge: "⑤", name: "축산 환경", href: "livestock", big: count(F.livestock.villages), unit: "개 마을", line: "점 하나가 마을 하나 — 가축분뇨 발생량", pts: [] },
-  { id: "coop", badge: "⑤", name: "농업금융보험", href: "agfin", big: count(F.agfin.coops), unit: "개 농·축협", line: "조합 하나하나의 공시 재무를 지도 위에",
+  { id: "coop", badge: "⑤", name: "농업금융보험", href: "agfin", big: count(F.agfin.coops), unit: "개 농·축협", line: "조합 하나하나의 당기순이익을 지도 위에",
     pts: [[jo(F.agfin.paid), `${F.agfin.year} 농작물재해보험 보험금도 시군별로`]] },
   { id: "power", badge: "⑥", name: "농사용 전기", href: "power", big: count(F.power.months), unit: "개월", line: `한전 ${F.power.regions}개 지역 · 계절 유형 ${F.power.types.length}가지`, pts: [] },
   { id: "rio", badge: "⑥", name: "지역산업연관표(농업)", href: "rio", big: count(Math.round(SP.rio.total / 1e6)), unit: "조 원 농식품 산출", line: `17개 시도 · ${F.rio.sectors}개 산업의 파급효과`, pts: [] },
@@ -122,7 +122,7 @@ stage.insertAdjacentHTML("beforeend", `
     <div class="it-lg" id="lg-rice"><span>평년보다 낮음</span><i class="bar" style="background:${gradient([RICE_DIV.lo, RICE_DIV.mid, RICE_DIV.hi])}"></i><span>높음 · ${I.rice.year} 시군 예측</span></div>
     <div class="it-lg" id="lg-jik"><span>적음</span><i class="bar" style="background:${gradient(JIK_RAMP)}"></i><span>많음 · 농가당 공익직불(기본형) ${I.jikbul.year}</span></div>
     <div class="it-lg" id="lg-flow"><i class="it-dot" style="background:${C.melonO}"></i><span>보낸 산지</span><i class="it-dot" style="background:${C.melonD}"></i><span>받은 곳 · ${I.flows.year}년 ${I.flows.months}</span></div>
-    <div class="it-lg" id="lg-coop"><i class="it-dot" style="background:#f5a524"></i><span>지역농협 ${SP.coopKinds.L}</span><i class="it-dot" style="background:#ff7a59"></i><span>축협 ${SP.coopKinds.X}</span><i class="it-dot" style="background:#7cc98f"></i><span>품목농협 ${SP.coopKinds.I} · 점 크기 = 자산</span></div>
+    <div class="it-lg" id="lg-coop"><i class="it-dot" style="background:#f5a524"></i><span>흑자 ${comma(SP.coopIncome.pos)}곳</span><i class="it-dot" style="background:#4ea1ff"></i><span>적자 ${SP.coopIncome.neg}곳 · 점 크기 = ${SP.coopIncome.year}년 당기순이익</span></div>
     <div class="it-lg left" id="lg-dev"><span>적음</span><i class="bar" style="background:${gradient(DEV_RAMP)}"></i><span>많음 · 기둥 높이 = 시군 사업 지구 수</span></div>
     <div class="it-lg" id="lg-lv"><span>마을당 분뇨 적음</span><i class="bar" style="background:${gradient(LV_RAMP)}"></i><span>많음 · ${F.livestock.from}~${F.livestock.to}</span></div>
     <div class="it-lg" id="lg-power"><span>전국 농사용 전력 월 사용량 · ${PM[0].replace("-", ".")}~${PM.at(-1).replace("-", ".")}</span></div>
