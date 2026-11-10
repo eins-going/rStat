@@ -9,6 +9,7 @@ import { createBudget } from "./budget.js";
 import { createScreen, createWall, VIEW_W, VIEW_H } from "./screens.js";
 import { createSpots } from "./spots.js";
 import { createMusic } from "./audio.js";
+import { LINES } from "./narration.js";
 import { SCENE_GLOW, LAND_RAMP, RICE_DIV, JIK_RAMP, DEV_RAMP, LV_RAMP, C, hex } from "./palette.js";
 
 const I = window.INTRO;
@@ -546,19 +547,21 @@ let wasHidden = false;
 document.addEventListener("visibilitychange", () => { if (document.hidden && !tl.paused()) { tl.pause(); wasHidden = true; } else if (!document.hidden && wasHidden) { wasHidden = false; tl.play(); } });
 
 // ── 배경음악 (소리는 사용자가 켤 때만) ─────────────────────
-const music = createMusic({
-  T, sp,
-  hits: CH.slice(1).map((c) => ({ t: c.t, big: c.t >= T.spot && c.t < T.wall ? 0.5 : c.t >= T.maker && c.t < T.end ? 0.35 : 1 })),
-  events: {
-    click: [W0 + 2.6, W0 + 4.2, T.sat + 0.1],
-    whoosh: [W0 + 0.05, T.sat + 2.6, T.sat + 3.7, T.sat + 5.9, T.sat + 6.9],
-    ding: [T.rice + 2.3, T.rice + 6.0],
-    swell: [T.maker + 0.1],
-  },
+const music = createMusic({ T, voice: { lines: LINES, base: "assets/intro/voice/" } });
+const sndBtn = $("#snd"), volIn = $("#vol"), sndHint = $("#sndhint"), voBtn = $("#vo");
+stage.insertAdjacentHTML("beforeend", `<div class="cap" id="cap" aria-live="off"><span></span></div>`);
+const cap = $("#cap"), capT = cap.firstElementChild;
+let capId = null;
+gsap.ticker.add(() => {
+  const l = music.caption(tl.time());
+  const id = l ? l.id : null;
+  if (id !== capId) { capId = id; if (l) capT.textContent = l.text; cap.classList.toggle("on", !!l); }
+  voBtn.hidden = !music.hasVoice;
 });
-const sndBtn = $("#snd"), volIn = $("#vol"), sndHint = $("#sndhint");
+voBtn.addEventListener("click", () => { music.setVoice(!music.voiceOn); voBtn.setAttribute("aria-pressed", music.voiceOn); store.set("intro-vo", music.voiceOn ? "1" : "0"); });
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* 저장 안 됨 */ } } };
 const v0 = +(store.get("intro-vol") ?? 70);
+if (store.get("intro-vo") === "0") { music.setVoice(false); voBtn.setAttribute("aria-pressed", "false"); }
 volIn.value = v0; music.setVolume(v0 / 100);
 function sndUI() {
   sndBtn.setAttribute("aria-pressed", music.on);

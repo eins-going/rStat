@@ -18,3 +18,4 @@ research/**/_pylib/
 research/**/_bak_*/
 research/**/__pycache__/
 node_modules/
+voice_samples/

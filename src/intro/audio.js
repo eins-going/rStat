@@ -1,88 +1,67 @@
-// 배경음악: Web Audio API로 그 자리에서 합성한다 (음원 파일 없음).
-// 장면마다 다른 곡조(화음 진행·북 패턴·악기·선율)로 이야기를 따라간다. 박자는 장면 시작에 맞춰 다시 세어
-// 장면이 바뀌는 순간이 늘 마디의 첫 박이 되게 하고, 커서 클릭·확대·결과 공개 같은 순간에는 효과음을 얹는다.
+// 배경음악 + 내레이션: Web Audio API.
+// 음악은 한 곡이다 — 처음부터 끝까지 같은 박자(112 BPM)·같은 조성(A단조)·같은 악기·같은 화음 진행이 이어지고,
+// 장면에 따라 악기 층(패드·베이스·북·아르페지오·선율)의 세기만 몇 초에 걸쳐 서서히 오르내린다. 갈아 끼우지 않는다.
+// 내레이션은 장면 시간에 맞춰 녹음 파일을 틀고, 말하는 동안 음악을 부드럽게 줄인다.
 // 타임라인 시간에 맞춰 16분음표 단위로 미리 예약하고, 감기·멈춤 때는 예약을 지우고 그 시점부터 다시 잇는다.
 
 const BPM = 112, STEP = 60 / BPM / 4, BAR = STEP * 16;
 const hz = (m) => 440 * 2 ** ((m - 69) / 12);
-// 화음 [3음 + 베이스]
-const CH = {
-  Am: [57, 60, 64, 45], F: [57, 60, 65, 41], C: [55, 60, 64, 48], G: [55, 59, 62, 43], Dm: [57, 62, 65, 50],
-  Em: [55, 59, 64, 40], E: [56, 59, 64, 40], Fm7: [57, 60, 64, 41], G6: [55, 59, 64, 43], Am9: [59, 60, 64, 45],
-};
-const prog = (...names) => names.map((n) => CH[n]);
+// 8마디 진행 하나를 끝까지 되풀이 (Am F C G | Am F G E→Am)
+const PROG = [[57, 60, 64, 45], [57, 60, 65, 41], [55, 60, 64, 48], [55, 59, 62, 43], [57, 60, 64, 45], [57, 60, 65, 41], [55, 59, 62, 43], [56, 59, 64, 40]];
 
-// 북 패턴 (16칸, 0~1 세기)
-const P = (s) => [...s].map((c) => (c === "." ? 0 : c === "x" ? 1 : c === "o" ? 0.55 : c === "-" ? 0.3 : 0));
-const DR = {
-  none: { k: P("................"), s: P("................"), h: P("................") },
-  hero: { k: P("x...x...x...x..."), s: P("................"), h: P("..o...o...o...o.") },
-  tech: { k: P("x.....x.x......."), s: P("....-.......-..."), h: P("-o-o-o-o-o-o-o-o") },
-  half: { k: P("x.........x....."), s: P("........x......."), h: P("..-...-...-...-.") },
-  soft: { k: P("x.......x......."), s: P("............o..."), h: P("o.-.o.-.o.-.o.-.") },
-  march: { k: P("x...x...x...x..."), s: P("....x.......x.oo"), h: P("o.o.o.o.o.o.o.o.") },
-  drive: { k: P("x...x...x...x.o."), s: P("....x.......x..."), h: P("-o-x-o-x-o-x-o-x") },
-  pump: { k: P("x...x...x...x..."), s: P("....o.......o..."), h: P("..x...x...x...x.") },
-};
-
-export function createMusic({ T, sp, hits, events }) {
-  // 장면 표: 곡조
-  const SEC = [
-    { at: 0, prog: prog("Am", "Fm7", "C", "G"), dr: "none", pad: 0.9, bass: 0, arp: "bell", cut: 900 },
-    { at: T.stats, prog: prog("Am", "F", "C", "G"), dr: "hero", pad: 0.55, bass: 0.9, arp: null, stab: 0.8, cut: 1600 },
-    { at: T.real, prog: prog("Am", "Am", "F", "G"), dr: "tech", pad: 0.35, bass: 0.7, arp: "pluck", cut: 1400 },
-    { at: T.sat, prog: prog("Fm7", "Fm7", "Am", "Am"), dr: "half", pad: 0.9, bass: 0.6, arp: "bell", cut: 700, sweep: true },
-    { at: T.rice, prog: prog("C", "G", "Am", "F"), dr: "soft", pad: 0.5, bass: 0.7, arp: "piano", cut: 2000, lead: { m: "A", from: 5.6 } },
-    { at: T.jik, prog: prog("F", "G", "Em", "Am"), dr: "march", pad: 0.45, bass: 0.9, arp: null, stab: 0.6, cut: 1800 },
-    { at: T.flow, prog: prog("Am", "F", "C", "G"), dr: "drive", pad: 0.35, bass: 1, arp: "pluck", cut: 2400, lead: { m: "B", from: 0 } },
-    { at: T.power, prog: prog("Am", "G", "F", "E"), dr: "pump", pad: 0.6, bass: 1, arp: "saw", cut: 2600, pumpPad: true },
-    ...[0, 1, 2, 3, 4, 5].map((i) => ({
-      at: sp(i), prog: i % 2 ? prog("F", "G", "Am", "Am") : prog("Am", "F", "C", "G"), dr: i % 3 === 1 ? "march" : "drive",
-      pad: 0.4, bass: 1, arp: ["pluck", "piano", "saw", "pluck", "bell", "saw"][i], cut: 2200 + i * 150, lead: { m: "S", from: 0, v: i }, up: i >= 3 ? 2 : 0,
-    })),
-    { at: T.wall, prog: prog("F", "G", "Am", "Am"), dr: "drive", pad: 0.7, bass: 1, arp: "saw", cut: 3000, build: true, up: 2 },
-    { at: T.maker, prog: prog("F", "C", "G", "Am"), dr: "none", pad: 0.7, bass: 0.35, arp: "piano", cut: 1700, lead: { m: "R", from: 1.6 }, soft: true },
-    { at: T.end, prog: prog("Am9"), dr: "none", pad: 1, bass: 0.7, arp: "bell", cut: 2400, end: true },
-  ].map((s) => ({ ...s, s0: Math.round(s.at / STEP) }));
-  const secAt = (n) => { let r = SEC[0]; for (const s of SEC) if (n >= s.s0) r = s; return r; };
-
-  // 선율 (16분음표 칸, 미디 음, 길이 칸)
-  const MEL = {
-    A: [[0, 76, 4], [4, 74, 2], [6, 72, 2], [8, 74, 4], [12, 76, 4], [16, 79, 6], [22, 76, 2], [24, 74, 8]],
-    B: [[0, 69, 2], [2, 72, 2], [4, 76, 2], [6, 74, 2], [8, 72, 4], [12, 69, 2], [14, 71, 2], [16, 72, 4], [20, 76, 4], [24, 79, 3], [27, 77, 1], [28, 76, 4]],
-    R: [[0, 76, 8], [8, 74, 6], [14, 72, 2], [16, 72, 8], [24, 71, 4], [28, 69, 4], [32, 72, 8], [40, 74, 8], [48, 76, 16]],
+export function createMusic({ T, voice }) {
+  // 층마다 [시간, 세기] — 사이는 직선으로 이어져 몇 초에 걸쳐 바뀐다
+  // 내레이션 밑에 깔리는 음악: 목소리와 겹치는 선율은 빼고, 말소리 대역을 비운다(패드는 어둡게, 반짝임은 높은 음역)
+  const LV = {
+    pad: [[0, 0.8], [5, 0.7], [12, 0.6], [29, 0.55], [94, 0.6], [97, 0.75], [106, 0.85]],
+    bass: [[0, 0], [4, 0], [8, 0.55], [12, 0.7], [21, 0.55], [29, 0.7], [48, 0.8], [92, 0.85], [95, 0.35], [102, 0.3], [106, 0.2]],
+    kick: [[0, 0], [5, 0], [9, 0.45], [12, 0.6], [21, 0.6], [24, 0.35], [28, 0.35], [31, 0.6], [48, 0.7], [92, 0.75], [95, 0], [106, 0]],
+    hat: [[0, 0], [12, 0], [15, 0.25], [21, 0.2], [24, 0.1], [29, 0.15], [33, 0.3], [48, 0.4], [92, 0.45], [94.5, 0], [106, 0]],
+    snare: [[0, 0], [45, 0], [49, 0.22], [92, 0.28], [94.5, 0], [106, 0]],
+    arp: [[0, 0.12], [6, 0.2], [14, 0.4], [29, 0.42], [48, 0.5], [92, 0.55], [95, 0.3], [102, 0.25], [106, 0]],
+    bell: [[0, 0.45], [6, 0.25], [12, 0.12], [21, 0.15], [24, 0.4], [28, 0.18], [32, 0.08], [94, 0.1], [97, 0.35], [106, 0.6]],
+    lead: [[0, 0], [106, 0]],
+    cut: [[0, 650], [6, 1000], [14, 1300], [21, 1150], [26, 900], [30, 1350], [50, 1600], [92, 1700], [96, 1100], [106, 1400]],
   };
-  // 여섯 화면: 장면마다 다른 짧은 동기
-  const SPOT_MEL = [
-    [[0, 81, 2], [2, 79, 2], [4, 76, 4], [8, 79, 2], [10, 81, 2], [12, 84, 4]],
-    [[0, 72, 4], [4, 74, 4], [8, 76, 6], [14, 79, 2], [16, 77, 8]],
-    [[0, 76, 1], [1, 79, 1], [2, 83, 2], [4, 81, 2], [6, 79, 2], [8, 76, 4], [12, 74, 4]],
-    [[0, 69, 3], [3, 72, 3], [6, 76, 2], [8, 81, 8]],
-    [[0, 84, 2], [4, 83, 2], [8, 81, 2], [12, 79, 4]],
-    [[0, 76, 2], [2, 76, 2], [4, 79, 4], [8, 81, 2], [10, 79, 2], [12, 76, 4]],
-  ];
+  const level = (k, t) => {
+    const a = LV[k];
+    if (t <= a[0][0]) return a[0][1];
+    for (let i = 1; i < a.length; i++) if (t <= a[i][0]) { const [t0, v0] = a[i - 1], [t1, v1] = a[i]; return v0 + ((v1 - v0) * (t - t0)) / (t1 - t0); }
+    return a[a.length - 1][1];
+  };
+  // 선율: 8마디(128칸)짜리 하나를 되풀이 — 세기만 바뀐다
+  const MEL = [[0, 76, 4], [4, 74, 2], [6, 72, 2], [8, 74, 4], [12, 76, 4], [16, 77, 6], [22, 76, 2], [24, 74, 8],
+    [32, 72, 4], [36, 74, 2], [38, 76, 2], [40, 79, 6], [46, 77, 2], [48, 76, 8], [56, 74, 8],
+    [64, 76, 4], [68, 74, 2], [70, 72, 2], [72, 74, 4], [76, 76, 4], [80, 77, 6], [86, 79, 2], [88, 81, 8],
+    [96, 79, 4], [100, 77, 2], [102, 76, 2], [104, 74, 6], [110, 72, 2], [112, 71, 8], [120, 69, 8]];
+  const ARP = [0, 1, 2, 4, 1, 2, 4, 2, 0, 1, 2, 4, 2, 4, 5, 4];
+  // 장면이 크게 바뀌는 몇 곳에만 아주 옅은 심벌 부풀림
+  const SWELLS = [T.stats, T.rice, T.flow, T.maker].map((t) => t - 1.2);
 
-  let ctx = null, master = null, bus = null, verb = null, noise = null;
-  let vol = 0.7, on = false, running = false, base = 0, next = 0;
+  let ctx = null, master = null, bus = null, vbus = null, verb = null, noise = null;
+  let vol = 0.7, on = false, running = false, base = 0, next = 0, voiceOn = true;
   const voices = new Set();
+  // 내레이션
+  const VO = { lines: voice?.lines || [], meta: null, buf: new Map(), src: null, id: null, loading: null };
 
   function init() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain(); master.gain.value = 0;
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -16; comp.ratio.value = 3.5; comp.attack.value = 0.004; comp.release.value = 0.2;
+    comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.005; comp.release.value = 0.25;
     master.connect(comp).connect(ctx.destination);
     bus = ctx.createGain(); bus.gain.value = 0.9; bus.connect(master);
+    vbus = ctx.createGain(); vbus.gain.value = 1.15; vbus.connect(master);
     verb = ctx.createConvolver();
     const len = ctx.sampleRate * 2.8, ir = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2.6; }
     verb.buffer = ir;
-    const vg = ctx.createGain(); vg.gain.value = 0.34; verb.connect(vg).connect(master);
+    const vg = ctx.createGain(); vg.gain.value = 0.32; verb.connect(vg).connect(bus);
     noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const nd = noise.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
   }
 
-  // ── 소리 만들기 ───────────────────────────────────────
+  // ── 소리 ─────────────────────────────────────────────
   const track = (src, g) => { const v = { src, g }; voices.add(v); src.onended = () => voices.delete(v); };
   function out(g, send = 0) { g.connect(bus); if (send) { const s = ctx.createGain(); s.gain.value = send; g.connect(s).connect(verb); } }
   function env(g, t, a, peak, d, sustain = 0) {
@@ -90,137 +69,118 @@ export function createMusic({ T, sp, hits, events }) {
     g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a);
     g.gain.exponentialRampToValueAtTime(Math.max(0.0001, sustain), t + a + d);
   }
-  function osc(type, f, t, dur, peak, { a = 0.005, lp = 0, q = 0.7, detune = 0, send = 0, sustain = 0, lpEnd = 0, vib = 0 } = {}) {
+  function osc(type, f, t, dur, peak, { a = 0.005, lp = 0, q = 0.7, detune = 0, send = 0, sustain = 0, vib = 0 } = {}) {
+    if (peak < 0.0005) return null;
     const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; o.detune.value = detune;
     const g = ctx.createGain(); env(g, t, a, peak, dur, sustain);
     let n = o;
-    if (lp) {
-      const fl = ctx.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.setValueAtTime(lp, t); fl.Q.value = q;
-      if (lpEnd) fl.frequency.exponentialRampToValueAtTime(lpEnd, t + dur);
-      o.connect(fl); n = fl;
-    }
-    if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 5.2; lg.gain.value = vib; l.connect(lg).connect(o.detune); l.start(t); l.stop(t + a + dur + 0.05); }
+    if (lp) { const fl = ctx.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = lp; fl.Q.value = q; o.connect(fl); n = fl; }
+    if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 5; lg.gain.value = vib; l.connect(lg).connect(o.detune); l.start(t); l.stop(t + a + dur + 0.05); }
     n.connect(g); out(g, send);
     o.start(t); o.stop(t + a + dur + 0.05);
     track(o, g);
     return o;
   }
-  function burst(t, dur, peak, type, freq, q = 1, send = 0, freqEnd = 0) {
-    const s = ctx.createBufferSource(); s.buffer = noise;
-    const f = ctx.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
-    if (freqEnd) f.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
-    const g = ctx.createGain(); env(g, t, 0.002, peak, dur);
+  function burst(t, dur, peak, type, freq, q = 1, send = 0, a = 0.002) {
+    if (peak < 0.0005) return;
+    const s = ctx.createBufferSource(); s.buffer = noise; s.loop = dur > 0.9;
+    const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain(); env(g, t, a, peak, dur);
     s.connect(f).connect(g); out(g, send);
-    s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+    s.start(t, Math.random() * 0.5); s.stop(t + a + dur + 0.05);
     track(s, g);
   }
-  const kick = (t, v) => { const o = osc("sine", 150, t, 0.42, 0.95 * v); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.13); };
-  const hat = (t, v, open) => burst(t, open ? 0.16 : 0.035, 0.15 * v, "highpass", 8200, 0.8);
-  const snare = (t, v) => { burst(t, 0.2, 0.3 * v, "bandpass", 1900, 0.7, 0.25); osc("triangle", 190, t, 0.09, 0.16 * v); };
-  const bass = (t, m, v, dur, cut = 380) => osc("sawtooth", hz(m), t, dur, 0.19 * v, { a: 0.01, lp: cut, q: 4 });
-  function pad(t, notes, v, dur, cut, sweep) {
-    notes.forEach((m) => [-8, 8].forEach((dt) => osc("sawtooth", hz(m), t, dur, 0.026 * v, { a: 0.4, lp: sweep ? 380 : cut, lpEnd: sweep ? cut * 2.6 : 0, detune: dt, send: 0.5, sustain: 0.011 * v })));
-  }
-  const stab = (t, notes, v) => notes.forEach((m) => [-6, 6].forEach((dt) => osc("sawtooth", hz(m + 12), t, 0.22, 0.03 * v, { lp: 2600, lpEnd: 700, detune: dt, send: 0.3 })));
-  const lead = (t, m, dur, v, soft) => osc(soft ? "triangle" : "square", hz(m), t, dur, (soft ? 0.085 : 0.04) * v, { a: soft ? 0.01 : 0.02, lp: soft ? 3000 : 2400, vib: soft ? 0 : 9, send: 0.4, sustain: (soft ? 0.03 : 0.02) * v });
-  const ARP = {
-    bell: { pat: [0, -1, -1, 2, -1, -1, 4, -1, -1, -1, 3, -1, -1, -1, 5, -1], play: (t, m, v) => { osc("sine", hz(m + 24), t, 1.1, 0.06 * v, { send: 0.7 }); osc("sine", hz(m + 36), t, 0.5, 0.015 * v, { send: 0.7 }); } },
-    pluck: { pat: [0, 1, 2, 4, 1, 2, 4, 2, 0, 1, 2, 4, 2, 4, 5, 4], play: (t, m, v, cut) => osc("square", hz(m + 12), t, 0.16, 0.042 * v, { lp: cut + 800, send: 0.25 }) },
-    piano: { pat: [0, -1, 2, -1, 1, -1, 2, -1, 0, -1, 2, -1, 4, -1, 2, -1], play: (t, m, v) => { osc("triangle", hz(m + 12), t, 0.7, 0.08 * v, { send: 0.45 }); osc("sine", hz(m + 24), t, 0.3, 0.02 * v); } },
-    saw: { pat: [0, 2, 4, 2, 1, 3, 5, 3, 0, 2, 4, 2, 1, 3, 5, 3], play: (t, m, v, cut, s) => osc("sawtooth", hz(m + 12), t, 0.12, 0.036 * v, { lp: 600 + (s / 16) * cut * 1.6, q: 6, send: 0.2 }) },
-  };
-  function impact(t, big = 1) {
-    const o = osc("sine", 70, t, 1.6, 0.8 * big, { send: 0.6 }); o.frequency.exponentialRampToValueAtTime(38, t + 1.2);
-    burst(t, 1.1, 0.33 * big, "lowpass", 420, 0.5, 0.7);
-    osc("triangle", hz(81), t, 1.4, 0.04 * big, { send: 0.9 });
-  }
-  function riser(t0, dur, v = 1) {
-    const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true;
-    const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 2.2;
-    f.frequency.setValueAtTime(300, t0); f.frequency.exponentialRampToValueAtTime(6000, t0 + dur);
-    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.2 * v, t0 + dur * 0.95); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 0.05);
-    s.connect(f).connect(g); out(g, 0.4);
-    s.start(t0); s.stop(t0 + dur + 0.1);
-    track(s, g);
-  }
-  const FX = {
-    click: (t) => { osc("sine", 2200, t, 0.03, 0.12); osc("sine", 1400, t + 0.012, 0.04, 0.06); },
-    whoosh: (t) => burst(t, 0.7, 0.2, "bandpass", 4500, 1.4, 0.5, 400),
-    ding: (t) => [88, 95, 100].forEach((m, i) => osc("sine", hz(m), t + i * 0.06, 1.2, 0.05, { send: 0.8 })),
-    swell: (t) => [57, 64, 69].forEach((m) => osc("sawtooth", hz(m), t, 1.4, 0.02, { a: 0.9, lp: 500, lpEnd: 3000, send: 0.6 })),
-  };
+  const kick = (t, v) => { const o = osc("sine", 140, t, 0.4, 0.85 * v); if (o) { o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(44, t + 0.12); } };
+  const hat = (t, v, open) => burst(t, open ? 0.14 : 0.035, 0.13 * v, "highpass", 8000, 0.8);
+  const snare = (t, v) => { burst(t, 0.18, 0.26 * v, "bandpass", 1800, 0.7, 0.3); osc("triangle", 185, t, 0.08, 0.13 * v); };
 
-  // ── 16분음표 하나 예약 ─────────────────────────────────
+  // ── 16분음표 하나 예약 (박자는 0초부터 하나로 이어진다) ──────────
   function step(n, at) {
-    const t = n * STEP, S = secAt(n), rel = n - S.s0, s = ((rel % 16) + 16) % 16, bar = Math.floor(rel / 16);
-    const up = S.up || 0;
-    const ch = S.prog[((bar % S.prog.length) + S.prog.length) % S.prog.length].map((m) => m + up);
-    const pump = S.pumpPad ? (s % 4 === 0 ? 0.35 : 1) : 1;
-    // 패드: 마디 첫 칸 (빌드는 2칸마다 두드림)
-    if (s === 0 && S.pad) pad(at, ch.slice(0, 3), S.pad, BAR * (S.end ? 2.2 : 1), S.cut, S.sweep);
-    if (S.pumpPad && s % 4 === 2) pad(at, ch.slice(0, 3), S.pad * 0.6 * pump, STEP * 1.6, S.cut);
-    if (S.stab && (s === 0 || s === 6 || s === 12)) stab(at, ch.slice(0, 3), S.stab);
-    // 베이스
-    if (S.bass) {
-      const pat = S.dr === "drive" || S.dr === "pump" ? s % 2 === 0 : S.dr === "march" ? s % 4 !== 3 : s % 4 === 0;
-      if (pat) bass(at, ch[3] + (S.dr === "drive" && s % 8 === 6 ? 12 : 0), S.bass, STEP * (S.dr === "half" ? 6 : 1.7), S.cut * 0.25);
+    const t = n * STEP, s = ((n % 16) + 16) % 16, bar = Math.floor(n / 16);
+    const ch = PROG[((bar % 8) + 8) % 8];
+    const L = (k) => level(k, t), cut = L("cut");
+    if (s === 0) {
+      const v = L("pad");
+      ch.slice(0, 3).forEach((m) => [-8, 8].forEach((dt) => osc("sawtooth", hz(m), at, BAR * 1.05, 0.026 * v, { a: 0.6, lp: cut, detune: dt, send: 0.55, sustain: 0.014 * v })));
     }
-    // 북
-    const D = DR[S.dr];
-    let k = D.k[s], sn = D.s[s], hh = D.h[s];
-    if (S.build) {
-      const p = rel / Math.max(1, Math.round((T.maker - T.wall) / STEP));
-      if (p > 0.4) k = s % 2 === 0 ? 1 : k;
-      if (p > 0.55) sn = Math.max(sn, s % (p > 0.8 ? 1 : 2) === 0 ? 0.35 + 0.6 * p : 0);
+    const bv = L("bass");
+    if (bv && s % 2 === 0) osc("sawtooth", hz(ch[3] + (s % 8 === 6 ? 12 : 0)), at, STEP * 1.6, 0.17 * bv, { a: 0.01, lp: 160 + cut * 0.15, q: 3 });
+    const kv = L("kick");
+    if (kv && s % 4 === 0) kick(at, kv);
+    const hv = L("hat");
+    if (hv && s % 2 === 1) hat(at, hv * (s % 4 === 3 ? 1 : 0.55), s % 8 === 7);
+    const sv = L("snare");
+    if (sv && (s === 4 || s === 12)) snare(at, sv);
+    const av = L("arp");
+    if (av) { const tones = [...ch.slice(0, 3), ch[0] + 12, ch[1] + 12, ch[2] + 12]; osc("sine", hz(tones[ARP[s]] + 24), at, 0.25, 0.04 * av, { a: 0.008, send: 0.45 }); }
+    const be = L("bell");
+    if (be && (s === 0 || s === 6 || s === 10)) osc("sine", hz(ch[s === 0 ? 0 : s === 6 ? 2 : 1] + 24), at, 1.3, 0.05 * be, { send: 0.75 });
+    const lv = L("lead");
+    if (lv) {
+      const pos = ((n % 128) + 128) % 128;
+      for (const [o, m, l] of MEL) if (o === pos) osc("triangle", hz(m), at, l * STEP * 1.1, 0.075 * lv, { a: 0.02, lp: 2600, vib: 6, send: 0.45, sustain: 0.03 * lv });
     }
-    if (k) kick(at, k);
-    if (sn) snare(at, sn);
-    if (hh) hat(at, hh, hh === 1 && s % 4 === 3);
-    // 아르페지오
-    if (S.arp) {
-      const A = ARP[S.arp], idx = A.pat[s];
-      if (idx >= 0) { const tones = [...ch.slice(0, 3), ch[0] + 12, ch[1] + 12, ch[2] + 12]; A.play(at, tones[idx], S.soft ? 0.8 : 1, S.cut, s); }
-    }
-    // 선율
-    if (S.lead) {
-      const from = Math.round(S.lead.from / STEP), r = rel - from;
-      const mel = S.lead.m === "S" ? SPOT_MEL[S.lead.v] : MEL[S.lead.m];
-      const len = S.lead.m === "S" ? 16 : S.lead.m === "R" ? 64 : 32;
-      if (r >= 0) {
-        const pos = r % len;
-        if (S.lead.m === "R" && r >= len) { /* 한 번만 */ } else {
-          mel.forEach(([o, m, l]) => { if (o === pos) lead(at, m + up, l * STEP, S.soft ? 1 : 0.9, S.soft || S.lead.m === "A"); });
-        }
-      }
-    }
-    // 장면 경계: 앞에서 상승음, 그 자리에서 쿵 / 효과음
-    hits.forEach(({ t: h, big }) => {
-      if (h >= t && h < t + STEP) impact(at + (h - t), big);
-      const rs = h - 1.3;
-      if (big >= 0.6 && rs >= t && rs < t + STEP) riser(at + (rs - t), 1.3, big);
-    });
-    for (const [kind, times] of Object.entries(events)) for (const e of times) if (e >= t && e < t + STEP) FX[kind](at + (e - t));
+    for (const w of SWELLS) if (w >= t && w < t + STEP) burst(at + (w - t), 1.2, 0.07, "highpass", 5000, 0.6, 0.6, 1.1);
   }
+
+  // ── 내레이션 ─────────────────────────────────────────
+  async function loadVoice() {
+    if (VO.loading) return VO.loading;
+    VO.loading = (async () => {
+      const r = await fetch(`${voice.base}index.json`, { cache: "no-cache" });
+      if (!r.ok) throw new Error("내레이션 없음");
+      VO.meta = await r.json();
+      await Promise.all(VO.lines.map(async (l) => {
+        const m = VO.meta.files?.[l.id];
+        if (!m) return;
+        const ab = await (await fetch(`${voice.base}${m.file}`)).arrayBuffer();
+        VO.buf.set(l.id, await ctx.decodeAudioData(ab));
+      }));
+    })().catch(() => { VO.meta = null; });
+    return VO.loading;
+  }
+  const dur = (l) => VO.buf.get(l.id)?.duration ?? VO.meta?.files?.[l.id]?.dur ?? 0;
+  const activeLine = (t) => VO.lines.find((l) => VO.buf.has(l.id) && t >= l.at && t < l.at + dur(l));
+  function stopVoice() { if (VO.src) { try { VO.src.stop(); } catch { /* 이미 멈춤 */ } VO.src = null; } VO.id = null; }
+  function duck(onv) { if (bus) bus.gain.setTargetAtTime(onv ? 0.38 : 0.9, ctx.currentTime, onv ? 0.12 : 0.5); }
 
   function kill() {
     const now = ctx.currentTime;
-    voices.forEach((v) => { try { v.g.gain.cancelScheduledValues(now); v.g.gain.setTargetAtTime(0.0001, now, 0.02); v.src.stop(now + 0.1); } catch { /* 이미 멈춤 */ } });
+    voices.forEach((v) => { try { v.g.gain.cancelScheduledValues(now); v.g.gain.setTargetAtTime(0.0001, now, 0.03); v.src.stop(now + 0.15); } catch { /* 이미 멈춤 */ } });
     voices.clear();
+    stopVoice();
   }
-  function setGain() { if (master) master.gain.setTargetAtTime(on ? vol * 0.8 : 0, ctx.currentTime, 0.08); }
+  function setGain() { if (master) master.gain.setTargetAtTime(on ? vol * 0.8 : 0, ctx.currentTime, 0.1); }
 
   return {
     get on() { return on; },
-    async enable() { if (!ctx) init(); if (ctx.state !== "running") await ctx.resume(); on = true; running = false; setGain(); },
-    disable() { on = false; setGain(); if (ctx) { kill(); running = false; } },
+    get hasVoice() { return VO.buf.size > 0; },
+    get voiceOn() { return voiceOn; },
+    async enable() { if (!ctx) init(); if (ctx.state !== "running") await ctx.resume(); on = true; running = false; setGain(); if (voice) loadVoice(); },
+    disable() { on = false; setGain(); if (ctx) { kill(); running = false; duck(false); } },
     setVolume(v) { vol = v; setGain(); },
+    setVoice(v) { voiceOn = v; if (!v && ctx) { stopVoice(); duck(false); } },
+    // 자막: 지금 말하는 문장 (내레이션을 듣고 있을 때만)
+    caption(t) { if (!on || !voiceOn || !VO.buf.size) return null; return activeLine(t) || null; },
     sync(t, playing) {
       if (!ctx || !on) return;
-      if (!playing) { if (running) { kill(); running = false; } return; }
+      if (!playing) { if (running) { kill(); running = false; duck(false); } return; }
       const now = ctx.currentTime;
       if (running && Math.abs(now - base - t) > 0.12) { kill(); running = false; }
-      if (!running) { base = now - t + 0.04; next = Math.ceil(t / STEP); running = true; }
+      if (!running) { base = now - t + 0.05; next = Math.ceil(t / STEP); running = true; }
       while (next * STEP < t + 0.18) { step(next, base + next * STEP); next++; }
+      // 내레이션: 지금 문장을 그 자리(중간이면 중간부터)에서 튼다
+      if (voiceOn && VO.buf.size) {
+        const l = activeLine(t);
+        if (l && VO.id !== l.id) {
+          stopVoice();
+          const src = ctx.createBufferSource(); src.buffer = VO.buf.get(l.id); src.connect(vbus);
+          const off = Math.max(0, t - l.at), when = base + l.at + off;
+          src.start(Math.max(now, when), off);
+          src.onended = () => { if (VO.src === src) { VO.src = null; duck(false); } };
+          VO.src = src; VO.id = l.id; duck(true);
+        } else if (!l && VO.id) { VO.id = null; }
+      }
     },
   };
 }

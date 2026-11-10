@@ -51,7 +51,7 @@
 .lab span { bottom: 62px; font-size: 19px; font-weight: 650; color: #ffd98a; }
 
 /* 범례 */
-.it-lg { position: absolute; right: 76px; bottom: 62px; display: flex; align-items: center; gap: 12px; font-size: 18px; color: #c3cad4; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9); }
+.it-lg { position: absolute; right: 76px; bottom: 96px; display: flex; align-items: center; gap: 12px; font-size: 18px; color: #c3cad4; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9); }
 .it-lg .bar { width: 170px; height: 9px; border-radius: 5px; }
 .it-lg .it-dot { width: 11px; height: 11px; border-radius: 50%; margin-left: 6px; box-shadow: 0 0 12px currentColor; }
 
@@ -283,3 +283,11 @@
 .it-sndhint:hover { background: rgba(245, 165, 36, 0.9); color: #1a1306; }
 .it-sndhint[hidden] { display: none; }
 @media (max-width: 760px) { #vol { width: 60px; } .it-sound { order: 3; } }
+
+/* 내레이션 자막 */
+.cap { position: absolute; left: 0; right: 0; bottom: 34px; display: flex; justify-content: center; opacity: 0; transform: translateY(8px); transition: opacity 0.35s, transform 0.35s; pointer-events: none; }
+.cap.on { opacity: 1; transform: none; }
+.cap span { max-width: 1300px; padding: 10px 22px; border-radius: 12px; font-size: 27px; font-weight: 600; line-height: 1.45; color: #f4f6f9; text-align: center; word-break: keep-all; background: rgba(8, 10, 14, 0.62); backdrop-filter: blur(6px); }
+.it-vo { height: 30px; padding: 0 10px; border: 0; border-radius: 8px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; color: var(--muted); background: var(--panel-2); }
+.it-vo[aria-pressed="true"] { color: #1a1306; background: var(--accent); }
+.it-vo[hidden] { display: none; }
