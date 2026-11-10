@@ -158,7 +158,8 @@ stage.insertAdjacentHTML("beforeend", `
     <figure class="mk-photo"><img src="assets/maker.webp" alt="" width="360" height="540"></figure>
     <div class="mk-text">
       <p class="kicker">만든 이</p>
-      <h2 class="hl">${split(["만든 이의 생각"])}</h2>
+      <h2 class="hl">${split(["조승현"])}</h2>
+      <p class="mk-cred">농업·자원경제학 박사</p>
       <ol class="mk-phil">
         <li><b>그대로</b><span>공개된 자료를 출처와 함께, 고치지 않고</span></li>
         <li><b>우리 시군</b><span>전국 평균이 아니라 내 지역의 숫자로</span></li>
@@ -475,6 +476,7 @@ tl.set("#sc-maker", { autoAlpha: 1, y: 0 }, T.maker)
   .fromTo("#sc-maker .mk-photo", { autoAlpha: 0, y: 40, scale: 0.94 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1.2, ease: "power3.out" }, T.maker + 0.1)
   .fromTo("#sc-maker .kicker", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.5 }, T.maker + 0.3)
   .fromTo("#sc-maker .hl .ch", { yPercent: 118, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.8, stagger: 0.04, ease: "expo.out" }, T.maker + 0.4)
+  .fromTo("#sc-maker .mk-cred", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "power2.out" }, T.maker + 0.8)
   .fromTo("#sc-maker .mk-phil li", { autoAlpha: 0, x: -18 }, { autoAlpha: 1, x: 0, duration: 0.6, stagger: 0.6, ease: "power2.out" }, T.maker + 1.1)
   .fromTo("#sc-maker .mk-quote, #sc-maker .mk-mail", { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.4, ease: "power2.out" }, T.maker + 5.6)
   .to("#sc-maker", { autoAlpha: 0, y: -20, duration: 0.5, ease: "power2.in" }, T.end - 0.5);
