@@ -10,6 +10,7 @@ import { BPM, BAR } from "./timing.js";
 const STEP = 60 / BPM / 4;
 // 음량: 말이 없을 때 음악은 목소리보다 4dB쯤 작게(BUS), 말하는 동안은 13dB쯤 작게(DUCK) — render()로 재서 맞춘 값
 const BUS = 1.4, DUCK = 0.5;
+const LOOK = 0.6, DRIFT = 0.3; // 미리 예약하는 길이(초), 다시 맞추는 어긋남(초)
 const hz = (m) => 440 * 2 ** ((m - 69) / 12);
 // 8마디 진행: D | A/C# | Bm | G | D/F# | G | Em7 | A  — [화음 세 음(가운데 음역), 베이스]
 const PROG = [
@@ -213,6 +214,16 @@ export function createMusic({ T, TOTAL, voice, offline = false, sampleRate = 441
     get hasVoice() { return VO.buf.size > 0; },
     get voiceOn() { return voiceOn; },
     async enable() { if (!ctx) init(); if (ctx.state !== "running") await ctx.resume(); on = true; running = false; setGain(); if (voice) loadVoice(); },
+    // 몸짓 없이 켜 본다 (지난번에 소리를 켠 사람): 브라우저가 허락하면 바로 소리가 나고, 막으면 false — 그때는 처음 누를 때 enable()
+    async tryEnable() {
+      try {
+        if (!ctx) init();
+        if (ctx.state !== "running") { ctx.resume().catch(() => {}); await new Promise((r) => setTimeout(r, 350)); }
+        if (ctx.state !== "running") return false;
+      } catch { return false; }
+      on = true; running = false; setGain(); if (voice) loadVoice();
+      return true;
+    },
     disable() { on = false; setGain(); if (ctx) { kill(); running = false; duck(false); } },
     setVolume(v) { vol = v; setGain(); },
     setVoice(v) { voiceOn = v; if (!v && ctx) { stopVoice(); duck(false); } },
@@ -222,9 +233,11 @@ export function createMusic({ T, TOTAL, voice, offline = false, sampleRate = 441
       if (!ctx || !on) return;
       if (!playing) { if (running) { kill(); running = false; duck(false); } return; }
       const now = ctx.currentTime;
-      if (running && Math.abs(now - base - t) > 0.12) { kill(); running = false; }
+      // 타임라인은 벽시계를 따라가므로(main.js lagSmoothing(0)) 화면이 느려도 어긋나지 않는다. 크게 어긋날 때(감기)만 다시 맞춘다
+      if (running && Math.abs(now - base - t) > DRIFT) { kill(); running = false; }
       if (!running) { base = now - t + 0.05; next = Math.ceil(t / STEP); running = true; }
-      while (next * STEP < t + 0.18) { step(next, base + next * STEP); next++; }
+      // 화면이 잠깐 멈춰도 소리가 비지 않게 넉넉히 미리 예약하고, 이미 지나간 박은 몰아서 내지 않고 건너뛴다
+      while (next * STEP < t + LOOK) { const at = base + next * STEP; if (at > now - 0.03) step(next, at); next++; }
       // 내레이션: 지금 문장을 그 자리(중간이면 중간부터)에서 튼다
       if (voiceOn && VO.buf.size) {
         const l = activeLine(t);

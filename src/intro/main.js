@@ -606,8 +606,24 @@ function sndUI() {
   sndBtn.dataset.on = music.on ? "1" : "0";
   if (music.on) sndHint.hidden = true;
 }
-async function soundOn() { await music.enable(); sndUI(); }
-sndBtn.addEventListener("click", async () => { if (music.on) music.disable(); else await soundOn(); sndUI(); });
+async function soundOn() {
+  if (+volIn.value < 5) { volIn.value = 70; music.setVolume(0.7); store.set("intro-vol", 70); } // 음량이 0으로 저장돼 있으면 켜도 안 들린다
+  await music.enable(); store.set("intro-snd", "1"); sndUI();
+}
+sndBtn.addEventListener("click", async () => { if (music.on) { music.disable(); store.set("intro-snd", "0"); } else await soundOn(); sndUI(); });
+// 지난번에 소리를 켰으면 이번에도 켠다. 브라우저가 소리 자동 재생을 막으면(새로 고침·주소로 바로 들어온 경우) 화면 어디든 처음 누르거나 키를 누를 때 켠다
+if (store.get("intro-snd") === "1") {
+  music.tryEnable().then((ok) => {
+    if (ok) return sndUI();
+    const off = () => { document.removeEventListener("click", first, true); document.removeEventListener("keydown", first, true); };
+    const first = (e) => {
+      off();
+      if (music.on || e.target.closest?.("#snd, #sndhint, #vol") || (e.type === "keydown" && e.key === "m")) return; // 소리 단추는 제 일을 한다
+      soundOn();
+    };
+    document.addEventListener("click", first, true); document.addEventListener("keydown", first, true);
+  });
+}
 sndHint.addEventListener("click", soundOn);
 volIn.addEventListener("input", async () => {
   const v = +volIn.value; music.setVolume(v / 100); store.set("intro-vol", v);
@@ -626,7 +642,9 @@ window.__intro = { tl, S, music, render: (o) => createMusic({ T, TOTAL, voice: {
   // 글꼴과 그림을 먼저 풀어 둔다 (재생 중에 그림을 푸느라 끊기거나 건너뛰지 않게). 오래 걸리면 그냥 시작
   const ready = Promise.all([document.fonts.ready, ...$$("img", stage).map((im) => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()))]);
   try { await Promise.race([ready, new Promise((r) => setTimeout(r, 4000))]); } catch { /* 그냥 시작 */ }
-  gsap.ticker.lagSmoothing(250, 33);
+  // 타임라인은 벽시계를 그대로 따라간다: 화면이 느린 기기에서도 영상 길이가 늘어지지 않고, 소리(오디오 시계)와 어긋나지 않는다.
+  // (예전 lagSmoothing(250, 33)은 화면이 초당 4장 아래로 떨어지면 영상이 소리보다 뒤처져, 맞추느라 음악이 계속 끊겼다)
+  gsap.ticker.lagSmoothing(0);
   gsap.ticker.add(frame);
   frame();
   player.classList.add("ready");
