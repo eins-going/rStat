@@ -13,7 +13,7 @@ import { LINES } from "../src/intro/narration.js";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const EDGE = path.join(ROOT, ".venv/bin/edge-tts");
 const VOICE = process.env.VOICE || "ko-KR-InJoonNeural";
-const RATE = process.env.RATE || "-4%", PITCH = process.env.PITCH || "-6Hz";
+const RATE = process.env.RATE || "+0%", PITCH = process.env.PITCH || "-6Hz";
 
 function tts(text, file, voice = VOICE, rate = RATE, pitch = PITCH) {
   execFileSync(EDGE, ["--voice", voice, `--rate=${rate}`, `--pitch=${pitch}`, "--text", text, "--write-media", file], { stdio: ["ignore", "ignore", "pipe"] });
