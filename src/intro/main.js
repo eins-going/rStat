@@ -16,7 +16,6 @@ const F = I.facts;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const stage = $("#stage"), player = $("#player");
-const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ── 숫자·이름 ─────────────────────────────────────────────
 const unitName = (key) => key.split("|")[1].replace(/시부$/, "");
@@ -547,7 +546,16 @@ let wasHidden = false;
 document.addEventListener("visibilitychange", () => { if (document.hidden && !tl.paused()) { tl.pause(); wasHidden = true; } else if (!document.hidden && wasHidden) { wasHidden = false; tl.play(); } });
 
 // ── 배경음악 (소리는 사용자가 켤 때만) ─────────────────────
-const music = createMusic({ T, hits: CH.slice(1).map((c, i) => ({ t: c.t, big: c.t >= T.spot && c.t < T.wall ? 0.55 : c.t >= T.maker && c.t < T.end ? 0.4 : 1 })) });
+const music = createMusic({
+  T, sp,
+  hits: CH.slice(1).map((c) => ({ t: c.t, big: c.t >= T.spot && c.t < T.wall ? 0.5 : c.t >= T.maker && c.t < T.end ? 0.35 : 1 })),
+  events: {
+    click: [W0 + 2.6, W0 + 4.2, T.sat + 0.1],
+    whoosh: [W0 + 0.05, T.sat + 2.6, T.sat + 3.7, T.sat + 5.9, T.sat + 6.9],
+    ding: [T.rice + 2.3, T.rice + 6.0],
+    swell: [T.maker + 0.1],
+  },
+});
 const sndBtn = $("#snd"), volIn = $("#vol"), sndHint = $("#sndhint");
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* 저장 안 됨 */ } } };
 const v0 = +(store.get("intro-vol") ?? 70);
@@ -575,8 +583,12 @@ window.__intro = { tl, S }; // 확인용 (scripts에서 장면을 찍을 때)
   bg = await createBackground($("#bg"), { gpu: !/[?&]gl\b/.test(location.search) });
   stage.dataset.gpu = bg.kind;
   fit();
-  try { await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]); } catch { /* 글꼴이 늦으면 그냥 시작 */ }
+  // 글꼴과 그림을 먼저 풀어 둔다 (재생 중에 그림을 푸느라 끊기거나 건너뛰지 않게). 오래 걸리면 그냥 시작
+  const ready = Promise.all([document.fonts.ready, ...$$("img", stage).map((im) => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()))]);
+  try { await Promise.race([ready, new Promise((r) => setTimeout(r, 4000))]); } catch { /* 그냥 시작 */ }
+  gsap.ticker.lagSmoothing(250, 33);
   gsap.ticker.add(frame);
+  frame();
   player.classList.add("ready");
-  if (reduce) { tl.seek(9.5, false); tl.pause(); } else tl.play(0);
+  requestAnimationFrame(() => { tl.seek(0, false); tl.play(0); }); // 언제나 처음부터 자동 재생
 })();
