@@ -24,8 +24,8 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 RICE = os.path.dirname(HERE)
 CM = os.path.join(RICE, "cropmodel")
-CUT = {"0815": pd.Timestamp(2001, 8, 15).dayofyear, "0915": pd.Timestamp(2001, 9, 15).dayofyear,
-       "1001": pd.Timestamp(2001, 10, 1).dayofyear}
+CUT = {"0815": pd.Timestamp(2001, 8, 15).dayofyear, "0901": pd.Timestamp(2001, 9, 1).dayofyear,
+       "0915": pd.Timestamp(2001, 9, 15).dayofyear, "1001": pd.Timestamp(2001, 10, 1).dayofyear}   # 0901은 11-13 확인용으로 추가
 WIN = {"pre30": (-30, -1), "fill": (0, 40), "head": (-10, 15)}
 MAXKM, NEAR = 30, 3
 

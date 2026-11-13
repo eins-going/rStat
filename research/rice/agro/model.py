@@ -26,7 +26,8 @@ import baseline as B  # noqa: E402
 
 M, common = B.M, B.common
 pd.set_option("display.width", 250)
-EVAL = list(range(2015, 2026))
+END = int(os.environ.get("EVAL_END", 2025))   # 사전 등록 평가 기간은 2015~2025. 2026 확정 뒤에는 EVAL_END=2026 으로 한 해를 더해 본다
+EVAL = list(range(2015, END + 1))
 ASOFS = ["0815", "0915", "1001"]
 LAMS = [0.3, 1, 3, 10, 30, 100, 1e9]
 
@@ -89,7 +90,7 @@ def main():
     fs, fg = load_feats()
     fcols = [c for c in fs.columns if c not in ("sc", "y", "asof") and not c.endswith("_cov")]
     print("특징", fcols, flush=True)
-    base = {a: M.backtest(an, st, B.M4, a, icpt="cw", years=range(1996, 2026))[0] for a in ASOFS}
+    base = {a: M.backtest(an, st, B.M4, a, icpt="cw", years=range(1996, END + 1))[0] for a in ASOFS}
     res = {"eval_years": f"{EVAL[0]}~{EVAL[-1]}", "base": {}}
     for a in ASOFS:
         res["base"][a] = score(base[a], st, f"기준 {a}")
@@ -184,7 +185,7 @@ def main():
                                                "Δskill": round(r["skill"] - res["base"][a]["sigun_skill"], 4),
                                                "Δrank_r": round(r["rank_r"] - res["base"][a]["rank_r"], 4)}
             print(pd.DataFrame(res["b_within"]).T.to_string())
-    out = os.path.join(HERE, "results.json")
+    out = os.path.join(HERE, "results.json" if END == 2025 else f"results_{END}.json")
     json.dump(res, open(out, "w"), ensure_ascii=False, indent=1, default=float)
     print("저장", out)
 
