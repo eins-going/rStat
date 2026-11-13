@@ -5,6 +5,8 @@
   2. 시군 논 중심 일기상         research/rice/cropmodel/build_weather.py
   3. 작물 생리 지표              research/rice/cropmodel/components.py   (PHENO=fixed, RICE_ASOF=보일 시점)
   4. 실시간 재현 + 올해 예측      research/rice/cropmodel/run_final.py
+  4-1. 올해 농업기상 받기 (8/15~9/14 시점이 있을 때)  research/rice/agro/fetch_agro.py   (농진청 217곳 × 1회, 하루 한도 1,000회)
+       → 8/15~9/14 시점 시도 보정(prod/agro_adjust.py)에 쓴다. 못 받아도 멈추지 않는다(그 시점 보정만 빠짐).
   5. 시군·시도·전국 내보내기      research/rice/prod/pipeline.py          → db/clean/rice/rice_forecast.csv
   그다음 update.py가 scripts/build_rice.py로 data/rice.js를 만든다.
 
@@ -25,6 +27,7 @@ R = os.path.join(ROOT, "research", "rice")
 PY = os.path.join(ROOT, ".venv", "bin", "python")
 GRID = ["0731", "0815", "0901", "0915", "1001"]
 SEASON = ("0720", "1012")
+AGRO = ("0815", "0915")  # 이 사이 시점은 농업기상 일사 차이로 시도 값을 보정 (research/rice/prod/agro_adjust.py)
 STAT = os.path.join(R, "statdown", "stat_forecast_sido.csv")
 KOSIS = os.path.join(ROOT, "db", "raw", "kosis_rice", "dt_1et0034.csv")
 
@@ -38,12 +41,14 @@ def stat_and_final(fy):
     return st, fin
 
 
-def step(name, args, env=None, mem="4G", cwd=R):
+def step(name, args, env=None, mem="4G", cwd=R, fatal=True):
     print(f"\n== {name} ==", flush=True)
     e = dict(os.environ, OMP_NUM_THREADS="2", PHENO="fixed", **(env or {}))
     r = subprocess.run(["memcap", "-m", mem, PY, *args], cwd=cwd, env=e)
-    if r.returncode:
+    if r.returncode and fatal:
         sys.exit(f"{name} 실패 (종료 코드 {r.returncode})")
+    if r.returncode:
+        print(f"{name} 실패 (종료 코드 {r.returncode}) — 건너뛰고 계속", flush=True)
 
 
 def main():
@@ -76,6 +81,9 @@ def main():
     step("시군 일기상", ["cropmodel/build_weather.py"], mem="5G")
     step("작물 생리 지표", ["cropmodel/components.py"], env={"RICE_ASOF": ",".join(asof)})
     step("재현·올해 예측", ["cropmodel/run_final.py"])
+    if not a.no_fetch and in_season and md <= "0921" and any(AGRO[0] <= x < AGRO[1] for x in asof):  # 창이 닫히고 한 주 뒤까지만
+        step("올해 농업기상 받기", ["fetch_agro.py", "--from", str(yday.year), "--to", str(yday.year)], mem="2G",
+             cwd=os.path.join(R, "agro"), fatal=False)
     step("내보내기", ["prod/pipeline.py"], env={"RICE_SHOW": ",".join(show + ["1010"]), **({"RICE_LATE": late} if late else {})})
     print("완료")
 

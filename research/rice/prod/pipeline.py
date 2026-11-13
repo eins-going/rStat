@@ -9,6 +9,7 @@ blend/crop_persist.py · blend/forecast_2026.py · prod/natsido.py · prod/expor
 시점
 - 작물모델 A (0731·0815·0901·0915·1001 + 시즌 중 주간 최신): 시도 = 시도 평년 × (1+â), 8도 밖 시도는 8도 면적가중 â
   시군 = 시군 평년 × (1+시도 â) + ρ·(직전해 시군 잔차), ρ는 그해 이전으로 맞춤 [0, 0.5]
+  8/15~9/14 시점: 시도 â에 농업기상 일사 차이 보정(prod/agro_adjust.py), 10/1: NCPMS 도열병 + 시도 잔차 2년 지속(prod/sido_adjust.py)
 - 1010 (국가데이터처 시도 예상 발표 후): 시도 = W·예상×(1+태풍 ê) + (1−W)·0915, 시군도 같은 방식(W는 그해 이전으로 고름)
 면적
 - 9/1 이후 시점: 그해 시도 재배면적(확정과 같은 재배면적 조사; FY는 국가데이터처 예상 발표값, 없으면 직전해)
@@ -73,6 +74,9 @@ def area_col(asof):
 
 # ---------- 시도·전국: 작물모델 시점 ----------
 ADJ_ASOF = "1001"  # 11-10 채택: 10/1 시도 â에 NCPMS 도열병 + 시도 잔차 2년 지속 보정 (prod/sido_adjust.py)
+import agro_adjust as AA  # noqa: E402  11-13 채택: 8/15~9/14 시점 시도 â에 농업기상 일사 차이 보정 (prod/agro_adjust.py)
+AGF = AA.features(ALLA)   # 시도 d_rs_fill (농업기상 자료가 없으면 빈 표 → 보정 없음)
+print("농업기상 일사 차이 보정 시점", sorted(AGF["asof"].unique()) if len(AGF) else "없음")
 
 
 def sido_crop(asof):
@@ -89,6 +93,14 @@ def sido_crop(asof):
         a0 = cf.ahat.copy()
         cf["ahat"] = SA.adjust(cf, nc, range(2013, FY + 1))
         print(f"{asof} 시도 â 보정(NCPMS 도열병+2년 지속) FY:", {s: round(float(v), 4) for s, v in zip(cf.sc[cf.y == FY], (cf.ahat - a0)[cf.y == FY])})
+    if AA.applies(asof) and (AGF["asof"] == asof).any():
+        fa = AGF[AGF["asof"] == asof]
+        cf = cf.merge(SY[["sc", "y", "area"]], on=["sc", "y"], how="left")
+        cf["area"] = cf.area.fillna(cf.groupby("sc").area.transform("last"))
+        a0 = cf.ahat.copy()
+        cf["ahat"] = AA.adjust(cf, fa, range(2013, FY + 1))
+        got = int(fa[(fa.y == FY) & fa.sc.isin(P8)].d_rs_fill.notna().sum())
+        print(f"{asof} 시도 â 보정(농업기상 일사 차이) FY 자료 {got}/8도:", {s: round(float(v), 4) for s, v in zip(cf.sc[cf.y == FY], (cf.ahat - a0)[cf.y == FY])})
     g = SY.merge(cf[["sc", "y", "ahat"]], on=["sc", "y"], how="left")
     g = g[g.sc != "00"].copy()
     ac = area_col(asof)

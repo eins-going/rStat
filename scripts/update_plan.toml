@@ -695,12 +695,12 @@ schedule = { kind = "weekly", months = [7, 8, 9, 10, 11, 12], weekday = 0 }
 commands = [["scripts/rice_model.py"], ["scripts/build_rice.py"]]
 outputs = ["data/rice.js"]
 check = "rice"
-keys = ["KMA_API_KEY"]
-note = "7/20~10/12 매주 월요일, 어제까지 기상으로 작물 생리 모델을 다시 돌려 '최신' 예측과 7/31·8/15·9/1·9/15·10/1 시점 값을 낸다. 국가데이터처 예상 뒤~확정 전에는 국가데이터처 예상 + 어제까지 기상으로 '최신' 값을 다시 추정한다(그 밖엔 건너뜀, 20분 안팎). 10월 국가데이터처 예상 반영값(1010)은 그해 예상생산량 보도자료를 research/rice/statdown에 넣고 statdown·statfix를 다시 돌려야 나온다. 연구 기록 research/rice/SUMMARY.md."
+keys = ["KMA_API_KEY", "DATA_PORTAL_API_KEY"]
+note = "7/20~10/12 매주 월요일, 어제까지 기상으로 작물 생리 모델을 다시 돌려 '최신' 예측과 7/31·8/15·9/1·9/15·10/1 시점 값을 낸다. 국가데이터처 예상 뒤~확정 전에는 국가데이터처 예상 + 어제까지 기상으로 '최신' 값을 다시 추정한다(그 밖엔 건너뜀, 20분 안팎). 8/15~9/14 시점은 그 주에 농진청 농업기상(217곳, 하루 한도 1,000회)을 받아 실측 일사와 추정 일사의 차이로 시도 값을 보정한다(못 받으면 보정만 빠짐, research/rice/prod/agro_adjust.py). 10월 국가데이터처 예상 반영값(1010)은 그해 예상생산량 보도자료를 research/rice/statdown에 넣고 statdown·statfix를 다시 돌려야 나온다. 연구 기록 research/rice/SUMMARY.md."
 
 [[source.dataset]]
 name = "쌀 단수·생산량 모델 예측 (전국·시도·시군, 시점별 80% 범위)"
-origin = "기상청 ASOS 일자료(API허브) + KOSIS 논벼 생산량으로 학습한 작물 생리 모델 (research/rice)"
+origin = "기상청 ASOS 일자료(API허브) + KOSIS 논벼 생산량으로 학습한 작물 생리 모델 (research/rice), 8/15~9/14 시점은 농촌진흥청 농업기상 관측 일사로 보정"
 freq = "주"
 cadence = "7월 말~10월 초 매주"
 period = "rice"

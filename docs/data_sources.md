@@ -1,6 +1,6 @@
 # 자료 수집 현황
 
-`python scripts/update.py status`가 2026-11-13 14:52에 만든 문서입니다. 계획은 `scripts/update_plan.toml`, 실행은 이 PC의 systemd 사용자 타이머(`rstat-update.timer`, 매일)입니다.
+`python scripts/update.py status`가 2026-11-13 15:39에 만든 문서입니다. 계획은 `scripts/update_plan.toml`, 실행은 이 PC의 systemd 사용자 타이머(`rstat-update.timer`, 매일)입니다.
 
 | 자료 | 화면 | 방식 | 자료 시점 | 마지막 성공 | 상태 | 다음 |
 |---|---|---|---|---|---|---|
@@ -102,5 +102,5 @@
 - **축산 환경 (국립환경과학원 전국오염원조사 축산계·환경기초시설)**: 매년 1·4·7·10월 5일 이후 · `scripts/fetch_livestock.py` → `scripts/build_livestock.py` · 2012년부터 해마다 한 판, 약 2년 늦게 나오고 공표 달이 정해져 있지 않아 석 달마다 다음 해가 나왔는지 본다. 리 × 축종 자료를 더해 쓰고, 해마다 시군구 통계와 사육두수·농가수·분뇨 발생량이 맞는지 대조한 뒤에만 만든다. 개발계정 활용기간은 2028-10-23까지.
 - **벼 작황 (논벼 생산량 확정치)**: 매년 11월 14일 이후 · `scripts/fetch_kosis_rice.py` → `scripts/build_rice.py` · 매년 11월 중순 쌀 생산량 확정 공표 다음 날부터 받는다. 확정치가 들어오면 화면의 '확정'과 '국가데이터처 예상 오차'가 저절로 채워진다. 공표가 늦으면 45일 동안 1주마다 다시 확인한다. 국가데이터처 10월 예상생산량·KREI 쌀 관측 전망(db/raw/krei/krei_rice_outlook.csv)은 해마다 9~10월에 직접 넣는다.
 - **벼 작황 위성 생육 (MODIS 논 NDVI)**: 매년 6·7·8·9·10·11·12월 3일 이후 · `scripts/fetch_modis_earthdata.py` → `scripts/build_modis_curves.py` → `scripts/build_rice.py` · 생육기(5~11월) 동안 매달 3일에 NASA Earthdata에서 올해 MOD13Q1·MYD13Q1 새 합성을 받아 논 격자 생육 곡선을 잇는다. 합성은 16일 단위(Terra·Aqua 번갈아 8일 간격)로 끝나고 2~3주 뒤에 올라온다. Earthdata 사용자 토큰은 60일 뒤 만료(지금 토큰 2027-01-07)되니 urs.earthdata.nasa.gov에서 새로 받아 .env NASA_API_KEY를 바꾼다. 만료되면 이 작업이 실패로 알림이 온다.
-- **벼 작황 모델 예측 (시점별 쌀 단수·생산량)**: 매년 7·8·9·10·11·12월 매주 월요일 · `scripts/rice_model.py` → `scripts/build_rice.py` · 7/20~10/12 매주 월요일, 어제까지 기상으로 작물 생리 모델을 다시 돌려 '최신' 예측과 7/31·8/15·9/1·9/15·10/1 시점 값을 낸다. 국가데이터처 예상 뒤~확정 전에는 국가데이터처 예상 + 어제까지 기상으로 '최신' 값을 다시 추정한다(그 밖엔 건너뜀, 20분 안팎). 10월 국가데이터처 예상 반영값(1010)은 그해 예상생산량 보도자료를 research/rice/statdown에 넣고 statdown·statfix를 다시 돌려야 나온다. 연구 기록 research/rice/SUMMARY.md.
+- **벼 작황 모델 예측 (시점별 쌀 단수·생산량)**: 매년 7·8·9·10·11·12월 매주 월요일 · `scripts/rice_model.py` → `scripts/build_rice.py` · 7/20~10/12 매주 월요일, 어제까지 기상으로 작물 생리 모델을 다시 돌려 '최신' 예측과 7/31·8/15·9/1·9/15·10/1 시점 값을 낸다. 국가데이터처 예상 뒤~확정 전에는 국가데이터처 예상 + 어제까지 기상으로 '최신' 값을 다시 추정한다(그 밖엔 건너뜀, 20분 안팎). 8/15~9/14 시점은 그 주에 농진청 농업기상(217곳, 하루 한도 1,000회)을 받아 실측 일사와 추정 일사의 차이로 시도 값을 보정한다(못 받으면 보정만 빠짐, research/rice/prod/agro_adjust.py). 10월 국가데이터처 예상 반영값(1010)은 그해 예상생산량 보도자료를 research/rice/statdown에 넣고 statdown·statfix를 다시 돌려야 나온다. 연구 기록 research/rice/SUMMARY.md.
 - **NCPMS 논벼 병해충 예찰 (벼 작황 10/1 도열병 보정)**: 매년 6·7·8·9·10월 매일 · `scripts/fetch_ncpms_rice.py` · 6~10월 매일 벼관찰포 기본조사 회차(해마다 8회, 6/1~9/16 기준)를 받아 ncpms 특징을 다시 만든다(배포할 파일 없음, 다음 월요일 rice_model이 씀). 10/1 예측은 9/16 회차 도열병 감수율을 쓴다. research/rice/ncpms/data/first_seen.csv에 회차별 처음 보인 날·8도 다 찬 날을 기록해 공개 시차를 잰다(2027 시즌부터).
