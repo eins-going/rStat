@@ -274,15 +274,19 @@ def sec_livestock_census(out, v):
 
 
 def sec_rice(out, v):
-    """논벼 재배면적·생산량 (농작물생산조사, 연)"""
-    b, rows = fetch("101", "DT_1ET0294", "Y", 10, ["논벼:재배면적(ha)", "논벼:생산량(톤)"])
-    a, p = latest(b["논벼:재배면적(ha)"]), latest(b["논벼:생산량(톤)"])
+    """논벼 재배면적·생산량 (농작물생산조사, 연)
+
+    정곡(찧은 쌀, 현백률 92.9%) 표 DT_1ET0034 — 보도자료 · 벼 작황 화면과 같은 기준이다.
+    2026-11-13 전까지는 조곡 표(DT_1ET0294)를 써서 10a당 생산이 698kg처럼 정곡(524kg)보다 크게 나왔다.
+    """
+    b, rows = fetch("101", "DT_1ET0034", "Y", 10, ["논벼:재배면적", "논벼:생산량"])
+    a, p = latest(b["논벼:재배면적"]), latest(b["논벼:생산량"])
     v["rice"] = {k: [a.get(k), p.get(k)] for k in set(a) | set(p)}
     yrs = periods_of(b)
-    v["riceSeries"] = series(b["논벼:생산량(톤)"], yrs)
+    v["riceSeries"] = series(b["논벼:생산량"], yrs)
     out["periods"]["rice"] = yrs[-1]
     out["periods"]["riceYears"] = yrs
-    out["sources"]["rice"] = "국가데이터처 농작물생산조사"
+    out["sources"]["rice"] = "국가데이터처 농작물생산조사(정곡)"
 
 
 def sec_crops(out, v):
