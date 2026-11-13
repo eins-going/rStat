@@ -87,7 +87,8 @@ def region_map(dim):
             out[it["id"]] = ("00", "area")
         elif (it["up"] in (None, "00") or it["up"] in merged or it["up"] not in {x["id"] for x in items}) and sido_code(it["name"]):
             code = sido_code(it["name"])
-            if it["name"].endswith("시") and code in ("24",) and it["up"] not in (None, "00"):
+            # 경기도 아래의 '광주시'를 광주광역시로 읽지 않게 한다. 통합 행 아래의 광주광역시는 시도 그대로다
+            if it["name"].endswith("시") and code in ("24",) and it["up"] not in (None, "00") and it["up"] not in merged:
                 continue
             out[it["id"]] = (code, "area")
             sido_ids[it["id"]] = code

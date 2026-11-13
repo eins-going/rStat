@@ -465,16 +465,22 @@
     const st = o.stat, kr = o.krei;
     const pPrev = at(NATION, "p", CUR - 1), pFin = at(NATION, "p", CUR);
     const md = (d) => (d ? `${+d.slice(5, 7)}.${+d.slice(8, 10)}` : ""); // 발표일 2026-10-08 → 10.8
-    $("#nat-l1").textContent = `${CUR}년 국가데이터처 예상${st?.date ? ` (${md(st.date)})` : ""}`;
-    $("#nat-v1").textContent = ok(st?.p) ? nf1.format(st.p / 1e4) : "–";
-    $("#nat-u1").textContent = ok(st?.p) ? "만 톤" : "";
-    $("#nat-d1").innerHTML = deltaHTML(ratio(st?.p, pPrev), "전년 대비");
+    const estLab = `${CUR}년 국가데이터처 예상${st?.date ? ` (${md(st.date)})` : ""}`;
     if (o.final && ok(pFin)) {
-      $("#nat-l2").textContent = `${CUR}년 확정`;
-      $("#nat-v2").textContent = nf1.format(pFin / 1e4);
-      $("#nat-u2").textContent = "만 톤";
+      // 확정이 나온 뒤: 확정치(전년 대비)를 앞에, 10월 예상은 그 옆에 오차와 함께
+      $("#nat-l1").textContent = `${CUR}년 확정 (KOSIS)`;
+      $("#nat-v1").textContent = nf1.format(pFin / 1e4);
+      $("#nat-u1").textContent = "만 톤";
+      $("#nat-d1").innerHTML = deltaHTML(ratio(pFin, pPrev), "전년 대비");
+      $("#nat-l2").textContent = estLab;
+      $("#nat-v2").textContent = ok(st?.p) ? nf1.format(st.p / 1e4) : "–";
+      $("#nat-u2").textContent = ok(st?.p) ? "만 톤" : "";
       $("#nat-d2").innerHTML = ok(st?.p) ? `<span class="d-lab">예상 오차</span><span>${pctS(ratio(st.p, pFin))}</span>` : "";
     } else {
+      $("#nat-l1").textContent = estLab;
+      $("#nat-v1").textContent = ok(st?.p) ? nf1.format(st.p / 1e4) : "–";
+      $("#nat-u1").textContent = ok(st?.p) ? "만 톤" : "";
+      $("#nat-d1").innerHTML = deltaHTML(ratio(st?.p, pPrev), "전년 대비");
       const [mm, dd] = (o.pending || "").split("-").slice(1).map(Number);
       $("#nat-l2").textContent = `${CUR}년 확정`;
       $("#nat-v2").textContent = o.pending ? `${mm}.${dd}` : "–";
@@ -555,9 +561,10 @@
       .attr("cx", (d) => x(d) - 2).attr("cy", (d) => y(O[d].stat.y)).attr("r", (d) => (d === CUR ? 4.5 : 3.2));
     const fn = fcNat(CUR);
     if (fn) g.append("rect").attr("class", "rc-fcd").attr("x", x(CUR) + 2).attr("y", y(fn[0]) - 3.5).attr("width", 7).attr("height", 7).attr("transform", `rotate(45 ${x(CUR) + 5.5} ${y(fn[0])})`);
-    // 올해 예상만 이름표를 단다
-    const cs = O[CUR]?.stat?.y;
-    if (ok(cs)) {
+    // 올해 값에만 이름표를 단다: 확정이 나왔으면 확정, 아니면 예상
+    const cs = O[CUR]?.stat?.y, cf = at(NATION, "y", CUR);
+    if (ok(cf)) g.append("text").attr("class", "rc-lab").attr("x", x(CUR)).attr("y", y(cf) - 9).attr("text-anchor", "end").text(`${CUR} 확정 ${int(cf)}`);
+    else if (ok(cs)) {
       g.append("text").attr("class", "rc-lab").attr("x", x(CUR)).attr("y", y(cs) - 9).attr("text-anchor", "end").text(`${CUR} 예상 ${int(cs)}`);
     }
     hover(svg, m, w, h, x, ys, (yy) => {
@@ -595,7 +602,8 @@
       .attr("cx", (d) => x(d) - 2).attr("cy", (d) => y(est(d))).attr("r", (d) => (d === CUR ? 4.5 : 3.2));
     const fn = fcNat(CUR);
     if (fn) g.append("rect").attr("class", "rc-fcd").attr("x", x(CUR) + 2).attr("y", y(fn[2]) - 3.5).attr("width", 7).attr("height", 7).attr("transform", `rotate(45 ${x(CUR) + 5.5} ${y(fn[2])})`);
-    if (ok(est(CUR))) g.append("text").attr("class", "rc-lab").attr("x", x(CUR)).attr("y", y(est(CUR)) - 9).attr("text-anchor", "end").text(`${CUR} 예상 ${nf1.format(est(CUR) / 1e4)}만 톤`);
+    if (ok(fin(CUR))) g.append("text").attr("class", "rc-lab").attr("x", x(CUR)).attr("y", y(fin(CUR)) - 9).attr("text-anchor", "end").text(`${CUR} 확정 ${nf1.format(fin(CUR) / 1e4)}만 톤`);
+    else if (ok(est(CUR))) g.append("text").attr("class", "rc-lab").attr("x", x(CUR)).attr("y", y(est(CUR)) - 9).attr("text-anchor", "end").text(`${CUR} 예상 ${nf1.format(est(CUR) / 1e4)}만 톤`);
     hover(svg, m, w, h, x, ys, (yy) => {
       const o = O[yy] || {};
       const parts = [`<b>${yy}년</b>`];
