@@ -1,4 +1,4 @@
-// 탭 옆 '소개'·'만든이' 버튼: 소개 영상(intro.html)과 만든이 화면(about.html)으로 간다. 모든 화면이 함께 쓴다
+// 모든 화면이 함께 쓰는 것: 용어 설명·자료 내려받기 불러오기, 탭 옆 '소개'·'만든이' 단추(HTML에 없을 때만), 탭 줄 밀기
 (() => {
   // 용어 설명(마우스를 올리면 보이는 짧은 설명)
   if (!document.querySelector('script[src$="glossary.js"]')) {
@@ -22,10 +22,10 @@
     if (re.test(location.pathname)) a.setAttribute("aria-current", "page");
     return a;
   };
-  const intro = btn("intro", "소개", /\/intro(\.html)?$/, "intro-btn");
-  const maker = btn("about", "만든이", /\/about(\.html)?$/, "maker-btn");
-  tabs.before(intro); // 소개는 주요통계 앞
-  tabs.after(maker);
+  // 단추는 각 화면 HTML에 처음부터 들어 있다(나중에 끼우면 탭 줄이 밀려 화면이 흔들린다). 없는 화면에서만 만든다
+  const wrap = tabs.parentElement;
+  if (!wrap.querySelector(".intro-btn")) tabs.before(btn("intro", "소개", /\/intro(\.html)?$/, "intro-btn")); // 소개는 주요통계 앞
+  if (!wrap.querySelector(".maker-btn")) tabs.after(btn("about", "만든이", /\/about(\.html)?$/, "maker-btn"));
   // 좁은 화면에서 탭 줄이 넘치면 지금 화면 탭이 보이게 민다
   const cur = tabs.querySelector('[aria-current="page"]');
   if (cur && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = cur.offsetLeft - (tabs.clientWidth - cur.offsetWidth) / 2;

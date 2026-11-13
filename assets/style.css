@@ -117,6 +117,7 @@ body {
   font-weight: 600;
   padding: 5px 30px 5px 10px;
   cursor: pointer;
+  min-width: var(--w, 0); /* 목록이 채워지기 전에도 자리를 잡아 둔다(각 화면 HTML의 --w = 다 채워진 뒤의 폭). 안 그러면 머리줄이 밀려 화면이 흔들린다 */
 }
 
 .select select:disabled { cursor: default; opacity: 0.85; }
@@ -618,7 +619,7 @@ body {
   .region-label.sel { font-size: 11px; }
   .controls { width: 100%; }
   .select { flex: 1; }
-  .select select { width: 100%; }
+  .select select { width: 100%; min-width: 0; }
 }
 @media (max-width: 400px) {
   .tabs a { padding: 3px 5px; }
