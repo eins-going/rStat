@@ -1517,9 +1517,9 @@
       cols: ["재배면적(ha)", "단수(kg/10a)", "생산량(톤)", "평년 단수(kg/10a)", "평년 대비 단수(%)", "모델 재현 단수(kg/10a)"],
       rows: (y) => { const i = YI[+y]; return REG().map((r) => [r.sido, r.sgg, ...["a", "y", "p", "n", "d"].map((f) => V[r.key]?.[f]?.[i] ?? null), FC?.bt[r.key]?.[i] ?? null]); } },
     ...(FC ? [
-      { id: "forecast", name: `${FCY} 쌀 예측(시점별)`, src: "모델 예측(기상청 종관기상 일자료·국가데이터처 쌀 예상생산량)",
+      { id: "forecast", name: `${FCY} 쌀 예측(시점별)`, src: "모델 예측(기상청 종관기상 일자료·농촌진흥청 농업기상 관측·국가데이터처 쌀 예상생산량·농가판매가격지수)",
         years: FC.order.filter((t) => FC.v[t]).map((t) => FC.lab[t]),
-        note: `80% 범위 = 재현 오차의 10~90% · 시군 면적 = 작년 면적×올해 시도 증감 · ${Object.entries(FC.tag).map(([t, s]) => `${FC.lab[t]} ${s}`).join(", ")}`,
+        note: `80% 범위 = 재현 오차의 10~90% · 시군 면적 = 작년 면적×올해 시도 증감(8월 중순까지는 추세·쌀값으로 예측한 증감) · ${Object.entries(FC.tag).map(([t, s]) => `${FC.lab[t]} ${s}`).join(", ")}`,
         cols: ["단수(kg/10a)", "재배면적(ha)", "생산량(톤)", "단수 80% 하한(kg/10a)", "단수 80% 상한(kg/10a)", "생산량 80% 하한(톤)", "생산량 80% 상한(톤)"],
         rows: (lab) => { const t = FC.order.find((x) => FC.lab[x] === lab); return REG().map((r) => [r.sido, r.sgg, ...N7.map((n) => FC.v[t][r.key]?.[n] ?? null)]); } },
       { id: "stat", name: `${FCY} 쌀 예상생산량(시도)`, src: "국가데이터처 쌀 예상생산량", years: null, note: `${FC.statDate} 발표`,

@@ -7,6 +7,8 @@
   4. 실시간 재현 + 올해 예측      research/rice/cropmodel/run_final.py
   4-1. 올해 농업기상 받기 (8/15~9/14 시점이 있을 때)  research/rice/agro/fetch_agro.py   (농진청 217곳 × 1회, 하루 한도 1,000회)
        → 8/15~9/14 시점 시도 보정(prod/agro_adjust.py)에 쓴다. 못 받아도 멈추지 않는다(그 시점 보정만 빠짐).
+  4-2. 쌀 농가판매가격지수 받기 (9/1 전 시점이 있을 때)  research/rice/areafc/fetch_price.py   (KOSIS, 4회 호출)
+       → 재배면적 조사 전 시점(7/31·8/15)의 면적 = 작년 면적 × 예측 변화율(추세 + 수확기 쌀값, prod/area_early.py). 못 받으면 있는 자료로.
   5. 시군·시도·전국 내보내기      research/rice/prod/pipeline.py          → db/clean/rice/rice_forecast.csv
   그다음 update.py가 scripts/build_rice.py로 data/rice.js를 만든다.
 
@@ -84,6 +86,8 @@ def main():
     if not a.no_fetch and in_season and md <= "0921" and any(AGRO[0] <= x < AGRO[1] for x in asof):  # 창이 닫히고 한 주 뒤까지만
         step("올해 농업기상 받기", ["fetch_agro.py", "--from", str(yday.year), "--to", str(yday.year)], mem="2G",
              cwd=os.path.join(R, "agro"), fatal=False)
+    if not a.no_fetch and any(x < "0901" for x in asof):
+        step("쌀 농가판매가격지수 받기", ["areafc/fetch_price.py"], mem="1G", fatal=False)
     step("내보내기", ["prod/pipeline.py"], env={"RICE_SHOW": ",".join(show + ["1010"]), **({"RICE_LATE": late} if late else {})})
     print("완료")
 

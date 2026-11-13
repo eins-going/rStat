@@ -13,7 +13,7 @@ blend/crop_persist.py · blend/forecast_2026.py · prod/natsido.py · prod/expor
 - 1010 (국가데이터처 시도 예상 발표 후): 시도 = W·예상×(1+태풍 ê) + (1−W)·0915, 시군도 같은 방식(W는 그해 이전으로 고름)
 면적
 - 9/1 이후 시점: 그해 시도 재배면적(확정과 같은 재배면적 조사; FY는 국가데이터처 예상 발표값, 없으면 직전해)
-- 9/1 전 시점: 직전해 면적 (재배면적 조사 공표 전)
+- 9/1 전 시점: 직전해 면적 × 예측 변화율 (재배면적 조사 공표 전; 전국 변화율 = 직전 3년 추세 + 수확기 쌀값, prod/area_early.py)
 - 시군 면적 = 직전해 시군 면적 × (그해 시도 면적 / 직전해 시도 면적). 시군 단수는 시도 예측에 비례 맞춤. 생산량 = 단수 × 면적.
 범위(80%): 그해 이전 재현 오차 log(실제/예측)의 10·90분위(시군은 면적 3구간별), 3년 이상 쌓인 해부터.
 사용: .venv/bin/python research/rice/prod/pipeline.py
@@ -65,11 +65,15 @@ S["area"] = S.area.fillna(S.sarea)  # FY: 국가데이터처 예상 발표 면�
 S["area1"] = S.groupby("sc").area.shift(1)
 S["area"] = S.area.fillna(S.area1)  # 그것도 없으면 직전해
 S["base"] = S.groupby("sc")["yield"].transform(C._olympic)
+import area_early as AE  # noqa: E402  11-13 채택: 재배면적 조사 전 시점은 작년 면적 × 예측 변화율(추세 + 수확기 쌀값)
+DH = AE.dhat(k[k.code == "00"].set_index("y").area, list(range(2010, FY + 1)))
+S["area_e"] = S.area1 * np.exp(S.y.map(DH).fillna(0.0))
+print("이른 시점 전국 면적 변화 예측(%)", {y: round(100 * v, 2) for y, v in DH.items() if y >= FY - 4})
 SY = S[S.y.between(2010, FY)].copy()
 
 
 def area_col(asof):
-    return "area1" if asof < EARLY else "area"
+    return "area_e" if asof < EARLY else "area"
 
 
 # ---------- 시도·전국: 작물모델 시점 ----------
@@ -216,7 +220,7 @@ rows = []
 for asof in ASOFS + (["1010"] if WANT1010 else []) + ([SKEY] if SKEY else []):
     early = asof < EARLY
     T = TT.copy()
-    T["parea"] = T.a1 if early else T.a1 * T.sa / T.sa1
+    T["parea"] = T.a1 * np.exp(T.y.map(DH).fillna(0.0)) if early else T.a1 * T.sa / T.sa1
     d = T.merge(SG[asof], on=["y", "sc", "stem"], how="inner").dropna(subset=["pred_yield", "parea", "a1"])
     sd = SD[asof][["y", "sc", "p"]]
     r = d.groupby(["y", "sc"]).apply(lambda q: np.sum(q.pred_yield * q.a1) / np.sum(q.base * q.a1)).rename("r").reset_index()
@@ -245,7 +249,7 @@ for asof in ASOFS + (["1010"] if WANT1010 else []) + ([SKEY] if SKEY else []):
         rows.append(dict(y=q.y, asof=asof, level="sigun", sc=q.sc, name=q["name"], **{"yield": q.pred_yield}, area=q.parea, prod=q.pprod,
                          y_lo=q.ylo, y_hi=q.yhi, p_lo=q.plo, p_hi=q.phi))
     # 시도·전국 (전국 = 시도 예측의 면적 가중)
-    ac = "area1" if early and asof != "1010" else "area"
+    ac = "area_e" if early and asof != "1010" else "area"
     A = SD[asof].copy()
     A["parea_s"] = A[ac]
     A = A[A.y >= 2013]
