@@ -1,37 +1,17 @@
 // 검색 등록용: 각 화면 <head>에 제목·대표 주소·공유 카드·구조화 자료를 넣고 sitemap.xml을 만든다.
 //   node scripts/build_seo.mjs        (화면을 더하거나 제목·설명을 고친 뒤 다시 돌린다. 여러 번 돌려도 같다)
-// 설명은 각 html의 <meta name="description">을 그대로 쓴다. 넣는 부분은 <!-- seo --> ~ <!-- /seo --> 사이.
+// 검색 설명은 각 html의 <meta name="description">, 공유 카드(카카오톡 등) 설명·그림은 seo_pages.mjs와 assets/og/<화면>.jpg. 넣는 부분은 <!-- seo --> ~ <!-- /seo --> 사이.
 // 소유 확인: 구글 서치 콘솔·네이버 서치어드바이저의 'HTML 태그' content 값을 아래 두 칸에 넣으면 첫 화면에만 붙는다.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { SITE, NAME, PAGES } from "./seo_pages.mjs"; // 화면 목록·공유 설명
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SITE = "https://ag-rstat.vercel.app";
-const NAME = "지역농업 현황판";
 const GSC_TOKEN = ""; // <meta name="google-site-verification" content="여기">
 const NAVER_TOKEN = ""; // <meta name="naver-site-verification" content="여기">
 
-// 파일, 주소, 검색 제목(탭 이름), 종류. 순서가 사이트맵 순서다.
-const PAGES = [
-  ["index", "/", `${NAME} | 시군별 농업 통계`, "home"],
-  ["rice", "/rice", "벼 작황", "data"],
-  ["rio", "/rio", "지역산업연관표(농업)", "data"],
-  ["flow", "/flow", "물류동향", "data"],
-  ["logistics", "/logistics", "지역물류기기 사업동향", "data"],
-  ["od", "/od", "물류기기 기종점 분석", "data"],
-  ["power", "/power", "농사용 전기 모니터", "data"],
-  ["employ", "/employ", "농업고용", "data"],
-  ["agfin", "/agfin", "농업금융보험", "data"],
-  ["jikbul", "/jikbul", "직불금·고향사랑기금", "data"],
-  ["ruraldev", "/ruraldev", "농촌개발", "data"],
-  ["soil", "/soil", "농경지 토양", "data"],
-  ["livestock", "/livestock", "축산 환경", "data"],
-  ["intro", "/intro", "소개 영상", "page"],
-  ["about", "/about", "만든이", "about"],
-  ["status", "/status", "자료 수집 현황", "page"],
-];
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 const PERSON = { "@type": "Person", "@id": `${SITE}/about#person`, name: "조승현", description: "농업·자원경제학 박사", email: "agrirstat@gmail.com", url: `${SITE}/about` };
@@ -59,13 +39,16 @@ function lastmod(file, html) {
 }
 
 const urls = [];
-for (const [id, p, tab, kind] of PAGES) {
+for (const [id, p, tab, kind, short] of PAGES) {
   const file = `${id}.html`, fp = path.join(ROOT, file);
   let html = fs.readFileSync(fp, "utf8");
   const desc = (html.match(/<meta name="description" content="([^"]*)"/) || [])[1];
   if (!desc) throw new Error(`${file}: description 없음`);
-  const url = SITE + p, title = kind === "home" ? tab : `${tab} | ${NAME}`;
+  const url = SITE + p, title = kind === "home" ? `${NAME} | ${tab}` : `${tab} | ${NAME}`;
   const shareTitle = kind === "home" ? NAME : `${tab} — ${NAME}`;
+  const og = `assets/og/${id}.jpg`; // 그림이 바뀌면 ?v=가 바뀌어 카카오톡이 새로 받는다
+  if (!fs.existsSync(path.join(ROOT, og))) throw new Error(`${og} 없음: node scripts/build_og_images.mjs ${id}`);
+  const ogv = fs.statSync(path.join(ROOT, og)).mtime.toISOString().slice(0, 16).replace(/\D/g, "");
   html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);
   const block = [
     "<!-- seo: scripts/build_seo.mjs가 만든다 -->",
@@ -80,12 +63,13 @@ for (const [id, p, tab, kind] of PAGES) {
     `<meta property="og:site_name" content="${NAME}">`,
     `<meta property="og:locale" content="ko_KR">`,
     `<meta property="og:title" content="${esc(shareTitle)}">`,
-    `<meta property="og:description" content="${esc(desc)}">`,
+    `<meta property="og:description" content="${esc(short)}">`,
     `<meta property="og:url" content="${url}">`,
-    `<meta property="og:image" content="${SITE}/assets/og.png">`,
+    `<meta property="og:image" content="${SITE}/${og}?v=${ogv}">`,
+    `<meta property="og:image:type" content="image/jpeg">`,
     `<meta property="og:image:width" content="1200">`,
     `<meta property="og:image:height" content="630">`,
-    `<meta property="og:image:alt" content="${NAME}: 시군별 농업 통계 지도">`,
+    `<meta property="og:image:alt" content="${esc(shareTitle)}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
     `<script type="application/ld+json">${JSON.stringify(ld(kind, url, shareTitle, desc)).replace(/</g, "\\u003c")}</script>`,
     "<!-- /seo -->",
