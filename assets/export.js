@@ -35,7 +35,7 @@
   };
 
   const PAGE = (location.pathname.split("/").pop() || "index").replace(/\.html$/, "") || "index";
-  const TITLE = document.querySelector('.tabs [aria-current="page"]')?.textContent.trim() || (document.title || "").split("|")[0].trim() || "지역농업 현황판";
+  const TITLE = document.querySelector('.tabs [aria-current="page"]')?.textContent.trim() || (document.title || "").split("|")[0].trim() || "조박사의 지역농업 현황판";
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
   const clean = (v) => (v == null || (typeof v === "number" && !Number.isFinite(v)) ? "" : v);
 

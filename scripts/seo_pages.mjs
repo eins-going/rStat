@@ -2,7 +2,7 @@
 // [파일, 주소, 화면 이름, 종류, 공유 설명(카카오톡 카드에 두 줄 안쪽)]
 // 검색 설명은 각 html의 <meta name="description">을 쓴다.
 export const SITE = "https://ag-rstat.vercel.app";
-export const NAME = "지역농업 현황판";
+export const NAME = "조박사의 지역농업 현황판";
 export const PAGES = [
   ["index", "/", "시군별 농업 통계", "home", "168개 시군의 농가·경지·가축·작물·소득 통계를 한 화면에"],
   ["rice", "/rice", "벼 작황", "data", "시군별 쌀 단수와 올해 수확량 예측, 위성으로 본 생육"],

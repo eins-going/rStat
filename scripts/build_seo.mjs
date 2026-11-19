@@ -15,7 +15,7 @@ const NAVER_TOKEN = "edd209c568890d56f9a6888bb250dc739a233859"; // <meta name="n
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 const PERSON = { "@type": "Person", "@id": `${SITE}/about#person`, name: "조승현", description: "농업·자원경제학 박사", email: "agrirstat@gmail.com", url: `${SITE}/about` };
-const WEBSITE = { "@type": "WebSite", "@id": `${SITE}/#website`, name: NAME, alternateName: ["지역농업현황판", "rStat"], url: `${SITE}/`, inLanguage: "ko-KR" };
+const WEBSITE = { "@type": "WebSite", "@id": `${SITE}/#website`, name: NAME, alternateName: ["지역농업 현황판", "지역농업현황판", "rStat"], url: `${SITE}/`, inLanguage: "ko-KR" };
 
 function ld(kind, url, title, desc) {
   if (kind === "home") return { "@context": "https://schema.org", "@graph": [{ ...WEBSITE, description: desc, publisher: { "@id": PERSON["@id"] } }, PERSON] };
