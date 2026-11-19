@@ -4340,7 +4340,7 @@ void main(){
     </section>
     <section class="sc sc-open" id="sc-open">
       <p class="kicker"><span class="mark"></span>ag-rstat.vercel.app</p>
-      <h1 class="hl hl-xl">${rr(["\uC870\uBC15\uC0AC\uC758","\uC9C0\uC5ED\uB18D\uC5C5 \uD604\uD669\uD310"])}</h1>
+      <h1 class="hl hl-xl">${rr(["\uC870\uBC15\uC0AC\uC758","\uC9C0\uC5ED\uB18D\uC5C5","\uD604\uD669\uD310"])}</h1>
       <div class="nums"><div>${$n(ae.status.orgs)}<span>\uAC1C \uAE30\uAD00</span></div><div>${$n(ae.status.items)}<span>\uC885 \uC790\uB8CC</span></div><div>${$n(we.map.sigun.length)}<span>\uAC1C \uC2DC\uAD70, \uD55C \uD654\uBA74</span></div></div>
     </section>
     ${nr("stats","","\uC8FC\uC694\uD1B5\uACC4",[`${we.map.sigun.length}\uAC1C \uC2DC\uAD70,`,`${ae.metrics}\uAC1C \uC9C0\uD45C`],"\uC804\uAD6D\xB7\uC2DC\uB3C4\xB7\uC2DC\uAD70\uC744 \uAC19\uC740 \uB208\uAE08\uC73C\uB85C")}

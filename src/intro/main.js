@@ -85,7 +85,7 @@ stage.insertAdjacentHTML("beforeend", `
     </section>
     <section class="sc sc-open" id="sc-open">
       <p class="kicker"><span class="mark"></span>ag-rstat.vercel.app</p>
-      <h1 class="hl hl-xl">${split(["조박사의", "지역농업 현황판"])}</h1>
+      <h1 class="hl hl-xl">${split(["조박사의", "지역농업", "현황판"])}</h1>
       <div class="nums"><div>${count(F.status.orgs)}<span>개 기관</span></div><div>${count(F.status.items)}<span>종 자료</span></div><div>${count(I.map.sigun.length)}<span>개 시군, 한 화면</span></div></div>
     </section>
     ${scene("stats", "", "주요통계", [`${I.map.sigun.length}개 시군,`, `${F.metrics}개 지표`], "전국·시도·시군을 같은 눈금으로")}
