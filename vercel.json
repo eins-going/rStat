@@ -1,5 +1,5 @@
 {
-  "cleanUrls": true,
+  "cleanUrls": false,
   "regions": [
     "icn1"
   ],
@@ -23,6 +23,27 @@
       "source": "/gohyang.html",
       "destination": "/jikbul",
       "permanent": false
+    },
+    {
+      "source": "/index",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/((?!google)[A-Za-z0-9_-]+)\\.html",
+      "destination": "/$1",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/)[A-Za-z0-9_-]+)",
+      "destination": "/$1.html"
     }
   ],
   "headers": [
