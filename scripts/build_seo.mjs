@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { SITE, NAME, PAGES } from "./seo_pages.mjs"; // 화면 목록·공유 설명
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const GSC_TOKEN = ""; // <meta name="google-site-verification" content="여기">
+const GSC_TOKEN = "nwtn1RR5CQWR7QeuOwjmz9meMI9YgIEZ56VHE1cKa4E"; // <meta name="google-site-verification" content="여기">
 const NAVER_TOKEN = "edd209c568890d56f9a6888bb250dc739a233859"; // <meta name="naver-site-verification" content="여기">
 
 
