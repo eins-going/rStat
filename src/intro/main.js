@@ -85,7 +85,7 @@ stage.insertAdjacentHTML("beforeend", `
     </section>
     <section class="sc sc-open" id="sc-open">
       <p class="kicker"><span class="mark"></span>ag-rstat.vercel.app</p>
-      <h1 class="hl hl-xl">${split(["지역농업", "현황판"])}</h1>
+      <h1 class="hl hl-xl">${split(["조박사의", "지역농업 현황판"])}</h1>
       <div class="nums"><div>${count(F.status.orgs)}<span>개 기관</span></div><div>${count(F.status.items)}<span>종 자료</span></div><div>${count(I.map.sigun.length)}<span>개 시군, 한 화면</span></div></div>
     </section>
     ${scene("stats", "", "주요통계", [`${I.map.sigun.length}개 시군,`, `${F.metrics}개 지표`], "전국·시도·시군을 같은 눈금으로")}
@@ -173,7 +173,7 @@ stage.insertAdjacentHTML("beforeend", `
   </div>
   <div class="outro" id="sc-end">
     <span class="mark big"></span>
-    <h2 class="hl">${split(["지역농업 현황판"])}</h2>
+    <h2 class="hl">${split(["조박사의 지역농업 현황판"])}</h2>
     <p class="url">ag-rstat.vercel.app</p>
     <p class="srcs">국가데이터처 · 한국은행 · 한전 · 농촌진흥청 · 지방재정365 등 ${F.status.orgs}개 기관 공개 자료</p>
     <div class="btns"><a class="btn pri" href="./">현황판 열기</a><button type="button" class="btn" id="again">다시 보기</button></div>
@@ -278,7 +278,7 @@ orgEls.forEach((e, i) => {
 copyIn("#sc-hook", 0.4);
 copyOut("#sc-hook", T.title - 0.35);
 
-// ── 1 지역농업 현황판: 빛 입자가 모여 지도가 된다 ────────────────
+// ── 1 조박사의 지역농업 현황판: 빛 입자가 모여 지도가 된다 ────────────────
 sceneNo("title");
 to({ morph: 1 }, T.title + 0.2, 3.4, "none");
 to({ glow: 0.5 }, T.title + 0.6, 2.2);
