@@ -22,8 +22,8 @@ function ld(kind, url, title, desc) {
   if (kind === "about") return { "@context": "https://schema.org", "@graph": [{ "@type": "ProfilePage", url, name: title, inLanguage: "ko-KR", isPartOf: { "@id": WEBSITE["@id"] }, mainEntity: { "@id": PERSON["@id"] } }, PERSON] };
   if (kind === "data") return {
     "@context": "https://schema.org", "@type": "Dataset", name: title, description: desc, url, inLanguage: "ko-KR",
-    isAccessibleForFree: true, creator: PERSON, spatialCoverage: { "@type": "Place", name: "대한민국" },
-    isPartOf: { "@type": "WebSite", "@id": WEBSITE["@id"], name: NAME, url: `${SITE}/` },
+    isAccessibleForFree: true, license: "https://creativecommons.org/licenses/by/4.0/", creator: PERSON, spatialCoverage: { "@type": "Place", name: "대한민국" },
+    includedInDataCatalog: { "@type": "DataCatalog", name: NAME, url: `${SITE}/` }, // 구글은 Dataset의 isPartOf에 Dataset·URL만 받는다 (WebSite를 넣으면 경고)
   };
   return { "@context": "https://schema.org", "@type": "WebPage", url, name: title, description: desc, inLanguage: "ko-KR", isPartOf: { "@id": WEBSITE["@id"] } };
 }
